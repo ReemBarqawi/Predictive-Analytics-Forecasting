@@ -1,0 +1,12 @@
+# Don't push large data files
+data/*.xlsx
+data/*.csv
+outputs/*.csv
+
+# Python junk
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+Thumbs.db
