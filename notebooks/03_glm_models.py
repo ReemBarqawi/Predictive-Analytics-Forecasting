@@ -316,3 +316,122 @@ severity_coefs.to_csv('outputs/severity_model_coefficients.csv')
 freq_coefs.to_csv('outputs/frequency_model_coefficients.csv')
 
 print("Saved model coefficients to outputs/")
+
+#-----------------------------------------------------------------------------------------------
+# ================================================================
+# IMPROVED SEVERITY MODEL
+# ================================================================
+print("\n" + "=" * 60)
+print("IMPROVED SEVERITY MODEL")
+print("=" * 60)
+
+# Reload clean severity data (start fresh)
+severity_v2 = pd.read_csv('outputs/severity_data.csv')
+
+# Check: what's the 99th percentile?
+p99 = severity_v2['TOTAL_PAID'].quantile(0.99)
+p95 = severity_v2['TOTAL_PAID'].quantile(0.95)
+print(f"95th percentile: {p95:,.0f} SAR")
+print(f"99th percentile: {p99:,.0f} SAR")
+print(f"Max before cap:  {severity_v2['TOTAL_PAID'].max():,.0f} SAR")
+
+# Cap at 99th percentile
+severity_v2['TOTAL_PAID'] = severity_v2['TOTAL_PAID'].clip(upper=p99)
+print(f"Max after cap:   {severity_v2['TOTAL_PAID'].max():,.0f} SAR")
+print(f"Rows affected:   {(severity_v2['TOTAL_PAID'] == p99).sum()}")
+
+
+# Group accident types — raise threshold to 40 to absorb Hit and Run
+acc_counts_v2 = severity_v2['ACC_TYPE_DESC'].value_counts()
+rare_types_v2 = acc_counts_v2[acc_counts_v2 < 40].index.tolist()
+severity_v2['ACC_TYPE_GROUPED'] = severity_v2['ACC_TYPE_DESC'].replace(rare_types_v2, 'Other')
+
+print(f"\nAccident type groups (v2):")
+print(severity_v2['ACC_TYPE_GROUPED'].value_counts())
+
+
+# Add claim year as a numeric feature
+# Center it so the intercept is easier to interpret
+severity_v2['CLM_YEAR_CENTERED'] = severity_v2['CLM_YEAR'] - severity_v2['CLM_YEAR'].median()
+print(f"\nCLM_YEAR range: {severity_v2['CLM_YEAR'].min()} to {severity_v2['CLM_YEAR'].max()}")
+print(f"After centering: {severity_v2['CLM_YEAR_CENTERED'].min()} to {severity_v2['CLM_YEAR_CENTERED'].max()}")
+
+
+# Encode features (same process as before, plus CLM_YEAR_CENTERED)
+severity_v2_encoded = pd.get_dummies(
+    severity_v2[['TOTAL_PAID', 'POLICY_TYPE_DESC', 'COB_DESC', 'SOURCE_DESC',
+                 'ACC_TYPE_GROUPED', 'CLM_YEAR_CENTERED']],
+    columns=['POLICY_TYPE_DESC', 'COB_DESC', 'SOURCE_DESC', 'ACC_TYPE_GROUPED'],
+    drop_first=True,
+    dtype=int
+)
+
+print(f"\nImproved encoded shape: {severity_v2_encoded.shape}")
+print(f"Columns: {severity_v2_encoded.columns.tolist()}")
+
+# Split
+y_v2 = severity_v2_encoded['TOTAL_PAID']
+X_v2 = severity_v2_encoded.drop('TOTAL_PAID', axis=1)
+
+X_train_v2, X_test_v2, y_train_v2, y_test_v2 = train_test_split(
+    X_v2, y_v2, test_size=0.2, random_state=42
+)
+
+# Fit improved Gamma GLM
+X_train_v2_const = sm.add_constant(X_train_v2)
+X_test_v2_const = sm.add_constant(X_test_v2)
+
+gamma_v2 = sm.GLM(
+    y_train_v2,
+    X_train_v2_const,
+    family=sm.families.Gamma(link=sm.families.links.Log())
+)
+
+gamma_v2_result = gamma_v2.fit()
+print(gamma_v2_result.summary())
+
+# Predictions
+y_pred_v2 = gamma_v2_result.predict(X_test_v2_const)
+
+# Compare: old model vs improved model
+print("\n" + "=" * 60)
+print("COMPARISON: Original vs Improved Severity Model")
+print("=" * 60)
+
+mae_v2 = mean_absolute_error(y_test_v2, y_pred_v2)
+rmse_v2 = np.sqrt(mean_squared_error(y_test_v2, y_pred_v2))
+ratio_v2 = y_pred_v2.sum() / y_test_v2.sum()
+
+print(f"{'Metric':<30} {'Original':>12} {'Improved':>12}")
+print(f"{'-'*54}")
+print(f"{'MAE (avg error)':<30} {'7,013':>12} {mae_v2:>12,.0f}")
+print(f"{'RMSE':<30} {'21,337':>12} {rmse_v2:>12,.0f}")
+print(f"{'Total Ratio':<30} {'0.960':>12} {ratio_v2:>12.3f}")
+print(f"{'Actual mean':<30} {'8,542':>12} {y_test_v2.mean():>12,.0f}")
+print(f"{'Predicted mean':<30} {'8,201':>12} {y_pred_v2.mean():>12,.0f}")
+
+
+# Multiplier table for the improved model
+coef_v2 = pd.DataFrame({
+    'coefficient': gamma_v2_result.params,
+    'multiplier': np.exp(gamma_v2_result.params),
+    'p_value': gamma_v2_result.pvalues
+})
+
+print("\nImproved Model — Multipliers:")
+for name, row in coef_v2.iterrows():
+    if name == 'const':
+        print(f"  Baseline cost: {row['multiplier']:,.0f} SAR")
+    elif name == 'CLM_YEAR_CENTERED':
+        # This one reads differently — it's per-year change
+        pct = (row['multiplier'] - 1) * 100
+        print(f"  Each additional year: cost changes by {pct:+.1f}% per year (p={row['p_value']:.4f})")
+    elif row['p_value'] < 0.05:
+        direction = "increases" if row['multiplier'] > 1 else "decreases"
+        pct = abs(row['multiplier'] - 1) * 100
+        print(f"  {name}: {direction} cost by {pct:.1f}%")
+    else:
+        print(f"  {name}: NOT significant (p={row['p_value']:.3f})")
+
+coef_v2.to_csv('outputs/severity_model_v2_coefficients.csv')
+print("\nSaved: outputs/severity_model_v2_coefficients.csv")
