@@ -435,3 +435,11 @@ for name, row in coef_v2.iterrows():
 
 coef_v2.to_csv('outputs/severity_model_v2_coefficients.csv')
 print("\nSaved: outputs/severity_model_v2_coefficients.csv")
+
+# Add this at the BOTTOM of 03_glm_models.py
+scatter_data = pd.DataFrame({
+    'Actual': y_test_v2.values,
+    'Predicted': y_pred_v2.values
+})
+scatter_data.to_csv('outputs/dashboard_scatter.csv', index=False)
+print("Saved: dashboard_scatter.csv")
