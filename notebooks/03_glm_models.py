@@ -443,3 +443,65 @@ scatter_data = pd.DataFrame({
 })
 scatter_data.to_csv('outputs/dashboard_scatter.csv', index=False)
 print("Saved: dashboard_scatter.csv")
+
+
+# ================================================================
+# EXPORT BASELINE MODEL DASHBOARD TABLES (for comparison in Power BI)
+# ================================================================
+print("\n" + "=" * 60)
+print("EXPORTING BASELINE MODEL DASHBOARD DATA")
+print("=" * 60)
+
+# --- 1. Scatter data (baseline) ---
+scatter_baseline = pd.DataFrame({
+    'Actual': y_test.values,
+    'Predicted': y_pred.values
+})
+scatter_baseline.to_csv('outputs/dashboard_scatter_baseline.csv', index=False)
+
+# --- 2. Lift chart / decile table (baseline) ---
+lift_baseline = pd.DataFrame({
+    'Actual': y_test.values,
+    'Predicted': y_pred.values
+})
+# Sort by predicted, assign into risk groups (matching your v2 chart)
+# Note: baseline may produce fewer than 8 groups due to tied predictions
+lift_baseline = lift_baseline.sort_values('Predicted').reset_index(drop=True)
+lift_baseline['RiskGroup'] = pd.qcut(
+    lift_baseline['Predicted'], q=8, labels=False, duplicates='drop'
+) + 1
+
+lift_summary_baseline = lift_baseline.groupby('RiskGroup').agg(
+    AvgPredicted=('Predicted', 'mean'),
+    AvgActual=('Actual', 'mean'),
+    Count=('Actual', 'size')
+).reset_index()
+lift_summary_baseline.to_csv('outputs/dashboard_lift_chart_baseline.csv', index=False)
+
+# --- 3. KPIs (baseline) ---
+mae_baseline = mean_absolute_error(y_test, y_pred)
+rmse_baseline = np.sqrt(mean_squared_error(y_test, y_pred))
+ratio_baseline = y_pred.sum() / y_test.sum()
+
+# Gini coefficient (baseline)
+def gini(actual, predicted):
+    df = pd.DataFrame({'a': actual, 'p': predicted}).sort_values('p').reset_index(drop=True)
+    n = len(df)
+    cum_actual = df['a'].cumsum() / df['a'].sum()
+    lorenz = cum_actual.sum() / n
+    return 1 - 2 * lorenz
+
+gini_baseline = gini(y_test.values, y_pred.values)
+
+kpis_baseline = pd.DataFrame({
+    'Metric': ['Model', 'MAE', 'RMSE', 'AccuracyRatio', 'Gini'],
+    'Value':  ['Baseline', round(mae_baseline), round(rmse_baseline),
+               round(ratio_baseline, 3), round(gini_baseline, 3)]
+})
+kpis_baseline.to_csv('outputs/dashboard_kpis_baseline.csv', index=False)
+
+print("Saved baseline dashboard files:")
+print("  - dashboard_scatter_baseline.csv")
+print("  - dashboard_lift_chart_baseline.csv")
+print("  - dashboard_kpis_baseline.csv")
+print(f"\nBaseline metrics — MAE: {mae_baseline:,.0f} | RMSE: {rmse_baseline:,.0f} | Ratio: {ratio_baseline:.3f} | Gini: {gini_baseline:.3f}")

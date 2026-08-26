@@ -204,13 +204,6 @@ for name, rate in scenarios.items():
 pd.DataFrame(scenario_summary).to_csv('outputs/dashboard_scenario_summary.csv', index=False)
 print("Saved: dashboard_scenario_summary.csv")
 
-
-scatter_data = pd.DataFrame({
-    'Actual': y_test.values,
-    'Predicted': y_pred.values
-})
-scatter_data.to_csv('outputs/dashboard_scatter.csv', index=False)
-
 print("\n" + "=" * 50)
 print("All 10 dashboard files exported to outputs/")
 print("=" * 50)
