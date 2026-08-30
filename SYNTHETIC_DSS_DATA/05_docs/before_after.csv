@@ -1,0 +1,13 @@
+Metric,Before,After,Target,Status
+Policy/claim match rate,1.6%,97.0%,≥ 90%,✅
+Number of policies,"25,000","25,000","≈ 25,000",✅
+Number of claims,"5,000","5,000","≈ 5,000",✅
+Overall open claim %,>99% for 2020+,27.3% overall,realistic development curve,✅
+Premium available in modelling layer,No (ignored),Yes (earned + gross),Yes,✅
+Geographic coverage,BRANCH_NAME = 'Saudi Arabia' only,"7 zones, 31 cities",≥ 5 zones,✅
+Exposure availability,"Days only, no earning",Days + years + policy-month earning,policy-month,✅
+Development structure,None,Triangles + chain-ladder factors + ULTIMATE,usable triangle,✅
+Pure premium capability,Global mean (broken),Per-segment PP available,per-policy possible,✅
+Profitability capability,None,LR/ER/CR/UW profit per segment,full P&L per segment,✅
+Scenario capability,None,201 preset scenarios + pure run_scenario() function,callable engine,✅
+Negative premium rows,1301,1301,preserved for DQ demo,✅
