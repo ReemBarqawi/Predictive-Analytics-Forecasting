@@ -1,0 +1,769 @@
+sensitivity_case,segment_id,step_order,step,amount
+base,PORTFOLIO,0,No-change profit,-456651.3432641736
+base,PORTFOLIO,1,Rate,414341.11377000005
+base,PORTFOLIO,2,Commission on rate,-32152.99176
+base,PORTFOLIO,3,Volume (retention),23612.293770184806
+base,PORTFOLIO,4,Premium mix,3590.4510399470773
+base,PORTFOLIO,5,Claims risk-mix,-12904.330763114951
+base,PORTFOLIO,6,Expense mix,-2053.188503961037
+base,PORTFOLIO,7,Recommended profit,-62217.99571111752
+base,Central | Motor Commercial | Comprehensive,0,No-change profit,-291832.7245371215
+base,Central | Motor Commercial | Comprehensive,1,Rate,43802.736480000014
+base,Central | Motor Commercial | Comprehensive,2,Commission on rate,-3253.0420799999993
+base,Central | Motor Commercial | Comprehensive,3,Volume (retention),27703.6793936681
+base,Central | Motor Commercial | Comprehensive,4,Premium mix,913.3679041732685
+base,Central | Motor Commercial | Comprehensive,5,Claims risk-mix,-2654.2690197338234
+base,Central | Motor Commercial | Comprehensive,6,Expense mix,-246.6809511815154
+base,Central | Motor Commercial | Comprehensive,7,Recommended profit,-225566.93281019537
+base,Central | Motor Commercial | Third Party,0,No-change profit,55268.96979709448
+base,Central | Motor Commercial | Third Party,1,Rate,20275.75584
+base,Central | Motor Commercial | Third Party,2,Commission on rate,-1652.31936
+base,Central | Motor Commercial | Third Party,3,Volume (retention),-8053.0758875488555
+base,Central | Motor Commercial | Third Party,4,Premium mix,-304.0028330338391
+base,Central | Motor Commercial | Third Party,5,Claims risk-mix,-185.36656318589667
+base,Central | Motor Commercial | Third Party,6,Expense mix,-31.79843432929556
+base,Central | Motor Commercial | Third Party,7,Recommended profit,65318.16255899659
+base,Central | Motor Private | Comprehensive,0,No-change profit,-9497.815152729658
+base,Central | Motor Private | Comprehensive,1,Rate,58411.39626000001
+base,Central | Motor Private | Comprehensive,2,Commission on rate,-4798.15308
+base,Central | Motor Private | Comprehensive,3,Volume (retention),-4130.031406984443
+base,Central | Motor Private | Comprehensive,4,Premium mix,206.2887544897385
+base,Central | Motor Private | Comprehensive,5,Claims risk-mix,-1547.5843452608678
+base,Central | Motor Private | Comprehensive,6,Expense mix,-341.268985222865
+base,Central | Motor Private | Comprehensive,7,Recommended profit,38302.83204429201
+base,Central | Motor Private | Third Party,0,No-change profit,-66510.24957729105
+base,Central | Motor Private | Third Party,1,Rate,7453.3872599999995
+base,Central | Motor Private | Third Party,2,Commission on rate,-600.0686999999998
+base,Central | Motor Private | Third Party,3,Volume (retention),4133.5690458284735
+base,Central | Motor Private | Third Party,4,Premium mix,-6.504918011996779
+base,Central | Motor Private | Third Party,5,Claims risk-mix,-324.805768013699
+base,Central | Motor Private | Third Party,6,Expense mix,-33.11012369723176
+base,Central | Motor Private | Third Party,7,Recommended profit,-55887.78278118551
+base,Central | Motor Rent a Car | Comprehensive,0,No-change profit,-27058.2414087121
+base,Central | Motor Rent a Car | Comprehensive,1,Rate,11149.429139999998
+base,Central | Motor Rent a Car | Comprehensive,2,Commission on rate,-1022.4743399999999
+base,Central | Motor Rent a Car | Comprehensive,3,Volume (retention),565.9003381004338
+base,Central | Motor Rent a Car | Comprehensive,4,Premium mix,640.0492070976761
+base,Central | Motor Rent a Car | Comprehensive,5,Claims risk-mix,-272.7922842183034
+base,Central | Motor Rent a Car | Comprehensive,6,Expense mix,-159.2332310445854
+base,Central | Motor Rent a Car | Comprehensive,7,Recommended profit,-16157.36257877684
+base,Eastern | Motor Commercial | Comprehensive,0,No-change profit,-52978.67410233413
+base,Eastern | Motor Commercial | Comprehensive,1,Rate,12768.160319999999
+base,Eastern | Motor Commercial | Comprehensive,2,Commission on rate,-1056.1075199999998
+base,Eastern | Motor Commercial | Comprehensive,3,Volume (retention),4396.143984715871
+base,Eastern | Motor Commercial | Comprehensive,4,Premium mix,-266.8189599578327
+base,Eastern | Motor Commercial | Comprehensive,5,Claims risk-mix,-345.6448417107895
+base,Eastern | Motor Commercial | Comprehensive,6,Expense mix,8.79832957211147
+base,Eastern | Motor Commercial | Comprehensive,7,Recommended profit,-37474.142789714766
+base,Eastern | Motor Private | Comprehensive,0,No-change profit,7775.639925310665
+base,Eastern | Motor Private | Comprehensive,1,Rate,4916.08926
+base,Eastern | Motor Private | Comprehensive,2,Commission on rate,-443.66454
+base,Eastern | Motor Private | Comprehensive,3,Volume (retention),-640.7397143564765
+base,Eastern | Motor Private | Comprehensive,4,Premium mix,30.211916617692623
+base,Eastern | Motor Private | Comprehensive,5,Claims risk-mix,-60.60005710632686
+base,Eastern | Motor Private | Comprehensive,6,Expense mix,-14.813752755271707
+base,Eastern | Motor Private | Comprehensive,7,Recommended profit,11562.123037710284
+base,Eastern | Motor Private | Third Party,0,No-change profit,-6393.646546383114
+base,Eastern | Motor Private | Third Party,1,Rate,684.2982599999999
+base,Eastern | Motor Private | Third Party,2,Commission on rate,-58.84164
+base,Eastern | Motor Private | Third Party,3,Volume (retention),193.3165237308029
+base,Eastern | Motor Private | Third Party,4,Premium mix,-1.2664772220450686
+base,Eastern | Motor Private | Third Party,5,Claims risk-mix,-19.669326450839435
+base,Eastern | Motor Private | Third Party,6,Expense mix,-2.5464742469707744
+base,Eastern | Motor Private | Third Party,7,Recommended profit,-5598.3556805721655
+base,Eastern | Motor Rent a Car | Comprehensive,0,No-change profit,-2747.9478069470624
+base,Eastern | Motor Rent a Car | Comprehensive,1,Rate,1545.6468599999996
+base,Eastern | Motor Rent a Car | Comprehensive,2,Commission on rate,-144.61146
+base,Eastern | Motor Rent a Car | Comprehensive,3,Volume (retention),40.88314363470668
+base,Eastern | Motor Rent a Car | Comprehensive,4,Premium mix,62.25442488325643
+base,Eastern | Motor Rent a Car | Comprehensive,5,Claims risk-mix,-33.32533568632425
+base,Eastern | Motor Rent a Car | Comprehensive,6,Expense mix,-20.827722316887957
+base,Eastern | Motor Rent a Car | Comprehensive,7,Recommended profit,-1297.9278964323112
+base,Northern | Motor Commercial | Comprehensive,0,No-change profit,-40512.50322961192
+base,Northern | Motor Commercial | Comprehensive,1,Rate,4857.44256
+base,Northern | Motor Commercial | Comprehensive,2,Commission on rate,-316.36656
+base,Northern | Motor Commercial | Comprehensive,3,Volume (retention),3726.5068342343275
+base,Northern | Motor Commercial | Comprehensive,4,Premium mix,18.29100607634973
+base,Northern | Motor Commercial | Comprehensive,5,Claims risk-mix,-279.2294189211025
+base,Northern | Motor Commercial | Comprehensive,6,Expense mix,-10.866375088158748
+base,Northern | Motor Commercial | Comprehensive,7,Recommended profit,-32516.725183310515
+base,Northern | Motor Commercial | Third Party,0,No-change profit,6403.076564249143
+base,Northern | Motor Commercial | Third Party,1,Rate,2774.1758399999994
+base,Northern | Motor Commercial | Third Party,2,Commission on rate,-215.81424000000004
+base,Northern | Motor Commercial | Third Party,3,Volume (retention),-872.3131572248191
+base,Northern | Motor Commercial | Third Party,4,Premium mix,-117.25306275225012
+base,Northern | Motor Commercial | Third Party,5,Claims risk-mix,-17.364178274493497
+base,Northern | Motor Commercial | Third Party,6,Expense mix,17.707463122402714
+base,Northern | Motor Commercial | Third Party,7,Recommended profit,7972.215229119978
+base,Northern | Motor Private | Comprehensive,0,No-change profit,3896.065783386828
+base,Northern | Motor Private | Comprehensive,1,Rate,7450.784639999999
+base,Northern | Motor Private | Comprehensive,2,Commission on rate,-545.49027
+base,Northern | Motor Private | Comprehensive,3,Volume (retention),-892.3812764297172
+base,Northern | Motor Private | Comprehensive,4,Premium mix,12.880306057777489
+base,Northern | Motor Private | Comprehensive,5,Claims risk-mix,-159.56402879517555
+base,Northern | Motor Private | Comprehensive,6,Expense mix,-17.735303611616473
+base,Northern | Motor Private | Comprehensive,7,Recommended profit,9744.559850608086
+base,Northern | Motor Private | Third Party,0,No-change profit,-4839.293233533107
+base,Northern | Motor Private | Third Party,1,Rate,593.6355
+base,Northern | Motor Private | Third Party,2,Commission on rate,-42.35543999999999
+base,Northern | Motor Private | Third Party,3,Volume (retention),143.05610618210204
+base,Northern | Motor Private | Third Party,4,Premium mix,-2.2690678653762006
+base,Northern | Motor Private | Third Party,5,Claims risk-mix,-10.738496412395762
+base,Northern | Motor Private | Third Party,6,Expense mix,-0.2803453928502222
+base,Northern | Motor Private | Third Party,7,Recommended profit,-4158.244977021624
+base,Northern | Motor Rent a Car | Comprehensive,0,No-change profit,12254.049565762023
+base,Northern | Motor Rent a Car | Comprehensive,1,Rate,1813.5797400000001
+base,Northern | Motor Rent a Car | Comprehensive,2,Commission on rate,-115.6707
+base,Northern | Motor Rent a Car | Comprehensive,3,Volume (retention),-389.6051424361891
+base,Northern | Motor Rent a Car | Comprehensive,4,Premium mix,10.267482623345131
+base,Northern | Motor Rent a Car | Comprehensive,5,Claims risk-mix,-11.740404787191437
+base,Northern | Motor Rent a Car | Comprehensive,6,Expense mix,-0.5834954079318777
+base,Northern | Motor Rent a Car | Comprehensive,7,Recommended profit,13560.297045754069
+base,Other | Motor Private | Comprehensive,0,No-change profit,1889.9128078189835
+base,Other | Motor Private | Comprehensive,1,Rate,393.5546999999999
+base,Other | Motor Private | Comprehensive,2,Commission on rate,-12.740489999999996
+base,Other | Motor Private | Comprehensive,3,Volume (retention),-55.88548319508545
+base,Other | Motor Private | Comprehensive,4,Premium mix,-9.094947017729282e-13
+base,Other | Motor Private | Comprehensive,5,Claims risk-mix,2.2737367544323206e-13
+base,Other | Motor Private | Comprehensive,6,Expense mix,1.1368683772161603e-13
+base,Other | Motor Private | Comprehensive,7,Recommended profit,2214.8415346238985
+base,Other | Motor Private | Third Party,0,No-change profit,-89.1482038035183
+base,Other | Motor Private | Third Party,1,Rate,29.522879999999997
+base,Other | Motor Private | Third Party,2,Commission on rate,0.0
+base,Other | Motor Private | Third Party,3,Volume (retention),1.4674551389376564
+base,Other | Motor Private | Third Party,4,Premium mix,-5.684341886080802e-14
+base,Other | Motor Private | Third Party,5,Claims risk-mix,0.0
+base,Other | Motor Private | Third Party,6,Expense mix,3.552713678800501e-15
+base,Other | Motor Private | Third Party,7,Recommended profit,-58.15786866458062
+base,Southern | Motor Commercial | Comprehensive,0,No-change profit,-95475.24515515455
+base,Southern | Motor Commercial | Comprehensive,1,Rate,37877.35392
+base,Southern | Motor Commercial | Comprehensive,2,Commission on rate,-3020.2963199999995
+base,Southern | Motor Commercial | Comprehensive,3,Volume (retention),6687.298625754716
+base,Southern | Motor Commercial | Comprehensive,4,Premium mix,1489.4901237337326
+base,Southern | Motor Commercial | Comprehensive,5,Claims risk-mix,-1287.6302406169998
+base,Southern | Motor Commercial | Comprehensive,6,Expense mix,-356.0954213034711
+base,Southern | Motor Commercial | Comprehensive,7,Recommended profit,-54085.12446758661
+base,Southern | Motor Commercial | Third Party,0,No-change profit,66230.82998879655
+base,Southern | Motor Commercial | Third Party,1,Rate,18721.8072
+base,Southern | Motor Commercial | Third Party,2,Commission on rate,-1387.944
+base,Southern | Motor Commercial | Third Party,3,Volume (retention),-9060.270203902779
+base,Southern | Motor Commercial | Third Party,4,Premium mix,-606.7849960673775
+base,Southern | Motor Commercial | Third Party,5,Claims risk-mix,-113.23903735915155
+base,Southern | Motor Commercial | Third Party,6,Expense mix,49.695223131911916
+base,Southern | Motor Commercial | Third Party,7,Recommended profit,73834.09417459917
+base,Southern | Motor Private | Comprehensive,0,No-change profit,111634.14015344936
+base,Southern | Motor Private | Comprehensive,1,Rate,17706.58785
+base,Southern | Motor Private | Comprehensive,2,Commission on rate,-1377.63045
+base,Southern | Motor Private | Comprehensive,3,Volume (retention),-3543.3515114673896
+base,Southern | Motor Private | Comprehensive,4,Premium mix,373.76482734800084
+base,Southern | Motor Private | Comprehensive,5,Claims risk-mix,-211.74139688385185
+base,Southern | Motor Private | Comprehensive,6,Expense mix,-105.30847889072902
+base,Southern | Motor Private | Comprehensive,7,Recommended profit,124476.4609935554
+base,Southern | Motor Private | Third Party,0,No-change profit,-23634.02194845613
+base,Southern | Motor Private | Third Party,1,Rate,1577.35224
+base,Southern | Motor Private | Third Party,2,Commission on rate,-118.83617999999998
+base,Southern | Motor Private | Third Party,3,Volume (retention),231.05225740603592
+base,Southern | Motor Private | Third Party,4,Premium mix,-2.7870422894047806
+base,Southern | Motor Private | Third Party,5,Claims risk-mix,-29.779382035587332
+base,Southern | Motor Private | Third Party,6,Expense mix,-1.7609865352787892
+base,Southern | Motor Private | Third Party,7,Recommended profit,-21978.781041910363
+base,Southern | Motor Rent a Car | Comprehensive,0,No-change profit,31015.27642479657
+base,Southern | Motor Rent a Car | Comprehensive,1,Rate,10243.75572
+base,Southern | Motor Rent a Car | Comprehensive,2,Commission on rate,-741.18132
+base,Southern | Motor Rent a Car | Comprehensive,3,Volume (retention),-1355.4685085765473
+base,Southern | Motor Rent a Car | Comprehensive,4,Premium mix,-83.13920519003295
+base,Southern | Motor Rent a Car | Comprehensive,5,Claims risk-mix,-149.8758082677814
+base,Southern | Motor Rent a Car | Comprehensive,6,Expense mix,12.02911146821134
+base,Southern | Motor Rent a Car | Comprehensive,7,Recommended profit,38941.39641423046
+base,Unspecified | Motor Commercial | Comprehensive,0,No-change profit,-62422.79693496714
+base,Unspecified | Motor Commercial | Comprehensive,1,Rate,10389.58272
+base,Unspecified | Motor Commercial | Comprehensive,2,Commission on rate,-614.25648
+base,Unspecified | Motor Commercial | Comprehensive,3,Volume (retention),5661.670313719497
+base,Unspecified | Motor Commercial | Comprehensive,4,Premium mix,-418.54958168641315
+base,Unspecified | Motor Commercial | Comprehensive,5,Claims risk-mix,-883.5046813718509
+base,Unspecified | Motor Commercial | Comprehensive,6,Expense mix,-11.125745501811252
+base,Unspecified | Motor Commercial | Comprehensive,7,Recommended profit,-48298.98038980771
+base,Unspecified | Motor Commercial | Third Party,0,No-change profit,33397.95268648667
+base,Unspecified | Motor Commercial | Third Party,1,Rate,7862.394239999999
+base,Unspecified | Motor Commercial | Third Party,2,Commission on rate,-610.19568
+base,Unspecified | Motor Commercial | Third Party,3,Volume (retention),-3975.2556598489655
+base,Unspecified | Motor Commercial | Third Party,4,Premium mix,1073.7104387661893
+base,Unspecified | Motor Commercial | Third Party,5,Claims risk-mix,-36.22469542068029
+base,Unspecified | Motor Commercial | Third Party,6,Expense mix,-199.8316875144883
+base,Unspecified | Motor Commercial | Third Party,7,Recommended profit,37512.54964246872
+base,Unspecified | Motor Private | Comprehensive,0,No-change profit,6674.7910510513175
+base,Unspecified | Motor Private | Comprehensive,1,Rate,6846.730739999999
+base,Unspecified | Motor Private | Comprehensive,2,Commission on rate,-451.43324999999993
+base,Unspecified | Motor Private | Comprehensive,3,Volume (retention),-696.8933560734902
+base,Unspecified | Motor Private | Comprehensive,4,Premium mix,-57.995262839860516
+base,Unspecified | Motor Private | Comprehensive,5,Claims risk-mix,-192.17327345957165
+base,Unspecified | Motor Private | Comprehensive,6,Expense mix,-28.190704542303138
+base,Unspecified | Motor Private | Comprehensive,7,Recommended profit,12094.835944136084
+base,Unspecified | Motor Private | Third Party,0,No-change profit,-4685.95497086533
+base,Unspecified | Motor Private | Third Party,1,Rate,456.73344
+base,Unspecified | Motor Private | Third Party,2,Commission on rate,-32.536440000000006
+base,Unspecified | Motor Private | Third Party,3,Volume (retention),91.42229981158496
+base,Unspecified | Motor Private | Third Party,4,Premium mix,1.165614717434437
+base,Unspecified | Motor Private | Third Party,5,Claims risk-mix,-16.026360601774286
+base,Unspecified | Motor Private | Third Party,6,Expense mix,-2.061245058660461
+base,Unspecified | Motor Private | Third Party,7,Recommended profit,-4187.257661996746
+base,Unspecified | Motor Rent a Car | Comprehensive,0,No-change profit,18444.292410572238
+base,Unspecified | Motor Rent a Car | Comprehensive,1,Rate,3104.5280399999992
+base,Unspecified | Motor Rent a Car | Comprehensive,2,Commission on rate,-192.20489999999998
+base,Unspecified | Motor Rent a Car | Comprehensive,3,Volume (retention),-660.3835826946819
+base,Unspecified | Motor Rent a Car | Comprehensive,4,Premium mix,-200.49360613439785
+base,Unspecified | Motor Rent a Car | Comprehensive,5,Claims risk-mix,-32.166031875000044
+base,Unspecified | Motor Rent a Car | Comprehensive,6,Expense mix,29.352462274102436
+base,Unspecified | Motor Rent a Car | Comprehensive,7,Recommended profit,20492.92479214225
+base,Western | Motor Commercial | Comprehensive,0,No-change profit,-194931.52716760823
+base,Western | Motor Commercial | Comprehensive,1,Rate,45780.811200000004
+base,Western | Motor Commercial | Comprehensive,2,Commission on rate,-3533.63184
+base,Western | Motor Commercial | Comprehensive,3,Volume (retention),16901.71749610042
+base,Western | Motor Commercial | Comprehensive,4,Premium mix,373.8779096798389
+base,Western | Motor Commercial | Comprehensive,5,Claims risk-mix,-2583.0427961160312
+base,Western | Motor Commercial | Comprehensive,6,Expense mix,-269.0721115392007
+base,Western | Motor Commercial | Comprehensive,7,Recommended profit,-138260.86730948326
+base,Western | Motor Commercial | Third Party,0,No-change profit,69017.11677256298
+base,Western | Motor Commercial | Third Party,1,Rate,21693.69072
+base,Western | Motor Commercial | Third Party,2,Commission on rate,-1509.89328
+base,Western | Motor Commercial | Third Party,3,Volume (retention),-9735.781023162142
+base,Western | Motor Commercial | Third Party,4,Premium mix,-14.237657665100414
+base,Western | Motor Commercial | Third Party,5,Claims risk-mix,-148.74344203458168
+base,Western | Motor Commercial | Third Party,6,Expense mix,-60.68408374077262
+base,Western | Motor Commercial | Third Party,7,Recommended profit,79241.46800596037
+base,Western | Motor Private | Comprehensive,0,No-change profit,48344.80934575206
+base,Western | Motor Private | Comprehensive,1,Rate,19405.268099999998
+base,Western | Motor Private | Comprehensive,2,Commission on rate,-1585.7469
+base,Western | Motor Private | Comprehensive,3,Volume (retention),-1832.7889802505017
+base,Western | Motor Private | Comprehensive,4,Premium mix,217.4160713115707
+base,Western | Motor Private | Comprehensive,5,Claims risk-mix,-303.68629457225325
+base,Western | Motor Private | Comprehensive,6,Expense mix,-83.77681568740809
+base,Western | Motor Private | Comprehensive,7,Recommended profit,64161.49452655343
+base,Western | Motor Private | Third Party,0,No-change profit,-39916.25334485036
+base,Western | Motor Private | Third Party,1,Rate,4207.833899999999
+base,Western | Motor Private | Third Party,2,Commission on rate,-317.54429999999996
+base,Western | Motor Private | Third Party,3,Volume (retention),1225.1601997923076
+base,Western | Motor Private | Third Party,4,Premium mix,-3.5976253953704145
+base,Western | Motor Private | Third Party,5,Claims risk-mix,-110.51967969990801
+base,Western | Motor Private | Third Party,6,Expense mix,-8.31503417219028
+base,Western | Motor Private | Third Party,7,Recommended profit,-34923.23588432552
+base,Western | Motor Rent a Car | Comprehensive,0,No-change profit,-5372.223220894513
+base,Western | Motor Rent a Car | Comprehensive,1,Rate,29547.0882
+base,Western | Motor Rent a Car | Comprehensive,2,Commission on rate,-2381.9399999999996
+base,Western | Motor Rent a Car | Comprehensive,3,Volume (retention),-2196.325353481412
+base,Western | Motor Rent a Car | Comprehensive,4,Premium mix,253.1153484825045
+base,Western | Motor Rent a Car | Comprehensive,5,Claims risk-mix,-883.2835742426978
+base,Western | Motor Rent a Car | Comprehensive,6,Expense mix,-164.80358474828245
+base,Western | Motor Rent a Car | Comprehensive,7,Recommended profit,18801.627815115586
+high,PORTFOLIO,0,No-change profit,-456651.3432641736
+high,PORTFOLIO,1,Rate,287780.82552
+high,PORTFOLIO,2,Commission on rate,-22377.51099
+high,PORTFOLIO,3,Volume (retention),26922.515368940007
+high,PORTFOLIO,4,Premium mix,4312.500382274581
+high,PORTFOLIO,5,Claims risk-mix,-13978.56820712334
+high,PORTFOLIO,6,Expense mix,-2307.037729497139
+high,PORTFOLIO,7,Recommended profit,-176298.618919579
+high,Central | Motor Commercial | Comprehensive,0,No-change profit,-291832.7245371215
+high,Central | Motor Commercial | Comprehensive,1,Rate,27376.710300000006
+high,Central | Motor Commercial | Comprehensive,2,Commission on rate,-2033.1512999999995
+high,Central | Motor Commercial | Comprehensive,3,Volume (retention),29380.139199602567
+high,Central | Motor Commercial | Comprehensive,4,Premium mix,866.1247367160395
+high,Central | Motor Commercial | Comprehensive,5,Claims risk-mix,-2654.2690197338234
+high,Central | Motor Commercial | Comprehensive,6,Expense mix,-237.99427848740743
+high,Central | Motor Commercial | Comprehensive,7,Recommended profit,-239135.164899024
+high,Central | Motor Commercial | Third Party,0,No-change profit,55268.96979709448
+high,Central | Motor Commercial | Third Party,1,Rate,12672.3474
+high,Central | Motor Commercial | Third Party,2,Commission on rate,-1032.6996
+high,Central | Motor Commercial | Third Party,3,Volume (retention),-7291.955996396003
+high,Central | Motor Commercial | Third Party,4,Premium mix,-288.2785485665954
+high,Central | Motor Commercial | Third Party,5,Claims risk-mix,-185.36656318589667
+high,Central | Motor Commercial | Third Party,6,Expense mix,-28.798145961634873
+high,Central | Motor Commercial | Third Party,7,Recommended profit,59114.21834298438
+high,Central | Motor Private | Comprehensive,0,No-change profit,-9497.815152729658
+high,Central | Motor Private | Comprehensive,1,Rate,37550.18331
+high,Central | Motor Private | Comprehensive,2,Commission on rate,-3084.5269799999996
+high,Central | Motor Private | Comprehensive,3,Volume (retention),-2423.5253195685978
+high,Central | Motor Private | Comprehensive,4,Premium mix,205.20502264786046
+high,Central | Motor Private | Comprehensive,5,Claims risk-mix,-1611.8650776055874
+high,Central | Motor Private | Comprehensive,6,Expense mix,-340.65143296314636
+high,Central | Motor Private | Comprehensive,7,Recommended profit,20797.004369781003
+high,Central | Motor Private | Third Party,0,No-change profit,-66510.24957729105
+high,Central | Motor Private | Third Party,1,Rate,4065.4839599999996
+high,Central | Motor Private | Third Party,2,Commission on rate,-327.3101999999999
+high,Central | Motor Private | Third Party,3,Volume (retention),3687.3588201233633
+high,Central | Motor Private | Third Party,4,Premium mix,-5.223256630866672
+high,Central | Motor Private | Third Party,5,Claims risk-mix,-270.0315508339263
+high,Central | Motor Private | Third Party,6,Expense mix,-26.262726949595162
+high,Central | Motor Private | Third Party,7,Recommended profit,-59386.23453158207
+high,Central | Motor Rent a Car | Comprehensive,0,No-change profit,-27058.2414087121
+high,Central | Motor Rent a Car | Comprehensive,1,Rate,11149.429139999998
+high,Central | Motor Rent a Car | Comprehensive,2,Commission on rate,-1022.4743399999999
+high,Central | Motor Rent a Car | Comprehensive,3,Volume (retention),976.0717662215764
+high,Central | Motor Rent a Car | Comprehensive,4,Premium mix,1168.2407125482569
+high,Central | Motor Rent a Car | Comprehensive,5,Claims risk-mix,-497.02333448195714
+high,Central | Motor Rent a Car | Comprehensive,6,Expense mix,-289.74533106022136
+high,Central | Motor Rent a Car | Comprehensive,7,Recommended profit,-15573.742795484468
+high,Eastern | Motor Commercial | Comprehensive,0,No-change profit,-52978.67410233413
+high,Eastern | Motor Commercial | Comprehensive,1,Rate,7980.1002
+high,Eastern | Motor Commercial | Comprehensive,2,Commission on rate,-660.0672
+high,Eastern | Motor Commercial | Comprehensive,3,Volume (retention),4864.027005306919
+high,Eastern | Motor Commercial | Comprehensive,4,Premium mix,-253.0179792703566
+high,Eastern | Motor Commercial | Comprehensive,5,Claims risk-mix,-345.6448417107895
+high,Eastern | Motor Commercial | Comprehensive,6,Expense mix,9.53298327419725
+high,Eastern | Motor Commercial | Comprehensive,7,Recommended profit,-41383.74393473414
+high,Eastern | Motor Private | Comprehensive,0,No-change profit,7775.639925310665
+high,Eastern | Motor Private | Comprehensive,1,Rate,4916.08926
+high,Eastern | Motor Private | Comprehensive,2,Commission on rate,-443.66454
+high,Eastern | Motor Private | Comprehensive,3,Volume (retention),-1141.9681097647065
+high,Eastern | Motor Private | Comprehensive,4,Premium mix,60.20069944527495
+high,Eastern | Motor Private | Comprehensive,5,Claims risk-mix,-115.02860783530923
+high,Eastern | Motor Private | Comprehensive,6,Expense mix,-28.47097655428479
+high,Eastern | Motor Private | Comprehensive,7,Recommended profit,11022.797650601638
+high,Eastern | Motor Private | Third Party,0,No-change profit,-6393.646546383114
+high,Eastern | Motor Private | Third Party,1,Rate,228.09942
+high,Eastern | Motor Private | Third Party,2,Commission on rate,-19.613879999999998
+high,Eastern | Motor Private | Third Party,3,Volume (retention),104.21379968117182
+high,Eastern | Motor Private | Third Party,4,Premium mix,-0.5713829253818403
+high,Eastern | Motor Private | Third Party,5,Claims risk-mix,-9.450804614773006
+high,Eastern | Motor Private | Third Party,6,Expense mix,-1.1781441617522432
+high,Eastern | Motor Private | Third Party,7,Recommended profit,-6092.147538403847
+high,Eastern | Motor Rent a Car | Comprehensive,0,No-change profit,-2747.9478069470624
+high,Eastern | Motor Rent a Car | Comprehensive,1,Rate,1545.6468599999996
+high,Eastern | Motor Rent a Car | Comprehensive,2,Commission on rate,-144.61146
+high,Eastern | Motor Rent a Car | Comprehensive,3,Volume (retention),70.13731881098943
+high,Eastern | Motor Rent a Car | Comprehensive,4,Premium mix,110.66889697087754
+high,Eastern | Motor Rent a Car | Comprehensive,5,Claims risk-mix,-60.09175801569654
+high,Eastern | Motor Rent a Car | Comprehensive,6,Expense mix,-37.172670713687694
+high,Eastern | Motor Rent a Car | Comprehensive,7,Recommended profit,-1263.370619894582
+high,Northern | Motor Commercial | Comprehensive,0,No-change profit,-40512.50322961192
+high,Northern | Motor Commercial | Comprehensive,1,Rate,3035.9016
+high,Northern | Motor Commercial | Comprehensive,2,Commission on rate,-197.72910000000002
+high,Northern | Motor Commercial | Comprehensive,3,Volume (retention),3902.9213392881493
+high,Northern | Motor Commercial | Comprehensive,4,Premium mix,17.344919555154775
+high,Northern | Motor Commercial | Comprehensive,5,Claims risk-mix,-279.2294189211025
+high,Northern | Motor Commercial | Comprehensive,6,Expense mix,-10.385880387148063
+high,Northern | Motor Commercial | Comprehensive,7,Recommended profit,-34043.67977007687
+high,Northern | Motor Commercial | Third Party,0,No-change profit,6403.076564249143
+high,Northern | Motor Commercial | Third Party,1,Rate,1733.8598999999995
+high,Northern | Motor Commercial | Third Party,2,Commission on rate,-134.8839
+high,Northern | Motor Commercial | Third Party,3,Volume (retention),-778.9258385385504
+high,Northern | Motor Commercial | Third Party,4,Premium mix,-111.18824916161975
+high,Northern | Motor Commercial | Third Party,5,Claims risk-mix,-17.364178274493497
+high,Northern | Motor Commercial | Third Party,6,Expense mix,17.31438861526385
+high,Northern | Motor Commercial | Third Party,7,Recommended profit,7111.888686889743
+high,Northern | Motor Private | Comprehensive,0,No-change profit,3896.065783386828
+high,Northern | Motor Private | Comprehensive,1,Rate,5731.372799999999
+high,Northern | Motor Private | Comprehensive,2,Commission on rate,-419.6079
+high,Northern | Motor Private | Comprehensive,3,Volume (retention),-992.7748397832349
+high,Northern | Motor Private | Comprehensive,4,Premium mix,16.97456117130787
+high,Northern | Motor Private | Comprehensive,5,Claims risk-mix,-214.88908202781022
+high,Northern | Motor Private | Comprehensive,6,Expense mix,-23.393005532263487
+high,Northern | Motor Private | Comprehensive,7,Recommended profit,7993.748317214833
+high,Northern | Motor Private | Third Party,0,No-change profit,-4839.293233533107
+high,Northern | Motor Private | Third Party,1,Rate,197.8785
+high,Northern | Motor Private | Third Party,2,Commission on rate,-14.118479999999998
+high,Northern | Motor Private | Third Party,3,Volume (retention),78.17904639153836
+high,Northern | Motor Private | Third Party,4,Premium mix,-1.087259246429312
+high,Northern | Motor Private | Third Party,5,Claims risk-mix,-5.172309509936895
+high,Northern | Motor Private | Third Party,6,Expense mix,-0.11665084225273858
+high,Northern | Motor Private | Third Party,7,Recommended profit,-4583.730386740186
+high,Northern | Motor Rent a Car | Comprehensive,0,No-change profit,12254.049565762023
+high,Northern | Motor Rent a Car | Comprehensive,1,Rate,1813.5797400000001
+high,Northern | Motor Rent a Car | Comprehensive,2,Commission on rate,-115.6707
+high,Northern | Motor Rent a Car | Comprehensive,3,Volume (retention),-665.6777152083984
+high,Northern | Motor Rent a Car | Comprehensive,4,Premium mix,19.5657837543622
+high,Northern | Motor Rent a Car | Comprehensive,5,Claims risk-mix,-21.066063798711184
+high,Northern | Motor Rent a Car | Comprehensive,6,Expense mix,-1.2260343853931772
+high,Northern | Motor Rent a Car | Comprehensive,7,Recommended profit,13283.554576123886
+high,Other | Motor Private | Comprehensive,0,No-change profit,1889.9128078189835
+high,Other | Motor Private | Comprehensive,1,Rate,393.5546999999999
+high,Other | Motor Private | Comprehensive,2,Commission on rate,-12.740489999999996
+high,Other | Motor Private | Comprehensive,3,Volume (retention),-94.310528323265
+high,Other | Motor Private | Comprehensive,4,Premium mix,9.094947017729282e-13
+high,Other | Motor Private | Comprehensive,5,Claims risk-mix,4.547473508864641e-13
+high,Other | Motor Private | Comprehensive,6,Expense mix,1.1368683772161603e-13
+high,Other | Motor Private | Comprehensive,7,Recommended profit,2176.41648949572
+high,Other | Motor Private | Third Party,0,No-change profit,-89.1482038035183
+high,Other | Motor Private | Third Party,1,Rate,29.522879999999997
+high,Other | Motor Private | Third Party,2,Commission on rate,0.0
+high,Other | Motor Private | Third Party,3,Volume (retention),2.476429683193133
+high,Other | Motor Private | Third Party,4,Premium mix,-5.684341886080802e-14
+high,Other | Motor Private | Third Party,5,Claims risk-mix,0.0
+high,Other | Motor Private | Third Party,6,Expense mix,0.0
+high,Other | Motor Private | Third Party,7,Recommended profit,-57.14889412032517
+high,Southern | Motor Commercial | Comprehensive,0,No-change profit,-95475.24515515455
+high,Southern | Motor Commercial | Comprehensive,1,Rate,23673.3462
+high,Southern | Motor Commercial | Comprehensive,2,Commission on rate,-1887.6851999999997
+high,Southern | Motor Commercial | Comprehensive,3,Volume (retention),8129.313572842018
+high,Southern | Motor Commercial | Comprehensive,4,Premium mix,1412.4475311267597
+high,Southern | Motor Commercial | Comprehensive,5,Claims risk-mix,-1287.6302406169998
+high,Southern | Motor Commercial | Comprehensive,6,Expense mix,-344.3182954263102
+high,Southern | Motor Commercial | Comprehensive,7,Recommended profit,-65779.77158722901
+high,Southern | Motor Commercial | Third Party,0,No-change profit,66230.82998879655
+high,Southern | Motor Commercial | Third Party,1,Rate,11701.1295
+high,Southern | Motor Commercial | Third Party,2,Commission on rate,-867.465
+high,Southern | Motor Commercial | Third Party,3,Volume (retention),-8355.50417947665
+high,Southern | Motor Commercial | Third Party,4,Premium mix,-575.3995652362937
+high,Southern | Motor Commercial | Third Party,5,Claims risk-mix,-113.23903735915155
+high,Southern | Motor Commercial | Third Party,6,Expense mix,49.830421145008586
+high,Southern | Motor Commercial | Third Party,7,Recommended profit,68070.1821278695
+high,Southern | Motor Private | Comprehensive,0,No-change profit,111634.14015344936
+high,Southern | Motor Private | Comprehensive,1,Rate,17706.58785
+high,Southern | Motor Private | Comprehensive,2,Commission on rate,-1377.63045
+high,Southern | Motor Private | Comprehensive,3,Volume (retention),-6042.650189519144
+high,Southern | Motor Private | Comprehensive,4,Premium mix,668.2916303972015
+high,Southern | Motor Private | Comprehensive,5,Claims risk-mix,-377.9916129519406
+high,Southern | Motor Private | Comprehensive,6,Expense mix,-188.34522375890083
+high,Southern | Motor Private | Comprehensive,7,Recommended profit,122022.40215761655
+high,Southern | Motor Private | Third Party,0,No-change profit,-23634.02194845613
+high,Southern | Motor Private | Third Party,1,Rate,0.0
+high,Southern | Motor Private | Third Party,2,Commission on rate,0.0
+high,Southern | Motor Private | Third Party,3,Volume (retention),0.0
+high,Southern | Motor Private | Third Party,4,Premium mix,0.0
+high,Southern | Motor Private | Third Party,5,Claims risk-mix,0.0
+high,Southern | Motor Private | Third Party,6,Expense mix,0.0
+high,Southern | Motor Private | Third Party,7,Recommended profit,-23634.02194845613
+high,Southern | Motor Rent a Car | Comprehensive,0,No-change profit,31015.27642479657
+high,Southern | Motor Rent a Car | Comprehensive,1,Rate,10243.75572
+high,Southern | Motor Rent a Car | Comprehensive,2,Commission on rate,-741.18132
+high,Southern | Motor Rent a Car | Comprehensive,3,Volume (retention),-2337.420678735597
+high,Southern | Motor Rent a Car | Comprehensive,4,Premium mix,-141.48188570523052
+high,Southern | Motor Rent a Car | Comprehensive,5,Claims risk-mix,-271.287442428802
+high,Southern | Motor Rent a Car | Comprehensive,6,Expense mix,20.364141409976583
+high,Southern | Motor Rent a Car | Comprehensive,7,Recommended profit,37788.024959336966
+high,Unspecified | Motor Commercial | Comprehensive,0,No-change profit,-62422.79693496714
+high,Unspecified | Motor Commercial | Comprehensive,1,Rate,6493.4892
+high,Unspecified | Motor Commercial | Comprehensive,2,Commission on rate,-383.9103
+high,Unspecified | Motor Commercial | Comprehensive,3,Volume (retention),6055.882089109843
+high,Unspecified | Motor Commercial | Comprehensive,4,Premium mix,-396.90046539228933
+high,Unspecified | Motor Commercial | Comprehensive,5,Claims risk-mix,-883.5046813718509
+high,Unspecified | Motor Commercial | Comprehensive,6,Expense mix,-8.683972778086172
+high,Unspecified | Motor Commercial | Comprehensive,7,Recommended profit,-51546.42506539951
+high,Unspecified | Motor Commercial | Third Party,0,No-change profit,33397.95268648667
+high,Unspecified | Motor Commercial | Third Party,1,Rate,4913.996399999999
+high,Unspecified | Motor Commercial | Third Party,2,Commission on rate,-381.3723
+high,Unspecified | Motor Commercial | Third Party,3,Volume (retention),-3709.303297238014
+high,Unspecified | Motor Commercial | Third Party,4,Premium mix,1018.1736919334508
+high,Unspecified | Motor Commercial | Third Party,5,Claims risk-mix,-36.22469542068029
+high,Unspecified | Motor Commercial | Third Party,6,Expense mix,-194.28321633552696
+high,Unspecified | Motor Commercial | Third Party,7,Recommended profit,35008.93926942591
+high,Unspecified | Motor Private | Comprehensive,0,No-change profit,6674.7910510513175
+high,Unspecified | Motor Private | Comprehensive,1,Rate,6846.730739999999
+high,Unspecified | Motor Private | Comprehensive,2,Commission on rate,-451.43324999999993
+high,Unspecified | Motor Private | Comprehensive,3,Volume (retention),-1244.0267756517796
+high,Unspecified | Motor Private | Comprehensive,4,Premium mix,-108.54529261479911
+high,Unspecified | Motor Private | Comprehensive,5,Claims risk-mix,-367.0740824306995
+high,Unspecified | Motor Private | Comprehensive,6,Expense mix,-54.260799765224874
+high,Unspecified | Motor Private | Comprehensive,7,Recommended profit,11296.181590588822
+high,Unspecified | Motor Private | Third Party,0,No-change profit,-4685.95497086533
+high,Unspecified | Motor Private | Third Party,1,Rate,0.0
+high,Unspecified | Motor Private | Third Party,2,Commission on rate,0.0
+high,Unspecified | Motor Private | Third Party,3,Volume (retention),0.0
+high,Unspecified | Motor Private | Third Party,4,Premium mix,0.0
+high,Unspecified | Motor Private | Third Party,5,Claims risk-mix,0.0
+high,Unspecified | Motor Private | Third Party,6,Expense mix,0.0
+high,Unspecified | Motor Private | Third Party,7,Recommended profit,-4685.95497086533
+high,Unspecified | Motor Rent a Car | Comprehensive,0,No-change profit,18444.292410572238
+high,Unspecified | Motor Rent a Car | Comprehensive,1,Rate,3104.5280399999992
+high,Unspecified | Motor Rent a Car | Comprehensive,2,Commission on rate,-192.20489999999998
+high,Unspecified | Motor Rent a Car | Comprehensive,3,Volume (retention),-1134.2781058659732
+high,Unspecified | Motor Rent a Car | Comprehensive,4,Premium mix,-360.1651686970581
+high,Unspecified | Motor Rent a Car | Comprehensive,5,Claims risk-mix,-58.14951130317786
+high,Unspecified | Motor Rent a Car | Comprehensive,6,Expense mix,52.72566110165553
+high,Unspecified | Motor Rent a Car | Comprehensive,7,Recommended profit,19856.748425807677
+high,Western | Motor Commercial | Comprehensive,0,No-change profit,-194931.52716760823
+high,Western | Motor Commercial | Comprehensive,1,Rate,28613.007
+high,Western | Motor Commercial | Comprehensive,2,Commission on rate,-2208.5199000000002
+high,Western | Motor Commercial | Comprehensive,3,Volume (retention),18655.45789451756
+high,Western | Motor Commercial | Comprehensive,4,Premium mix,354.5393971102894
+high,Western | Motor Commercial | Comprehensive,5,Claims risk-mix,-2583.0427961160312
+high,Western | Motor Commercial | Comprehensive,6,Expense mix,-256.82170168110315
+high,Western | Motor Commercial | Comprehensive,7,Recommended profit,-152356.9072737775
+high,Western | Motor Commercial | Third Party,0,No-change profit,69017.11677256298
+high,Western | Motor Commercial | Third Party,1,Rate,13558.5567
+high,Western | Motor Commercial | Third Party,2,Commission on rate,-943.6833000000001
+high,Western | Motor Commercial | Third Party,3,Volume (retention),-8909.67528551479
+high,Western | Motor Commercial | Third Party,4,Premium mix,-13.501227096217917
+high,Western | Motor Commercial | Third Party,5,Claims risk-mix,-148.74344203458168
+high,Western | Motor Commercial | Third Party,6,Expense mix,-57.48176642928229
+high,Western | Motor Commercial | Third Party,7,Recommended profit,72502.58845148812
+high,Western | Motor Private | Comprehensive,0,No-change profit,48344.80934575206
+high,Western | Motor Private | Comprehensive,1,Rate,19405.268099999998
+high,Western | Motor Private | Comprehensive,2,Commission on rate,-1585.7469
+high,Western | Motor Private | Comprehensive,3,Volume (retention),-3125.372117097813
+high,Western | Motor Private | Comprehensive,4,Premium mix,386.59504333045334
+high,Western | Motor Private | Comprehensive,5,Claims risk-mix,-541.5695244313974
+high,Western | Motor Private | Comprehensive,6,Expense mix,-149.2841155942442
+high,Western | Motor Private | Comprehensive,7,Recommended profit,62734.69983195905
+high,Western | Motor Private | Third Party,0,No-change profit,-39916.25334485036
+high,Western | Motor Private | Third Party,1,Rate,1402.6112999999998
+high,Western | Motor Private | Third Party,2,Commission on rate,-105.8481
+high,Western | Motor Private | Third Party,3,Volume (retention),659.913486369985
+high,Western | Motor Private | Third Party,4,Premium mix,-1.541336607930134
+high,Western | Motor Private | Third Party,5,Claims risk-mix,-53.10907354744268
+high,Western | Motor Private | Third Party,6,Expense mix,-3.8470461377855827
+high,Western | Motor Private | Third Party,7,Recommended profit,-38018.07411477357
+high,Western | Motor Rent a Car | Comprehensive,0,No-change profit,-5372.223220894513
+high,Western | Motor Rent a Car | Comprehensive,1,Rate,19698.0588
+high,Western | Motor Rent a Car | Comprehensive,2,Commission on rate,-1587.9599999999998
+high,Western | Motor Rent a Car | Comprehensive,3,Volume (retention),-1396.20742232634
+high,Western | Motor Rent a Car | Comprehensive,4,Premium mix,265.0293727183598
+high,Western | Motor Rent a Car | Comprehensive,5,Claims risk-mix,-970.5094565607724
+high,Western | Motor Rent a Car | Comprehensive,6,Expense mix,-174.0839091379894
+high,Western | Motor Rent a Car | Comprehensive,7,Recommended profit,10462.104163798787
+low,PORTFOLIO,0,No-change profit,-456651.3432641736
+low,PORTFOLIO,1,Rate,575294.8992300002
+low,PORTFOLIO,2,Commission on rate,-44366.479739999995
+low,PORTFOLIO,3,Volume (retention),19032.92369811064
+low,PORTFOLIO,4,Premium mix,3162.411909145382
+low,PORTFOLIO,5,Claims risk-mix,-11005.644592783097
+low,PORTFOLIO,6,Expense mix,-1705.3965712304337
+low,PORTFOLIO,7,Recommended profit,83761.37066906877
+low,Central | Motor Commercial | Comprehensive,0,No-change profit,-291832.7245371215
+low,Central | Motor Commercial | Comprehensive,1,Rate,71179.44678000001
+low,Central | Motor Commercial | Comprehensive,2,Commission on rate,-5286.193379999999
+low,Central | Motor Commercial | Comprehensive,3,Volume (retention),24099.167626885817
+low,Central | Motor Commercial | Comprehensive,4,Premium mix,955.3337772973464
+low,Central | Motor Commercial | Comprehensive,5,Claims risk-mix,-2557.649462750298
+low,Central | Motor Commercial | Comprehensive,6,Expense mix,-251.485665713888
+low,Central | Motor Commercial | Comprehensive,7,Recommended profit,-203694.10486140248
+low,Central | Motor Commercial | Third Party,0,No-change profit,55268.96979709448
+low,Central | Motor Commercial | Third Party,1,Rate,32948.103240000004
+low,Central | Motor Commercial | Third Party,2,Commission on rate,-2685.01896
+low,Central | Motor Commercial | Third Party,3,Volume (retention),-9018.75993385462
+low,Central | Motor Commercial | Third Party,4,Premium mix,-318.724531117914
+low,Central | Motor Commercial | Third Party,5,Claims risk-mix,-178.63472697838006
+low,Central | Motor Commercial | Third Party,6,Expense mix,-35.376831901539845
+low,Central | Motor Commercial | Third Party,7,Recommended profit,75980.55805324204
+low,Central | Motor Private | Comprehensive,0,No-change profit,-9497.815152729658
+low,Central | Motor Private | Comprehensive,1,Rate,58411.39626000001
+low,Central | Motor Private | Comprehensive,2,Commission on rate,-4798.15308
+low,Central | Motor Private | Comprehensive,3,Volume (retention),-2207.999870288534
+low,Central | Motor Private | Comprehensive,4,Premium mix,104.86992614041083
+low,Central | Motor Private | Comprehensive,5,Claims risk-mix,-769.1097782271099
+low,Central | Motor Private | Comprehensive,6,Expense mix,-169.88891750527546
+low,Central | Motor Private | Comprehensive,7,Recommended profit,41073.29938738991
+low,Central | Motor Private | Third Party,0,No-change profit,-66510.24957729105
+low,Central | Motor Private | Third Party,1,Rate,13551.6132
+low,Central | Motor Private | Third Party,2,Commission on rate,-1091.0339999999997
+low,Central | Motor Private | Third Party,3,Volume (retention),4170.12675116385
+low,Central | Motor Private | Third Party,4,Premium mix,-7.8774972510000225
+low,Central | Motor Private | Third Party,5,Claims risk-mix,-366.51252642176405
+low,Central | Motor Private | Third Party,6,Expense mix,-40.445683069176084
+low,Central | Motor Private | Third Party,7,Recommended profit,-50294.37933286916
+low,Central | Motor Rent a Car | Comprehensive,0,No-change profit,-27058.2414087121
+low,Central | Motor Rent a Car | Comprehensive,1,Rate,11149.429139999998
+low,Central | Motor Rent a Car | Comprehensive,2,Commission on rate,-1022.4743399999999
+low,Central | Motor Rent a Car | Comprehensive,3,Volume (retention),322.7484093325398
+low,Central | Motor Rent a Car | Comprehensive,4,Premium mix,350.2235666686611
+low,Central | Motor Rent a Car | Comprehensive,5,Claims risk-mix,-149.46817263084813
+low,Central | Motor Rent a Car | Comprehensive,6,Expense mix,-87.3317604138283
+low,Central | Motor Rent a Car | Comprehensive,7,Recommended profit,-16495.11456575562
+low,Eastern | Motor Commercial | Comprehensive,0,No-change profit,-52978.67410233413
+low,Eastern | Motor Commercial | Comprehensive,1,Rate,21546.27054
+low,Eastern | Motor Commercial | Comprehensive,2,Commission on rate,-1782.1814399999998
+low,Eastern | Motor Commercial | Comprehensive,3,Volume (retention),3596.1157482597127
+low,Eastern | Motor Commercial | Comprehensive,4,Premium mix,-297.8527496652532
+low,Eastern | Motor Commercial | Comprehensive,5,Claims risk-mix,-351.98170973667584
+low,Eastern | Motor Commercial | Comprehensive,6,Expense mix,7.676693935358344
+low,Eastern | Motor Commercial | Comprehensive,7,Recommended profit,-30260.62701954103
+low,Eastern | Motor Private | Comprehensive,0,No-change profit,7775.639925310665
+low,Eastern | Motor Private | Comprehensive,1,Rate,4916.08926
+low,Eastern | Motor Private | Comprehensive,2,Commission on rate,-443.66454
+low,Eastern | Motor Private | Comprehensive,3,Volume (retention),-356.948481109475
+low,Eastern | Motor Private | Comprehensive,4,Premium mix,15.359444904956035
+low,Eastern | Motor Private | Comprehensive,5,Claims risk-mix,-32.14204945934034
+low,Eastern | Motor Private | Comprehensive,6,Expense mix,-7.774766884500423
+low,Eastern | Motor Private | Comprehensive,7,Recommended profit,11866.558792762298
+low,Eastern | Motor Private | Third Party,0,No-change profit,-6393.646546383114
+low,Eastern | Motor Private | Third Party,1,Rate,1710.7456499999998
+low,Eastern | Motor Private | Third Party,2,Commission on rate,-147.1041
+low,Eastern | Motor Private | Third Party,3,Volume (retention),258.4873877330698
+low,Eastern | Motor Private | Third Party,4,Premium mix,-2.346893392976199
+low,Eastern | Motor Private | Third Party,5,Claims risk-mix,-32.83761127940488
+low,Eastern | Motor Private | Third Party,6,Expense mix,-4.618808761726541
+low,Eastern | Motor Private | Third Party,7,Recommended profit,-4611.320922084151
+low,Eastern | Motor Rent a Car | Comprehensive,0,No-change profit,-2747.9478069470624
+low,Eastern | Motor Rent a Car | Comprehensive,1,Rate,1545.6468599999996
+low,Eastern | Motor Rent a Car | Comprehensive,2,Commission on rate,-144.61146
+low,Eastern | Motor Rent a Car | Comprehensive,3,Volume (retention),23.40404255024674
+low,Eastern | Motor Rent a Car | Comprehensive,4,Premium mix,34.73653553906479
+low,Eastern | Motor Rent a Car | Comprehensive,5,Claims risk-mix,-18.40180941993094
+low,Eastern | Motor Rent a Car | Comprehensive,6,Expense mix,-11.587927331976971
+low,Eastern | Motor Rent a Car | Comprehensive,7,Recommended profit,-1318.7615656096575
+low,Northern | Motor Commercial | Comprehensive,0,No-change profit,-40512.50322961192
+low,Northern | Motor Commercial | Comprehensive,1,Rate,8196.93432
+low,Northern | Motor Commercial | Comprehensive,2,Commission on rate,-533.86857
+low,Northern | Motor Commercial | Comprehensive,3,Volume (retention),3458.5348272736996
+low,Northern | Motor Commercial | Comprehensive,4,Premium mix,20.382755465761875
+low,Northern | Motor Commercial | Comprehensive,5,Claims risk-mix,-284.30278912930225
+low,Northern | Motor Commercial | Comprehensive,6,Expense mix,-11.955523946096946
+low,Northern | Motor Commercial | Comprehensive,7,Recommended profit,-29666.77820994786
+low,Northern | Motor Commercial | Third Party,0,No-change profit,6403.076564249143
+low,Northern | Motor Commercial | Third Party,1,Rate,4681.421729999999
+low,Northern | Motor Commercial | Third Party,2,Commission on rate,-364.18653000000006
+low,Northern | Motor Commercial | Third Party,3,Volume (retention),-1060.3637696848343
+low,Northern | Motor Commercial | Third Party,4,Premium mix,-130.68497050310543
+low,Northern | Motor Commercial | Third Party,5,Claims risk-mix,-17.671526704558346
+low,Northern | Motor Commercial | Third Party,6,Expense mix,18.759961821906927
+low,Northern | Motor Commercial | Third Party,7,Recommended profit,9530.351459178546
+low,Northern | Motor Private | Comprehensive,0,No-change profit,3896.065783386828
+low,Northern | Motor Private | Comprehensive,1,Rate,7450.784639999999
+low,Northern | Motor Private | Comprehensive,2,Commission on rate,-545.49027
+low,Northern | Motor Private | Comprehensive,3,Volume (retention),-481.70933745196663
+low,Northern | Motor Private | Comprehensive,4,Premium mix,6.3571279952302575
+low,Northern | Motor Private | Comprehensive,5,Claims risk-mix,-80.72443043107342
+low,Northern | Motor Private | Comprehensive,6,Expense mix,-8.866015363859333
+low,Northern | Motor Private | Comprehensive,7,Recommended profit,10236.417498135152
+low,Northern | Motor Private | Third Party,0,No-change profit,-4839.293233533107
+low,Northern | Motor Private | Third Party,1,Rate,1286.2102499999999
+low,Northern | Motor Private | Third Party,2,Commission on rate,-91.77011999999999
+low,Northern | Motor Private | Third Party,3,Volume (retention),164.01885635187827
+low,Northern | Motor Private | Third Party,4,Premium mix,-3.2832919336578925
+low,Northern | Motor Private | Third Party,5,Claims risk-mix,-14.874339093012168
+low,Northern | Motor Private | Third Party,6,Expense mix,-0.45065449281673864
+low,Northern | Motor Private | Third Party,7,Recommended profit,-3499.442532700716
+low,Northern | Motor Rent a Car | Comprehensive,0,No-change profit,12254.049565762023
+low,Northern | Motor Rent a Car | Comprehensive,1,Rate,1813.5797400000001
+low,Northern | Motor Rent a Car | Comprehensive,2,Commission on rate,-115.6707
+low,Northern | Motor Rent a Car | Comprehensive,3,Volume (retention),-223.66226341916075
+low,Northern | Motor Rent a Car | Comprehensive,4,Premium mix,5.430569246920641
+low,Northern | Motor Rent a Car | Comprehensive,5,Claims risk-mix,-6.506470487316619
+low,Northern | Motor Rent a Car | Comprehensive,6,Expense mix,-0.2826865293063747
+low,Northern | Motor Rent a Car | Comprehensive,7,Recommended profit,13726.937754573166
+low,Other | Motor Private | Comprehensive,0,No-change profit,1889.9128078189835
+low,Other | Motor Private | Comprehensive,1,Rate,393.5546999999999
+low,Other | Motor Private | Comprehensive,2,Commission on rate,-12.740489999999996
+low,Other | Motor Private | Comprehensive,3,Volume (retention),-32.35274200015566
+low,Other | Motor Private | Comprehensive,4,Premium mix,9.094947017729282e-13
+low,Other | Motor Private | Comprehensive,5,Claims risk-mix,2.2737367544323206e-13
+low,Other | Motor Private | Comprehensive,6,Expense mix,0.0
+low,Other | Motor Private | Comprehensive,7,Recommended profit,2238.3742758188287
+low,Other | Motor Private | Third Party,0,No-change profit,-89.1482038035183
+low,Other | Motor Private | Third Party,1,Rate,29.522879999999997
+low,Other | Motor Private | Third Party,2,Commission on rate,0.0
+low,Other | Motor Private | Third Party,3,Volume (retention),0.8495264743640547
+low,Other | Motor Private | Third Party,4,Premium mix,0.0
+low,Other | Motor Private | Third Party,5,Claims risk-mix,-1.1368683772161603e-13
+low,Other | Motor Private | Third Party,6,Expense mix,0.0
+low,Other | Motor Private | Third Party,7,Recommended profit,-58.77579732915428
+low,Southern | Motor Commercial | Comprehensive,0,No-change profit,-95475.24515515455
+low,Southern | Motor Commercial | Comprehensive,1,Rate,61550.70012
+low,Southern | Motor Commercial | Comprehensive,2,Commission on rate,-4907.981519999999
+low,Southern | Motor Commercial | Comprehensive,3,Volume (retention),4144.502643672255
+low,Southern | Motor Commercial | Comprehensive,4,Premium mix,1558.089626377041
+low,Southern | Motor Commercial | Comprehensive,5,Claims risk-mix,-1240.7922979589785
+low,Southern | Motor Commercial | Comprehensive,6,Expense mix,-361.85349717829376
+low,Southern | Motor Commercial | Comprehensive,7,Recommended profit,-34732.58008024258
+low,Southern | Motor Commercial | Third Party,0,No-change profit,66230.82998879655
+low,Southern | Motor Commercial | Third Party,1,Rate,25742.484899999996
+low,Southern | Motor Commercial | Third Party,2,Commission on rate,-1908.423
+low,Southern | Motor Commercial | Third Party,3,Volume (retention),-7630.213324766698
+low,Southern | Motor Commercial | Third Party,4,Premium mix,-485.85101368659525
+low,Southern | Motor Commercial | Third Party,5,Claims risk-mix,-85.9759452597682
+low,Southern | Motor Commercial | Third Party,6,Expense mix,37.78718947412926
+low,Southern | Motor Commercial | Third Party,7,Recommended profit,81900.63879455761
+low,Southern | Motor Private | Comprehensive,0,No-change profit,111634.14015344936
+low,Southern | Motor Private | Comprehensive,1,Rate,17706.58785
+low,Southern | Motor Private | Comprehensive,2,Commission on rate,-1377.63045
+low,Southern | Motor Private | Comprehensive,3,Volume (retention),-2036.7727709438782
+low,Southern | Motor Private | Comprehensive,4,Premium mix,207.67102501279442
+low,Southern | Motor Private | Comprehensive,5,Claims risk-mix,-117.78699608703027
+low,Southern | Motor Private | Comprehensive,6,Expense mix,-58.49986911525775
+low,Southern | Motor Private | Comprehensive,7,Recommended profit,125957.708942316
+low,Southern | Motor Private | Third Party,0,No-change profit,-23634.02194845613
+low,Southern | Motor Private | Third Party,1,Rate,7886.7612
+low,Southern | Motor Private | Third Party,2,Commission on rate,-594.1809
+low,Southern | Motor Private | Third Party,3,Volume (retention),556.285713094792
+low,Southern | Motor Private | Third Party,4,Premium mix,-10.425930374884047
+low,Southern | Motor Private | Third Party,5,Claims risk-mix,-103.83548863386386
+low,Southern | Motor Private | Third Party,6,Expense mix,-6.803201927035843
+low,Southern | Motor Private | Third Party,7,Recommended profit,-15906.22055629713
+low,Southern | Motor Rent a Car | Comprehensive,0,No-change profit,31015.27642479657
+low,Southern | Motor Rent a Car | Comprehensive,1,Rate,10243.75572
+low,Southern | Motor Rent a Car | Comprehensive,2,Commission on rate,-741.18132
+low,Southern | Motor Rent a Car | Comprehensive,3,Volume (retention),-773.1748901814191
+low,Southern | Motor Rent a Car | Comprehensive,4,Premium mix,-47.817926565156085
+low,Southern | Motor Rent a Car | Comprehensive,5,Claims risk-mix,-82.5240592569462
+low,Southern | Motor Rent a Car | Comprehensive,6,Expense mix,6.942531258853705
+low,Southern | Motor Rent a Car | Comprehensive,7,Recommended profit,39621.27648005191
+low,Unspecified | Motor Commercial | Comprehensive,0,No-change profit,-62422.79693496714
+low,Unspecified | Motor Commercial | Comprehensive,1,Rate,17532.420840000002
+low,Unspecified | Motor Commercial | Comprehensive,2,Commission on rate,-1036.55781
+low,Unspecified | Motor Commercial | Comprehensive,3,Volume (retention),5019.810225169216
+low,Unspecified | Motor Commercial | Comprehensive,4,Premium mix,-466.7514421533124
+low,Unspecified | Motor Commercial | Comprehensive,5,Claims risk-mix,-899.8064792616788
+low,Unspecified | Motor Commercial | Comprehensive,6,Expense mix,-15.888276092520755
+low,Unspecified | Motor Commercial | Comprehensive,7,Recommended profit,-42289.56987730545
+low,Unspecified | Motor Commercial | Third Party,0,No-change profit,33397.95268648667
+low,Unspecified | Motor Commercial | Third Party,1,Rate,13267.79028
+low,Unspecified | Motor Commercial | Third Party,2,Commission on rate,-1029.70521
+low,Unspecified | Motor Commercial | Third Party,3,Volume (retention),-4535.015535327619
+low,Unspecified | Motor Commercial | Third Party,4,Premium mix,1196.5012895495747
+low,Unspecified | Motor Commercial | Third Party,5,Claims risk-mix,-36.88425387125244
+low,Unspecified | Motor Commercial | Third Party,6,Expense mix,-213.76491271447594
+low,Unspecified | Motor Commercial | Third Party,7,Recommended profit,42046.8743441229
+low,Unspecified | Motor Private | Comprehensive,0,No-change profit,6674.7910510513175
+low,Unspecified | Motor Private | Comprehensive,1,Rate,6846.730739999999
+low,Unspecified | Motor Private | Comprehensive,2,Commission on rate,-451.43324999999993
+low,Unspecified | Motor Private | Comprehensive,3,Volume (retention),-387.7668063231872
+low,Unspecified | Motor Private | Comprehensive,4,Premium mix,-31.150198977600667
+low,Unspecified | Motor Private | Comprehensive,5,Claims risk-mix,-101.38298775706062
+low,Unspecified | Motor Private | Comprehensive,6,Expense mix,-14.771359528625908
+low,Unspecified | Motor Private | Comprehensive,7,Recommended profit,12535.017188464852
+low,Unspecified | Motor Private | Third Party,0,No-change profit,-4685.95497086533
+low,Unspecified | Motor Private | Third Party,1,Rate,1484.38368
+low,Unspecified | Motor Private | Third Party,2,Commission on rate,-105.74343000000002
+low,Unspecified | Motor Private | Third Party,3,Volume (retention),149.89512555155608
+low,Unspecified | Motor Private | Third Party,4,Premium mix,2.8723675922065013
+low,Unspecified | Motor Private | Third Party,5,Claims risk-mix,-35.993499511752816
+low,Unspecified | Motor Private | Third Party,6,Expense mix,-5.015070651334327
+low,Unspecified | Motor Private | Third Party,7,Recommended profit,-3195.5557978846573
+low,Unspecified | Motor Rent a Car | Comprehensive,0,No-change profit,18444.292410572238
+low,Unspecified | Motor Rent a Car | Comprehensive,1,Rate,3104.5280399999992
+low,Unspecified | Motor Rent a Car | Comprehensive,2,Commission on rate,-192.20489999999998
+low,Unspecified | Motor Rent a Car | Comprehensive,3,Volume (retention),-377.7330626867065
+low,Unspecified | Motor Rent a Car | Comprehensive,4,Premium mix,-111.01538539815374
+low,Unspecified | Motor Rent a Car | Comprehensive,5,Claims risk-mix,-17.728068901185907
+low,Unspecified | Motor Rent a Car | Comprehensive,6,Expense mix,16.253349278016685
+low,Unspecified | Motor Rent a Car | Comprehensive,7,Recommended profit,20866.39238286421
+low,Western | Motor Commercial | Comprehensive,0,No-change profit,-194931.52716760823
+low,Western | Motor Commercial | Comprehensive,1,Rate,74393.81820000001
+low,Western | Motor Commercial | Comprehensive,2,Commission on rate,-5742.15174
+low,Western | Motor Commercial | Comprehensive,3,Volume (retention),13523.56754462197
+low,Western | Motor Commercial | Comprehensive,4,Premium mix,390.7262869543629
+low,Western | Motor Commercial | Comprehensive,5,Claims risk-mix,-2488.5787694460596
+low,Western | Motor Commercial | Comprehensive,6,Expense mix,-278.79062468949996
+low,Western | Motor Commercial | Comprehensive,7,Recommended profit,-115132.93627016753
+low,Western | Motor Commercial | Third Party,0,No-change profit,69017.11677256298
+low,Western | Motor Commercial | Third Party,1,Rate,35252.24742
+low,Western | Motor Commercial | Third Party,2,Commission on rate,-2453.5765800000004
+low,Western | Motor Commercial | Third Party,3,Volume (retention),-10751.751722597972
+low,Western | Motor Commercial | Third Party,4,Premium mix,-15.472665645356756
+low,Western | Motor Commercial | Third Party,5,Claims risk-mix,-143.34431518452766
+low,Western | Motor Commercial | Third Party,6,Expense mix,-63.53864820592935
+low,Western | Motor Commercial | Third Party,7,Recommended profit,90841.6802609292
+low,Western | Motor Private | Comprehensive,0,No-change profit,48344.80934575206
+low,Western | Motor Private | Comprehensive,1,Rate,19405.268099999998
+low,Western | Motor Private | Comprehensive,2,Commission on rate,-1585.7469
+low,Western | Motor Private | Comprehensive,3,Volume (retention),-1053.5537162521225
+low,Western | Motor Private | Comprehensive,4,Premium mix,121.29358249582583
+low,Western | Motor Private | Comprehensive,5,Claims risk-mix,-169.0602313883719
+low,Western | Motor Private | Comprehensive,6,Expense mix,-46.66499165138521
+low,Western | Motor Private | Comprehensive,7,Recommended profit,65016.34518895601
+low,Western | Motor Private | Third Party,0,No-change profit,-39916.25334485036
+low,Western | Motor Private | Third Party,1,Rate,10519.584749999998
+low,Western | Motor Private | Third Party,2,Commission on rate,-793.8607499999999
+low,Western | Motor Private | Third Party,3,Volume (retention),1640.428970795241
+low,Western | Motor Private | Third Party,4,Premium mix,-6.9751942436996615
+low,Western | Motor Private | Third Party,5,Claims risk-mix,-184.49069290979241
+low,Western | Motor Private | Third Party,6,Expense mix,-15.080791652204425
+low,Western | Motor Private | Third Party,7,Recommended profit,-28756.647052860837
+low,Western | Motor Rent a Car | Comprehensive,0,No-change profit,-5372.223220894513
+low,Western | Motor Rent a Car | Comprehensive,1,Rate,29547.0882
+low,Western | Motor Rent a Car | Comprehensive,2,Commission on rate,-2381.9399999999996
+low,Western | Motor Rent a Car | Comprehensive,3,Volume (retention),-1167.2414739312155
+low,Western | Motor Rent a Car | Comprehensive,4,Premium mix,128.79371881388943
+low,Western | Motor Rent a Car | Comprehensive,5,Claims risk-mix,-436.6431046058133
+low,Western | Motor Rent a Car | Comprehensive,6,Expense mix,-82.07981167814432
+low,Western | Motor Rent a Car | Comprehensive,7,Recommended profit,20235.754307704134

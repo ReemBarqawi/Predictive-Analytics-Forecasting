@@ -1,0 +1,1153 @@
+sensitivity_case,segment_id,line_order,line_item,no_change,recommended,variance,variance_pct,is_ratio,direction,is_material
+base,PORTFOLIO,10,Expected premium,3680434.7999999993,3791672.7672631755,111237.9672631761,0.03022413744788418,False,Fav,True
+base,PORTFOLIO,20,Expected claims,-3481903.027264173,-3215247.540960658,266655.48630351527,0.07658326042268725,False,Fav,True
+base,PORTFOLIO,30,Commission,-287139.636,-297244.26026377967,-10104.624263779668,-0.03519062851977589,False,Unfav,False
+base,PORTFOLIO,40,Admin expense,-368043.48000000004,-341398.9617498559,26644.518250144145,0.07239502857147243,False,Fav,True
+base,PORTFOLIO,50,Total expenses,-655183.116,-638643.2220136354,16539.893986364594,0.025244688976943343,False,Fav,False
+base,PORTFOLIO,60,UNDERWRITING PROFIT,-456651.3432641736,-62217.99571111752,394433.3475530561,0.8637516419717958,False,Fav,True
+base,PORTFOLIO,70,Loss ratio,0.9460575221341168,0.8479760090904204,-0.09808151304369639,,True,Fav,True
+base,PORTFOLIO,80,Expense ratio,0.17801785702058903,0.16843310623416674,-0.009584750786422291,,True,Fav,False
+base,PORTFOLIO,90,Combined ratio,1.1240753791547058,1.016409115324587,-0.10766626383011868,,True,Fav,True
+base,PORTFOLIO,100,Underwriting margin,-0.12407537915470576,-0.01640911532458704,0.10766626383011872,,True,Fav,True
+base,PORTFOLIO,110,Retained exposure (yrs),1287.6344969199176,1216.4840982942208,-71.15039862569688,-0.05525667322201447,False,-,True
+base,PORTFOLIO,120,Retained policies,1315.8000000000004,1243.0930068869013,-72.70699311309909,-0.055256872710973605,False,-,True
+base,Central | Motor Commercial | Comprehensive,10,Expected premium,273767.10300000006,283471.47971895174,9704.37671895168,0.03544756332155686,False,Fav,False
+base,Central | Motor Commercial | Comprehensive,20,Expected claims,-517891.60423712153,-463448.8900000535,54442.71423706802,0.10512376294893731,False,Fav,True
+base,Central | Motor Commercial | Comprehensive,30,Commission,-20331.512999999995,-21152.32600159784,-820.8130015978459,-0.04037146677661648,False,Unfav,False
+base,Central | Motor Commercial | Comprehensive,40,Admin expense,-27376.7103,-24437.19652749584,2939.5137725041604,0.107372790240037,False,Fav,True
+base,Central | Motor Commercial | Comprehensive,50,Total expenses,-47708.2233,-45589.52252909368,2118.700770906318,0.04440955089824773,False,Fav,False
+base,Central | Motor Commercial | Comprehensive,60,UNDERWRITING PROFIT,-291832.7245371215,-225566.93281019537,66265.79172692611,0.22706772118182045,False,Fav,True
+base,Central | Motor Commercial | Comprehensive,70,Loss ratio,1.8917232880136128,1.6349048252033702,-0.25681846281024256,,True,Fav,True
+base,Central | Motor Commercial | Comprehensive,80,Expense ratio,0.17426572724481065,0.16082578245364748,-0.013439944791163172,,True,Fav,True
+base,Central | Motor Commercial | Comprehensive,90,Combined ratio,2.0659890152584235,1.7957306076570176,-0.27025840760140585,,True,Fav,True
+base,Central | Motor Commercial | Comprehensive,100,Underwriting margin,-1.0659890152584235,-0.7957306076570174,0.27025840760140607,,True,Fav,True
+base,Central | Motor Commercial | Comprehensive,110,Retained exposure (yrs),47.51704312114987,42.27834105820077,-5.238702062949095,-0.11024890689415279,False,-,True
+base,Central | Motor Commercial | Comprehensive,120,Retained policies,48.6,43.23189039361748,-5.368109606382518,-0.11045493017247979,False,-,True
+base,Central | Motor Commercial | Third Party,10,Expected premium,126723.474,130674.6910282953,3951.217028295301,0.03117983514479173,False,Fav,False
+base,Central | Motor Commercial | Third Party,20,Expected claims,-48455.16080290551,-43359.6993791682,5095.46142373731,0.10515828116768464,False,Fav,True
+base,Central | Motor Commercial | Third Party,30,Commission,-10326.996,-10731.769518725743,-404.773518725744,-0.03919566916901527,False,Unfav,False
+base,Central | Motor Commercial | Third Party,40,Admin expense,-12672.3474,-11265.059571404763,1407.2878285952374,0.11105186625449026,False,Fav,True
+base,Central | Motor Commercial | Third Party,50,Total expenses,-22999.3434,-21996.829090130508,1002.5143098694934,0.043588823056117915,False,Fav,False
+base,Central | Motor Commercial | Third Party,60,UNDERWRITING PROFIT,55268.96979709448,65318.16255899659,10049.192761902108,0.18182341373097927,False,Fav,True
+base,Central | Motor Commercial | Third Party,70,Loss ratio,0.38236925861822185,0.3318140570141423,-0.05055520160407956,,True,Fav,True
+base,Central | Motor Commercial | Third Party,80,Expense ratio,0.18149236817797468,0.16833274230101283,-0.013159625876961845,,True,Fav,True
+base,Central | Motor Commercial | Third Party,90,Combined ratio,0.5638616267961966,0.5001467993151552,-0.0637148274810414,,True,Fav,True
+base,Central | Motor Commercial | Third Party,100,Underwriting margin,0.43613837320380344,0.4998532006848449,0.06371482748104146,,True,Fav,True
+base,Central | Motor Commercial | Third Party,110,Retained exposure (yrs),22.07556468172484,19.66968555829005,-2.40587912343479,-0.10898380893633433,False,-,True
+base,Central | Motor Commercial | Third Party,120,Retained policies,22.5,20.0486778599498,-2.4513221400501983,-0.10894765066889771,False,-,True
+base,Central | Motor Private | Comprehensive,10,Expected premium,417224.259,431313.5265798655,14089.267579865467,0.03376905171725757,False,Fav,False
+base,Central | Motor Private | Comprehensive,20,Expected claims,-350727.1262527296,-319440.07402119576,31287.05223153386,0.0892062514976067,False,Fav,True
+base,Central | Motor Private | Comprehensive,30,Commission,-34272.522,-35736.10063895092,-1463.578638950923,-0.04270414178889208,False,Unfav,False
+base,Central | Motor Private | Comprehensive,40,Admin expense,-41722.4259,-37834.51987542679,3887.9060245732107,0.09318504235328298,False,Fav,True
+base,Central | Motor Private | Comprehensive,50,Total expenses,-75994.9479,-73570.62051437772,2424.3273856222804,0.031901165177616764,False,Fav,False
+base,Central | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,-9497.815152729658,38302.83204429201,47800.647197021666,5.032804537502905,False,Fav,True
+base,Central | Motor Private | Comprehensive,70,Loss ratio,0.840620166941754,0.7406215069446602,-0.09999865999709379,,True,Fav,True
+base,Central | Motor Private | Comprehensive,80,Expense ratio,0.18214412575659938,0.17057341349287544,-0.011570712263723942,,True,Fav,True
+base,Central | Motor Private | Comprehensive,90,Combined ratio,1.0227642926983533,0.9111949204375357,-0.11156937226081765,,True,Fav,True
+base,Central | Motor Private | Comprehensive,100,Underwriting margin,-0.02276429269835352,0.08880507956246428,0.1115693722608178,,True,Fav,True
+base,Central | Motor Private | Comprehensive,110,Retained exposure (yrs),98.70554414784394,89.46485408535408,-9.240690062489861,-0.09361875406561658,False,-,True
+base,Central | Motor Private | Comprehensive,120,Retained policies,100.80000000000004,91.36365556533788,-9.43634443466216,-0.09361452812164837,False,-,True
+base,Central | Motor Private | Third Party,10,Expected premium,67758.06599999999,69993.62201685066,2235.5560168506636,0.032993208762048545,False,Fav,False
+base,Central | Motor Private | Third Party,20,Expected claims,-122037.33897729105,-113906.29966192966,8131.039315361384,0.06662747142392562,False,Fav,True
+base,Central | Motor Private | Third Party,30,Commission,-5455.169999999998,-5669.373422876712,-214.20342287671338,-0.03926613155533438,False,Unfav,False
+base,Central | Motor Private | Third Party,40,Admin expense,-6775.8066,-6305.7317132297885,470.0748867702114,0.0693754876017582,False,Fav,True
+base,Central | Motor Private | Third Party,50,Total expenses,-12230.976599999998,-11975.1051361065,255.871463893498,0.020919953676756937,False,Fav,False
+base,Central | Motor Private | Third Party,60,UNDERWRITING PROFIT,-66510.24957729105,-55887.78278118551,10622.466796105538,0.15971172659277502,False,Fav,True
+base,Central | Motor Private | Third Party,70,Loss ratio,1.8010747086153707,1.6273811295907392,-0.17369357902463145,,True,Fav,True
+base,Central | Motor Private | Third Party,80,Expense ratio,0.18050952930091008,0.17108851908283224,-0.009421010218077841,,True,Fav,False
+base,Central | Motor Private | Third Party,90,Combined ratio,1.9815842379162807,1.7984696486735716,-0.18311458924270907,,True,Fav,True
+base,Central | Motor Private | Third Party,100,Underwriting margin,-0.9815842379162808,-0.7984696486735716,0.18311458924270918,,True,Fav,True
+base,Central | Motor Private | Third Party,110,Retained exposure (yrs),174.54702258726894,162.45283407798848,-12.094188509280457,-0.06928899920497744,False,-,True
+base,Central | Motor Private | Third Party,120,Retained policies,178.20000000000007,165.85604108044345,-12.343958919556627,-0.06927025207383065,False,-,True
+base,Central | Motor Rent a Car | Comprehensive,10,Expected premium,185823.819,191029.79130321497,5205.972303214978,0.028015635085053215,False,Fav,False
+base,Central | Motor Rent a Car | Comprehensive,20,Expected claims,-177258.4395087121,-171606.66072120095,5651.778787511139,0.03188439886515733,False,Fav,False
+base,Central | Motor Rent a Car | Comprehensive,30,Commission,-17041.238999999998,-17558.81473595925,-517.5757359592535,-0.030371954525093718,False,Unfav,False
+base,Central | Motor Rent a Car | Comprehensive,40,Admin expense,-18582.3819,-18021.6784248316,560.7034751684005,0.030173929165044255,False,Fav,False
+base,Central | Motor Rent a Car | Comprehensive,50,Total expenses,-35623.620899999994,-35580.49316079085,43.12773920914333,0.0012106500720465317,False,Fav,False
+base,Central | Motor Rent a Car | Comprehensive,60,UNDERWRITING PROFIT,-27058.2414087121,-16157.36257877684,10900.87882993526,0.4028672323998647,False,Fav,True
+base,Central | Motor Rent a Car | Comprehensive,70,Loss ratio,0.9539059118611275,0.898324075792009,-0.055581836069118484,,True,Fav,True
+base,Central | Motor Rent a Car | Comprehensive,80,Expense ratio,0.1917064297338545,0.18625625311140695,-0.005450176622447539,,True,Fav,False
+base,Central | Motor Rent a Car | Comprehensive,90,Combined ratio,1.145612341594982,1.084580328903416,-0.061032012691565996,,True,Fav,True
+base,Central | Motor Rent a Car | Comprehensive,100,Underwriting margin,-0.14561234159498196,-0.084580328903416,0.061032012691565954,,True,Fav,True
+base,Central | Motor Rent a Car | Comprehensive,110,Retained exposure (yrs),25.527720739219703,24.67449876435664,-0.8532219748630645,-0.03342335117103544,False,-,False
+base,Central | Motor Rent a Car | Comprehensive,120,Retained policies,26.09999999999999,25.225963363736216,-0.8740366362637744,-0.03348799372658141,False,-,False
+base,Eastern | Motor Commercial | Comprehensive,10,Expected premium,79801.002,82440.92623258187,2639.9242325818777,0.0330813419182616,False,Fav,False
+base,Eastern | Motor Commercial | Comprehensive,20,Expected claims,-118198.90390233412,-105952.7885273958,12246.115374938323,0.10360599777690911,False,Fav,True
+base,Eastern | Motor Commercial | Comprehensive,30,Commission,-6600.671999999999,-6855.304095540335,-254.6320955403362,-0.03857669272770049,False,Unfav,False
+base,Eastern | Motor Commercial | Comprehensive,40,Admin expense,-7980.1002,-7106.976399360508,873.1238006394915,0.10941263627736046,False,Fav,True
+base,Eastern | Motor Commercial | Comprehensive,50,Total expenses,-14580.7722,-13962.280494900842,618.4917050991571,0.04241830930594726,False,Fav,False
+base,Eastern | Motor Commercial | Comprehensive,60,UNDERWRITING PROFIT,-52978.67410233413,-37474.142789714766,15504.531312619365,0.2926560842702605,False,Fav,True
+base,Eastern | Motor Commercial | Comprehensive,70,Loss ratio,1.4811706738009898,1.285196483946364,-0.19597418985462567,,True,Fav,True
+base,Eastern | Motor Commercial | Comprehensive,80,Expense ratio,0.18271414937872585,0.16936103380874853,-0.013353115569977314,,True,Fav,True
+base,Eastern | Motor Commercial | Comprehensive,90,Combined ratio,1.6638848231797154,1.4545575177551127,-0.20932730542460276,,True,Fav,True
+base,Eastern | Motor Commercial | Comprehensive,100,Underwriting margin,-0.6638848231797156,-0.45455751775511266,0.20932730542460298,,True,Fav,True
+base,Eastern | Motor Commercial | Comprehensive,110,Retained exposure (yrs),12.340041067761806,11.025453258070698,-1.3145878096911083,-0.10653026213384748,False,-,True
+base,Eastern | Motor Commercial | Comprehensive,120,Retained policies,12.6,11.259070119674885,-1.340929880325115,-0.10642300637500914,False,-,True
+base,Eastern | Motor Private | Comprehensive,10,Expected premium,54623.214,56454.8029940361,1831.5889940361012,0.033531329629122544,False,Fav,False
+base,Eastern | Motor Private | Comprehensive,20,Expected claims,-36455.646674689335,-34609.12251964805,1846.524155041283,0.0506512522331225,False,Fav,True
+base,Eastern | Motor Private | Comprehensive,30,Commission,-4929.606,-5104.21771245427,-174.61171245427067,-0.035421028060715336,False,Unfav,False
+base,Eastern | Motor Private | Comprehensive,40,Admin expense,-5462.321400000001,-5179.339724223496,282.98167577650474,0.05180611960630964,False,Fav,True
+base,Eastern | Motor Private | Comprehensive,50,Total expenses,-10391.9274,-10283.557436677766,108.36996332223498,0.010428283334834977,False,Fav,False
+base,Eastern | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,7775.639925310665,11562.123037710284,3786.483112399619,0.4869673941657394,False,Fav,True
+base,Eastern | Motor Private | Comprehensive,70,Loss ratio,0.6674020806371689,0.6130412415628156,-0.054360839074353295,,True,Fav,True
+base,Eastern | Motor Private | Comprehensive,80,Expense ratio,0.19024745413186417,0.1821555809478978,-0.00809187318396637,,True,Fav,False
+base,Eastern | Motor Private | Comprehensive,90,Combined ratio,0.857649534769033,0.7951968225107134,-0.06245271225831961,,True,Fav,True
+base,Eastern | Motor Private | Comprehensive,100,Underwriting margin,0.1423504652309669,0.2048031774892866,0.06245271225831969,,True,Fav,True
+base,Eastern | Motor Private | Comprehensive,110,Retained exposure (yrs),12.39425051334702,11.74586329760636,-0.6483872157406587,-0.05231354772460253,False,-,True
+base,Eastern | Motor Private | Comprehensive,120,Retained policies,12.6,11.94090979161574,-0.65909020838426,-0.0523087466971635,False,-,True
+base,Eastern | Motor Private | Third Party,10,Expected premium,11404.971,11682.8400649036,277.8690649035998,0.02436385545422253,False,Fav,False
+base,Eastern | Motor Private | Third Party,20,Expected claims,-15677.426446383111,-15171.678680064866,505.74776631824534,0.032259616592551436,False,Fav,False
+base,Eastern | Motor Private | Third Party,30,Commission,-980.694,-1007.3623423067852,-26.668342306785235,-0.02719333686836591,False,Unfav,False
+base,Eastern | Motor Private | Third Party,40,Admin expense,-1140.4971,-1102.1547231041131,38.3423768958869,0.03361900428846939,False,Fav,False
+base,Eastern | Motor Private | Third Party,50,Total expenses,-2121.1911,-2109.5170654108983,11.674034589101666,0.0055035279891103,False,Fav,False
+base,Eastern | Motor Private | Third Party,60,UNDERWRITING PROFIT,-6393.646546383114,-5598.3556805721655,795.2908658109482,0.12438768080804283,False,Fav,True
+base,Eastern | Motor Private | Third Party,70,Loss ratio,1.37461344236501,1.2986293226457906,-0.07598411971921948,,True,Fav,True
+base,Eastern | Motor Private | Third Party,80,Expense ratio,0.18598829405177797,0.1805654321801507,-0.005422861871627271,,True,Fav,False
+base,Eastern | Motor Private | Third Party,90,Combined ratio,1.560601736416788,1.4791947548259414,-0.08140698159084647,,True,Fav,True
+base,Eastern | Motor Private | Third Party,100,Underwriting margin,-0.5606017364167882,-0.47919475482594137,0.08140698159084686,,True,Fav,True
+base,Eastern | Motor Private | Third Party,110,Retained exposure (yrs),28.132238193018477,27.18940750234263,-0.9428306906758479,-0.03351424384391244,False,-,False
+base,Eastern | Motor Private | Third Party,120,Retained policies,28.8,27.834330959186303,-0.9656690408136974,-0.03353017502825338,False,-,False
+base,Eastern | Motor Rent a Car | Comprehensive,10,Expected premium,25760.780999999995,26539.843968008936,779.0629680089405,0.03024221074698553,False,Fav,False
+base,Eastern | Motor Rent a Car | Comprehensive,20,Expected claims,-23522.45970694706,-22841.802385794945,680.6573211521136,0.02893648579408939,False,Fav,False
+base,Eastern | Motor Rent a Car | Comprehensive,30,Commission,-2410.191,-2492.210613739798,-82.01961373979839,-0.03403033773663514,False,Unfav,False
+base,Eastern | Motor Rent a Car | Comprehensive,40,Admin expense,-2576.0781,-2503.7588649065037,72.31923509349645,0.02807338608774961,False,Fav,False
+base,Eastern | Motor Rent a Car | Comprehensive,50,Total expenses,-4986.2691,-4995.969478646302,-9.700378646301942,-0.0019454181978068414,False,Unfav,False
+base,Eastern | Motor Rent a Car | Comprehensive,60,UNDERWRITING PROFIT,-2747.9478069470624,-1297.9278964323112,1450.0199105147512,0.5276737450576641,False,Fav,True
+base,Eastern | Motor Rent a Car | Comprehensive,70,Loss ratio,0.9131112797763027,0.8606607639942571,-0.052450515782045626,,True,Fav,True
+base,Eastern | Motor Rent a Car | Comprehensive,80,Expense ratio,0.19356047862058223,0.18824411645631497,-0.005316362164267258,,True,Fav,False
+base,Eastern | Motor Rent a Car | Comprehensive,90,Combined ratio,1.106671758396885,1.0489048804505718,-0.05776687794631319,,True,Fav,True
+base,Eastern | Motor Rent a Car | Comprehensive,100,Underwriting margin,-0.10667175839688489,-0.04890488045057199,0.057766877946312904,,True,Fav,True
+base,Eastern | Motor Rent a Car | Comprehensive,110,Retained exposure (yrs),4.403285420944558,4.269631480717574,-0.13365394022698407,-0.030353231155820393,False,-,False
+base,Eastern | Motor Rent a Car | Comprehensive,120,Retained policies,4.5,4.363296343439156,-0.1367036565608437,-0.030378590346854157,False,-,False
+base,Northern | Motor Commercial | Comprehensive,10,Expected premium,30359.016,31586.454694047,1227.4386940469994,0.04043077990561352,False,Fav,False
+base,Northern | Motor Commercial | Comprehensive,20,Expected claims,-65858.32662961193,-59314.87696188137,6543.449667730558,0.09935645198717245,False,Fav,True
+base,Northern | Motor Commercial | Comprehensive,30,Commission,-1977.291,-2065.332683230716,-88.04168323071622,-0.04452641681508499,False,Unfav,False
+base,Northern | Motor Commercial | Comprehensive,40,Admin expense,-3035.9016,-2722.970232245431,312.93136775456924,0.10307691387447117,False,Fav,True
+base,Northern | Motor Commercial | Comprehensive,50,Total expenses,-5013.1926,-4788.302915476146,224.88968452385416,0.04485957402152356,False,Fav,False
+base,Northern | Motor Commercial | Comprehensive,60,UNDERWRITING PROFIT,-40512.50322961192,-32516.725183310515,7995.778046301402,0.19736568735296084,False,Fav,True
+base,Northern | Motor Commercial | Comprehensive,70,Loss ratio,2.1693169050542327,1.877858010226778,-0.2914588948274548,,True,Fav,True
+base,Northern | Motor Commercial | Comprehensive,80,Expense ratio,0.16513027299699043,0.1515935536880175,-0.013536719308972933,,True,Fav,True
+base,Northern | Motor Commercial | Comprehensive,90,Combined ratio,2.3344471780512226,2.0294515639147956,-0.30499561413642695,,True,Fav,True
+base,Northern | Motor Commercial | Comprehensive,100,Underwriting margin,-1.3344471780512226,-1.0294515639147954,0.3049956141364272,,True,Fav,True
+base,Northern | Motor Commercial | Comprehensive,110,Retained exposure (yrs),7.042299794661189,6.312743579223389,-0.7295562154378006,-0.10359630187724778,False,-,True
+base,Northern | Motor Commercial | Comprehensive,120,Retained policies,7.199999999999999,6.457837249514451,-0.7421627504855479,-0.10307815978965944,False,-,True
+base,Northern | Motor Commercial | Third Party,10,Expected premium,17338.598999999995,18037.729088209828,699.130088209833,0.04032217875330257,False,Fav,False
+base,Northern | Motor Commercial | Third Party,20,Expected claims,-7852.823535750851,-7105.787941795911,747.0355939549399,0.09512955315422249,False,Fav,True
+base,Northern | Motor Commercial | Third Party,30,Commission,-1348.8390000000002,-1404.7492717586072,-55.910271758606996,-0.04145066368825856,False,Unfav,False
+base,Northern | Motor Commercial | Third Party,40,Admin expense,-1733.8599,-1554.97664553533,178.88325446467002,0.10317053555749806,False,Fav,True
+base,Northern | Motor Commercial | Third Party,50,Total expenses,-3082.6989000000003,-2959.725917293937,122.97298270606325,0.039891337654178044,False,Fav,False
+base,Northern | Motor Commercial | Third Party,60,UNDERWRITING PROFIT,6403.076564249143,7972.215229119978,1569.1386648708349,0.2450601127639085,False,Fav,True
+base,Northern | Motor Commercial | Third Party,70,Loss ratio,0.4529099228692499,0.3939402741357577,-0.0589696487334922,,True,Fav,True
+base,Northern | Motor Commercial | Third Party,80,Expense ratio,0.17779400169529275,0.16408528495022862,-0.013708716745064131,,True,Fav,True
+base,Northern | Motor Commercial | Third Party,90,Combined ratio,0.6307039245645427,0.5580255590859864,-0.07267836547855633,,True,Fav,True
+base,Northern | Motor Commercial | Third Party,100,Underwriting margin,0.36929607543545734,0.44197444091401356,0.07267836547855622,,True,Fav,True
+base,Northern | Motor Commercial | Third Party,110,Retained exposure (yrs),4.459958932238192,4.025823162290634,-0.43413576994755765,-0.09734075504809421,False,-,True
+base,Northern | Motor Commercial | Third Party,120,Retained policies,4.5,4.061126413832038,-0.43887358616796224,-0.0975274635928805,False,-,True
+base,Northern | Motor Private | Comprehensive,10,Expected premium,57313.72799999999,59426.71139889076,2112.9833988907703,0.036866968397009016,False,Fav,False
+base,Northern | Motor Private | Comprehensive,20,Expected claims,-43490.21041661316,-40056.72237301677,3433.4880435963933,0.0789485268225975,False,Fav,True
+base,Northern | Motor Private | Comprehensive,30,Commission,-4196.079,-4366.428166514508,-170.3491665145084,-0.04059722577065599,False,Unfav,False
+base,Northern | Motor Private | Comprehensive,40,Admin expense,-5731.372799999999,-5259.001008751396,472.3717912486036,0.082418612038045,False,Fav,True
+base,Northern | Motor Private | Comprehensive,50,Total expenses,-9927.4518,-9625.429175265905,302.0226247340961,0.030422975685875008,False,Fav,False
+base,Northern | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,3896.065783386828,9744.559850608086,5848.494067221258,1.5011281616855028,False,Fav,True
+base,Northern | Motor Private | Comprehensive,70,Loss ratio,0.7588096592951198,0.6740524829675238,-0.08475717632759594,,True,Fav,True
+base,Northern | Motor Private | Comprehensive,80,Expense ratio,0.17321245967458274,0.1619714257896083,-0.011241033884974438,,True,Fav,True
+base,Northern | Motor Private | Comprehensive,90,Combined ratio,0.9320221189697026,0.8360239087571322,-0.09599821021257038,,True,Fav,True
+base,Northern | Motor Private | Comprehensive,100,Underwriting margin,0.06797788103029746,0.16397609124286786,0.09599821021257039,,True,Fav,True
+base,Northern | Motor Private | Comprehensive,110,Retained exposure (yrs),15.06283367556468,13.81838014830828,-1.2444535272563986,-0.08261749110827556,False,-,True
+base,Northern | Motor Private | Comprehensive,120,Retained policies,15.3,14.03669213847105,-1.2633078615289506,-0.082569141276402,False,-,True
+base,Northern | Motor Private | Third Party,10,Expected premium,9893.925,10135.40688006758,241.48188006758028,0.024407086173341752,False,Fav,False
+base,Northern | Motor Private | Third Party,20,Expected claims,-13037.901733533106,-12613.671544145656,424.2301893874501,0.032538225709766035,False,Fav,False
+base,Northern | Motor Private | Third Party,30,Commission,-705.9239999999999,-723.8098525598158,-17.88585255981593,-0.025336796255426838,False,Unfav,False
+base,Northern | Motor Private | Third Party,40,Admin expense,-989.3925,-956.1704603837338,33.222039616266215,0.03357822059118723,False,Fav,False
+base,Northern | Motor Private | Third Party,50,Total expenses,-1695.3165,-1679.9803129435495,15.336187056450399,0.009046208809063322,False,Fav,False
+base,Northern | Motor Private | Third Party,60,UNDERWRITING PROFIT,-4839.293233533107,-4158.244977021624,681.0482565114826,0.1407330003877979,False,Fav,True
+base,Northern | Motor Private | Third Party,70,Loss ratio,1.3177684016740685,1.244515557530489,-0.07325284414357958,,True,Fav,True
+base,Northern | Motor Private | Third Party,80,Expense ratio,0.17134923703181498,0.16575361333025715,-0.005595623701557834,,True,Fav,False
+base,Northern | Motor Private | Third Party,90,Combined ratio,1.4891176387058833,1.410269170860746,-0.07884846784513733,,True,Fav,True
+base,Northern | Motor Private | Third Party,100,Underwriting margin,-0.4891176387058834,-0.4102691708607458,0.07884846784513755,,True,Fav,True
+base,Northern | Motor Private | Third Party,110,Retained exposure (yrs),24.54209445585215,23.72332447350278,-0.8187699823493695,-0.03336186256728104,False,-,False
+base,Northern | Motor Private | Third Party,120,Retained policies,25.199999999999992,24.3591491837186,-0.8408508162813924,-0.03336709588418225,False,-,False
+base,Northern | Motor Rent a Car | Comprehensive,10,Expected premium,30226.329,31155.46935307065,929.1403530706484,0.0307394375635443,False,Fav,False
+base,Northern | Motor Rent a Car | Comprehensive,20,Expected claims,-13021.801534237971,-12669.911212696365,351.8903215416067,0.027023167310328625,False,Fav,False
+base,Northern | Motor Rent a Car | Comprehensive,30,Commission,-1927.845,-1986.0658726324225,-58.22087263242247,-0.03019997594849299,False,Unfav,False
+base,Northern | Motor Rent a Car | Comprehensive,40,Admin expense,-3022.6329,-2939.195221987797,83.43767801220292,0.027604304185335545,False,Fav,False
+base,Northern | Motor Rent a Car | Comprehensive,50,Total expenses,-4950.4779,-4925.261094620219,25.216805379780453,0.005093812332700335,False,Fav,False
+base,Northern | Motor Rent a Car | Comprehensive,60,UNDERWRITING PROFIT,12254.049565762023,13560.297045754069,1306.2474799920456,0.10659720878245167,False,Fav,True
+base,Northern | Motor Rent a Car | Comprehensive,70,Loss ratio,0.4308098920725031,0.406667319600102,-0.02414257247240109,,True,Fav,True
+base,Northern | Motor Rent a Car | Comprehensive,80,Expense ratio,0.1637803221158613,0.15808656383264502,-0.005693758283216277,,True,Fav,False
+base,Northern | Motor Rent a Car | Comprehensive,90,Combined ratio,0.5945902141883644,0.564753883432747,-0.029836330755617424,,True,Fav,True
+base,Northern | Motor Rent a Car | Comprehensive,100,Underwriting margin,0.40540978581163534,0.4352461165672531,0.029836330755617757,,True,Fav,True
+base,Northern | Motor Rent a Car | Comprehensive,110,Retained exposure (yrs),2.663655030800821,2.5892730944003333,-0.07438193640048762,-0.027924763357259852,False,-,False
+base,Northern | Motor Rent a Car | Comprehensive,120,Retained policies,2.7,2.6246114790436934,-0.07538852095630677,-0.027921674428261763,False,-,False
+base,Other | Motor Private | Comprehensive,10,Expected premium,4372.829999999999,4649.07790355865,276.24790355865116,0.0631737121174734,False,Fav,True
+base,Other | Motor Private | Comprehensive,20,Expected claims,-1904.0731921810157,-1857.211526490328,46.86166569068769,0.024611273286721774,False,Fav,False
+base,Other | Motor Private | Comprehensive,30,Commission,-141.56099999999995,-150.5039338610616,-8.942933861061647,-0.06317371211747339,False,Unfav,True
+base,Other | Motor Private | Comprehensive,40,Admin expense,-437.283,-426.5209085833624,10.762091416637588,0.024611273286721844,False,Fav,False
+base,Other | Motor Private | Comprehensive,50,Total expenses,-578.8439999999999,-577.024842444424,1.8191575555758845,0.0031427423547205893,False,Fav,False
+base,Other | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,1889.9128078189835,2214.8415346238985,324.92872680491496,0.17192789289570057,False,Fav,True
+base,Other | Motor Private | Comprehensive,70,Loss ratio,0.4354327042626894,0.39947954519512785,-0.035953159067561524,,True,Fav,True
+base,Other | Motor Private | Comprehensive,80,Expense ratio,0.1323728569370408,0.12411597620309582,-0.008256880733944968,,True,Fav,False
+base,Other | Motor Private | Comprehensive,90,Combined ratio,0.5678055611997302,0.5235955213982237,-0.04421003980150651,,True,Fav,True
+base,Other | Motor Private | Comprehensive,100,Underwriting margin,0.43219443880026986,0.4764044786017764,0.04421003980150656,,True,Fav,True
+base,Other | Motor Private | Comprehensive,110,Retained exposure (yrs),0.8698151950718683,0.8484079355970114,-0.021407259474856888,-0.024611273286721688,False,-,False
+base,Other | Motor Private | Comprehensive,120,Retained policies,0.8999999999999999,0.8778498540419504,-0.02215014595804954,-0.024611273286721712,False,-,False
+base,Other | Motor Private | Third Party,10,Expected premium,328.032,348.754999133319,20.722999133319036,0.06317371211747341,False,Fav,True
+base,Other | Motor Private | Third Party,20,Expected claims,-384.3770038035183,-374.9169963177786,9.460007485739652,0.024611273286721694,False,Fav,False
+base,Other | Motor Private | Third Party,30,Commission,-0.0,-0.0,0.0,,False,-,False
+base,Other | Motor Private | Third Party,40,Admin expense,-32.8032,-31.995871480121007,0.8073285198789897,0.024611273286721715,False,Fav,False
+base,Other | Motor Private | Third Party,50,Total expenses,-32.8032,-31.995871480121007,0.8073285198789897,0.024611273286721715,False,Fav,False
+base,Other | Motor Private | Third Party,60,UNDERWRITING PROFIT,-89.1482038035183,-58.15786866458062,30.99033513893768,0.34762714016358703,False,Fav,True
+base,Other | Motor Private | Third Party,70,Loss ratio,1.171766790445805,1.07501540407872,-0.0967513863670848,,True,Fav,True
+base,Other | Motor Private | Third Party,80,Expense ratio,0.09999999999999999,0.09174311926605504,-0.008256880733944955,,True,Fav,False
+base,Other | Motor Private | Third Party,90,Combined ratio,1.271766790445805,1.1667585233447753,-0.10500826710102973,,True,Fav,True
+base,Other | Motor Private | Third Party,100,Underwriting margin,-0.271766790445805,-0.16675852334477514,0.10500826710102984,,True,Fav,True
+base,Other | Motor Private | Third Party,110,Retained exposure (yrs),0.8698151950718683,0.8484079355970114,-0.021407259474856888,-0.024611273286721688,False,-,False
+base,Other | Motor Private | Third Party,120,Retained policies,0.8999999999999999,0.8778498540419504,-0.02215014595804954,-0.024611273286721712,False,-,False
+base,Southern | Motor Commercial | Comprehensive,10,Expected premium,236733.462,245805.69305735384,9072.231057353842,0.03832255474451619,False,Fav,False
+base,Southern | Motor Commercial | Comprehensive,20,Expected claims,-289658.50895515457,-258991.48949412024,30667.01946103433,0.1058730143010653,False,Fav,True
+base,Southern | Motor Commercial | Comprehensive,30,Commission,-18876.851999999995,-19709.18207760005,-832.3300776000542,-0.044092631419690866,False,Unfav,False
+base,Southern | Motor Commercial | Comprehensive,40,Admin expense,-23673.3462,-21190.14595322016,2483.200246779841,0.1048943493581757,False,Fav,True
+base,Southern | Motor Commercial | Comprehensive,50,Total expenses,-42550.1982,-40899.32803082021,1650.8701691797905,0.03879817812881047,False,Fav,False
+base,Southern | Motor Commercial | Comprehensive,60,UNDERWRITING PROFIT,-95475.24515515455,-54085.12446758661,41390.12068756794,0.4335167783052648,False,Fav,True
+base,Southern | Motor Commercial | Comprehensive,70,Loss ratio,1.2235638616865856,1.0536431694187398,-0.16992069226784579,,True,Fav,True
+base,Southern | Motor Commercial | Comprehensive,80,Expense ratio,0.17973884148240943,0.16638885585647184,-0.013349985625937588,,True,Fav,True
+base,Southern | Motor Commercial | Comprehensive,90,Combined ratio,1.403302703168995,1.2200320252752117,-0.18327067789378337,,True,Fav,True
+base,Southern | Motor Commercial | Comprehensive,100,Underwriting margin,-0.40330270316899497,-0.2200320252752117,0.18327067789378326,,True,Fav,True
+base,Southern | Motor Commercial | Comprehensive,110,Retained exposure (yrs),39.49650924024638,35.13931938325686,-4.357189856989521,-0.11031835321156956,False,-,True
+base,Southern | Motor Commercial | Comprehensive,120,Retained policies,40.49999999999999,36.03298017904411,-4.467019820955883,-0.11029678570261442,False,-,True
+base,Southern | Motor Commercial | Third Party,10,Expected premium,117011.29499999998,120409.83187241192,3398.5368724119326,0.029044519782572553,False,Fav,False
+base,Southern | Motor Commercial | Third Party,20,Expected claims,-30404.685511203428,-27221.380808806185,3183.304702397243,0.10469783353701417,False,Fav,True
+base,Southern | Motor Commercial | Third Party,30,Commission,-8674.65,-8974.198968971068,-299.54896897106846,-0.03453153371848645,False,Unfav,False
+base,Southern | Motor Commercial | Third Party,40,Admin expense,-11701.1295,-10380.157920035514,1320.9715799644855,0.11289265535985099,False,Fav,True
+base,Southern | Motor Commercial | Third Party,50,Total expenses,-20375.7795,-19354.35688900658,1021.4226109934207,0.05012925326333752,False,Fav,True
+base,Southern | Motor Commercial | Third Party,60,UNDERWRITING PROFIT,66230.82998879655,73834.09417459917,7603.264185802618,0.11479947008196587,False,Fav,True
+base,Southern | Motor Commercial | Third Party,70,Loss ratio,0.2598440219912397,0.2260727416150732,-0.033771280376166474,,True,Fav,True
+base,Southern | Motor Commercial | Third Party,80,Expense ratio,0.17413515079890368,0.16073734667709486,-0.013397804121808826,,True,Fav,True
+base,Southern | Motor Commercial | Third Party,90,Combined ratio,0.43397917279014336,0.38681008829216806,-0.0471690844979753,,True,Fav,True
+base,Southern | Motor Commercial | Third Party,100,Underwriting margin,0.5660208272098567,0.6131899117078321,0.04716908449797541,,True,Fav,True
+base,Southern | Motor Commercial | Third Party,110,Retained exposure (yrs),21.14661190965092,18.853849135238047,-2.292762774412875,-0.10842222783530162,False,-,True
+base,Southern | Motor Commercial | Third Party,120,Retained policies,21.6,19.256826682354497,-2.3431733176455047,-0.10848024618729188,False,-,True
+base,Southern | Motor Private | Comprehensive,10,Expected premium,354131.757,361915.7509111385,7783.993911138503,0.021980502333594734,False,Fav,False
+base,Southern | Motor Private | Comprehensive,20,Expected claims,-179531.83214655065,-174772.26227514265,4759.569871407992,0.026511008184458267,False,Fav,False
+base,Southern | Motor Private | Comprehensive,30,Commission,-27552.609,-28198.860888998683,-646.2518889986823,-0.023455197618442676,False,Unfav,False
+base,Southern | Motor Private | Comprehensive,40,Admin expense,-35413.17569999999,-34468.166753441765,945.0089465582278,0.026685235872766642,False,Fav,False
+base,Southern | Motor Private | Comprehensive,50,Total expenses,-62965.78469999999,-62667.02764244045,298.7570575595382,0.0047447523918420775,False,Fav,False
+base,Southern | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,111634.14015344936,124476.4609935554,12842.32084010604,0.11503936719047884,False,Fav,True
+base,Southern | Motor Private | Comprehensive,70,Loss ratio,0.5069633790187043,0.4829086930733077,-0.02405468594539656,,True,Fav,True
+base,Southern | Motor Private | Comprehensive,80,Expense ratio,0.17780327083176556,0.17315363447065654,-0.004649636361109016,,True,Fav,False
+base,Southern | Motor Private | Comprehensive,90,Combined ratio,0.6847666498504698,0.6560623275439642,-0.028704322306505548,,True,Fav,True
+base,Southern | Motor Private | Comprehensive,100,Underwriting margin,0.3152333501495303,0.34393767245603585,0.028704322306505548,,True,Fav,True
+base,Southern | Motor Private | Comprehensive,110,Retained exposure (yrs),79.2936344969199,77.09796070489524,-2.195673792024664,-0.02769041684058451,False,-,False
+base,Southern | Motor Private | Comprehensive,120,Retained policies,81.00000000000003,78.75794821353674,-2.2420517864632927,-0.027679651684732,False,-,False
+base,Southern | Motor Private | Third Party,10,Expected premium,78867.612,79604.00057715937,736.3885771593777,0.009337021351164756,False,Fav,False
+base,Southern | Motor Private | Third Party,20,Expected claims,-88673.06374845613,-87778.93584047334,894.1279079827946,0.010083421844081281,False,Fav,False
+base,Southern | Motor Private | Third Party,30,Commission,-5941.808999999999,-5999.531996521951,-57.722996521952155,-0.009714717609056798,False,Unfav,False
+base,Southern | Motor Private | Third Party,40,Admin expense,-7886.761199999999,-7804.313782074449,82.44741792555033,0.010453900636112875,False,Fav,False
+base,Southern | Motor Private | Third Party,50,Total expenses,-13828.570199999998,-13803.8457785964,24.72442140359817,0.0017879231942285814,False,Fav,False
+base,Southern | Motor Private | Third Party,60,UNDERWRITING PROFIT,-23634.02194845613,-21978.781041910363,1655.2409065457687,0.07003636157043916,False,Fav,True
+base,Southern | Motor Private | Third Party,70,Loss ratio,1.1243279909179467,1.102695030451266,-0.02163296046668073,,True,Fav,True
+base,Southern | Motor Private | Third Party,80,Expense ratio,0.17533902509942864,0.17340643282389392,-0.001932592275534717,,True,Fav,False
+base,Southern | Motor Private | Third Party,90,Combined ratio,1.2996670160173753,1.2761014632751597,-0.023565552742215612,,True,Fav,True
+base,Southern | Motor Private | Third Party,100,Underwriting margin,-0.2996670160173752,-0.2761014632751597,0.0235655527422155,,True,Fav,True
+base,Southern | Motor Private | Third Party,110,Retained exposure (yrs),200.08213552361397,197.99742867129288,-2.0847068523210908,-0.010419255306654055,False,-,False
+base,Southern | Motor Private | Third Party,120,Retained policies,204.30000000000007,202.17228975024528,-2.1277102497547844,-0.010414636562676376,False,-,False
+base,Southern | Motor Rent a Car | Comprehensive,10,Expected premium,170729.262,174835.6771830996,4106.415183099598,0.024052204847576735,False,Fav,False
+base,Southern | Motor Rent a Car | Comprehensive,20,Expected claims,-110288.03737520342,-106748.37984219848,3539.657533004938,0.032094664274085416,False,Fav,False
+base,Southern | Motor Rent a Car | Comprehensive,30,Commission,-12353.022,-12651.969116944309,-298.9471169443077,-0.024200322556238277,False,Unfav,False
+base,Southern | Motor Rent a Car | Comprehensive,40,Admin expense,-17072.926199999994,-16493.93180972638,578.9943902736159,0.03391301429473854,False,Fav,False
+base,Southern | Motor Rent a Car | Comprehensive,50,Total expenses,-29425.948199999995,-29145.900926670685,280.04727332931,0.009517017817944437,False,Fav,False
+base,Southern | Motor Rent a Car | Comprehensive,60,UNDERWRITING PROFIT,31015.27642479657,38941.39641423046,7926.11998943389,0.2555553553956718,False,Fav,True
+base,Southern | Motor Rent a Car | Comprehensive,70,Loss ratio,0.645982042464422,0.6105640539854144,-0.03541798847900768,,True,Fav,True
+base,Southern | Motor Rent a Car | Comprehensive,80,Expense ratio,0.17235445087321935,0.16670453877755828,-0.005649912095661069,,True,Fav,False
+base,Southern | Motor Rent a Car | Comprehensive,90,Combined ratio,0.8183364933376412,0.7772685927629724,-0.0410679005746688,,True,Fav,True
+base,Southern | Motor Rent a Car | Comprehensive,100,Underwriting margin,0.18166350666235864,0.22273140723702767,0.041067900574669025,,True,Fav,True
+base,Southern | Motor Rent a Car | Comprehensive,110,Retained exposure (yrs),24.63572895277207,23.811574805857795,-0.8241541469142746,-0.033453613184907964,False,-,False
+base,Southern | Motor Rent a Car | Comprehensive,120,Retained policies,25.199999999999992,24.35709994188562,-0.8429000581143704,-0.03344841500453852,False,-,False
+base,Unspecified | Motor Commercial | Comprehensive,10,Expected premium,64934.892,66805.58647457021,1870.694474570213,0.028808771631901892,False,Fav,False
+base,Unspecified | Motor Commercial | Comprehensive,20,Expected claims,-117025.09673496714,-105323.80850229206,11701.288232675084,0.09998956257370677,False,Fav,True
+base,Unspecified | Motor Commercial | Comprehensive,30,Commission,-3839.103,-4021.656079795332,-182.553079795332,-0.04755097213993269,False,Unfav,False
+base,Unspecified | Motor Commercial | Comprehensive,40,Admin expense,-6493.4892,-5759.102282290536,734.3869177094639,0.11309588652422244,False,Fav,True
+base,Unspecified | Motor Commercial | Comprehensive,50,Total expenses,-10332.5922,-9780.758362085868,551.8338379141314,0.053407105132256306,False,Fav,True
+base,Unspecified | Motor Commercial | Comprehensive,60,UNDERWRITING PROFIT,-62422.79693496714,-48298.98038980771,14123.816545159432,0.22626055285337188,False,Fav,True
+base,Unspecified | Motor Commercial | Comprehensive,70,Loss ratio,1.8021912893143357,1.5765718716111257,-0.22561941770321003,,True,Fav,True
+base,Unspecified | Motor Commercial | Comprehensive,80,Expense ratio,0.1591223436546256,0.14640629441684413,-0.012716049237781468,,True,Fav,True
+base,Unspecified | Motor Commercial | Comprehensive,90,Combined ratio,1.9613136329689613,1.7229781660279697,-0.2383354669409916,,True,Fav,True
+base,Unspecified | Motor Commercial | Comprehensive,100,Underwriting margin,-0.9613136329689613,-0.7229781660279697,0.2383354669409916,,True,Fav,True
+base,Unspecified | Motor Commercial | Comprehensive,110,Retained exposure (yrs),14.146201232032851,12.62492914602248,-1.521272086010372,-0.10753926521033666,False,-,True
+base,Unspecified | Motor Commercial | Comprehensive,120,Retained policies,14.4,12.852066158771644,-1.5479338412283568,-0.1074954056408581,False,-,True
+base,Unspecified | Motor Commercial | Third Party,10,Expected premium,49139.96399999999,52501.699573857055,3361.7355738570623,0.06841143745764777,False,Fav,True
+base,Unspecified | Motor Commercial | Third Party,20,Expected claims,-7014.291913513318,-6364.575652405907,649.7162611074109,0.09262749100243549,False,Fav,True
+base,Unspecified | Motor Commercial | Third Party,30,Commission,-3813.723,-4098.565695029231,-284.84269502923144,-0.07468887882765252,False,Unfav,True
+base,Unspecified | Motor Commercial | Third Party,40,Admin expense,-4913.996400000001,-4526.008583953195,387.9878160468061,0.07895565736409697,False,Fav,True
+base,Unspecified | Motor Commercial | Third Party,50,Total expenses,-8727.719400000002,-8624.574278982425,103.14512101757646,0.011818106917779281,False,Fav,False
+base,Unspecified | Motor Commercial | Third Party,60,UNDERWRITING PROFIT,33397.95268648667,37512.54964246872,4114.596955982051,0.12319907733885979,False,Fav,True
+base,Unspecified | Motor Commercial | Third Party,70,Loss ratio,0.14274108775320468,0.12122608799458968,-0.021514999758614997,,True,Fav,True
+base,Unspecified | Motor Commercial | Third Party,80,Expense ratio,0.1776093975160422,0.16427228735423618,-0.013337110161806026,,True,Fav,True
+base,Unspecified | Motor Commercial | Third Party,90,Combined ratio,0.32035048526924687,0.2854983753488259,-0.03485210992042098,,True,Fav,True
+base,Unspecified | Motor Commercial | Third Party,100,Underwriting margin,0.6796495147307531,0.7145016246511742,0.03485210992042109,,True,Fav,True
+base,Unspecified | Motor Commercial | Third Party,110,Retained exposure (yrs),4.37371663244353,3.946002558459626,-0.42771407398390426,-0.09779190330054528,False,-,True
+base,Unspecified | Motor Commercial | Third Party,120,Retained policies,4.5,4.05928192346067,-0.44071807653932993,-0.09793735034207332,False,-,True
+base,Unspecified | Motor Private | Comprehensive,10,Expected premium,76074.786,78442.17009073758,2367.384090737585,0.031119168586784922,False,Fav,False
+base,Unspecified | Motor Private | Comprehensive,20,Expected claims,-56776.59134894868,-53941.45312659804,2835.138222350637,0.04993498473562617,False,Fav,False
+base,Unspecified | Motor Private | Comprehensive,30,Commission,-5015.924999999999,-5209.351653880742,-193.42665388074238,-0.03856250918439618,False,Unfav,False
+base,Unspecified | Motor Private | Comprehensive,40,Admin expense,-7607.478599999999,-7196.529366122712,410.94923387728613,0.05401911138827078,False,Fav,True
+base,Unspecified | Motor Private | Comprehensive,50,Total expenses,-12623.403599999998,-12405.881020003451,217.52257999654648,0.017231690191427177,False,Fav,False
+base,Unspecified | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,6674.7910510513175,12094.835944136084,5420.044893084767,0.8120171630288081,False,Fav,True
+base,Unspecified | Motor Private | Comprehensive,70,Loss ratio,0.7463260080540836,0.6876588582926957,-0.05866714976138787,,True,Fav,True
+base,Unspecified | Motor Private | Comprehensive,80,Expense ratio,0.16593413223666512,0.15815321026500176,-0.007780921971663357,,True,Fav,False
+base,Unspecified | Motor Private | Comprehensive,90,Combined ratio,0.9122601402907486,0.8458120685576974,-0.06644807173305123,,True,Fav,True
+base,Unspecified | Motor Private | Comprehensive,100,Underwriting margin,0.08773985970925134,0.15418793144230258,0.06644807173305124,,True,Fav,True
+base,Unspecified | Motor Private | Comprehensive,110,Retained exposure (yrs),22.129774127310057,20.94982094548648,-1.1799531818235778,-0.05331971194262726,False,-,True
+base,Unspecified | Motor Private | Comprehensive,120,Retained policies,22.5,21.300126734172306,-1.1998732658276943,-0.05332770070345308,False,-,True
+base,Unspecified | Motor Private | Third Party,10,Expected premium,11418.336,11621.493662538696,203.15766253869697,0.017792230193497283,False,Fav,False
+base,Unspecified | Motor Private | Third Party,20,Expected claims,-14149.04637086533,-13861.550483557136,287.49588730819414,0.0203190999430311,False,Fav,False
+base,Unspecified | Motor Private | Third Party,30,Commission,-813.4110000000001,-829.7495272726611,-16.338527272661054,-0.020086435114180963,False,Unfav,False
+base,Unspecified | Motor Private | Third Party,40,Admin expense,-1141.8336,-1117.4513137056438,24.382286294356163,0.021353624813945014,False,Fav,False
+base,Unspecified | Motor Private | Third Party,50,Total expenses,-1955.2446,-1947.2008409783048,8.043759021695223,0.00411394002658042,False,Fav,False
+base,Unspecified | Motor Private | Third Party,60,UNDERWRITING PROFIT,-4685.95497086533,-4187.257661996746,498.6973088685845,0.10642383718350003,False,Fav,True
+base,Unspecified | Motor Private | Third Party,70,Loss ratio,1.2391513413920672,1.1927511975710274,-0.04640014382103974,,True,Fav,True
+base,Unspecified | Motor Private | Third Party,80,Expense ratio,0.17123726259237773,0.16755168462166006,-0.0036855779707176684,,True,Fav,False
+base,Unspecified | Motor Private | Third Party,90,Combined ratio,1.4103886039844449,1.3603028821926875,-0.05008572179175741,,True,Fav,True
+base,Unspecified | Motor Private | Third Party,100,Underwriting margin,-0.4103886039844449,-0.36030288219268763,0.05008572179175724,,True,Fav,True
+base,Unspecified | Motor Private | Third Party,110,Retained exposure (yrs),28.248049281314163,27.642078306861016,-0.6059709744531467,-0.021451781268803975,False,-,False
+base,Unspecified | Motor Private | Third Party,120,Retained policies,28.8,28.18263836086524,-0.61736163913476,-0.0214361680255125,False,-,False
+base,Unspecified | Motor Rent a Car | Comprehensive,10,Expected premium,51742.13399999999,52950.21454589812,1208.0805458981267,0.02334810052283748,False,Fav,False
+base,Unspecified | Motor Rent a Car | Comprehensive,20,Expected claims,-24920.213189427755,-24181.80302075357,738.4101686741851,0.029630973180737114,False,Fav,False
+base,Unspecified | Motor Rent a Car | Comprehensive,30,Commission,-3203.415,-3280.183473955298,-76.76847395529785,-0.02396457341783623,False,Unfav,False
+base,Unspecified | Motor Rent a Car | Comprehensive,40,Admin expense,-5174.2134,-4995.303259046993,178.9101409530067,0.034577263657700454,False,Fav,False
+base,Unspecified | Motor Rent a Car | Comprehensive,50,Total expenses,-8377.6284,-8275.48673300229,102.14166699770976,0.0121921935565571,False,Fav,False
+base,Unspecified | Motor Rent a Car | Comprehensive,60,UNDERWRITING PROFIT,18444.292410572238,20492.92479214225,2048.6323815700125,0.11107134586500807,False,Fav,True
+base,Unspecified | Motor Rent a Car | Comprehensive,70,Loss ratio,0.4816232200517234,0.45668942473863605,-0.02493379531308737,,True,Fav,True
+base,Unspecified | Motor Rent a Car | Comprehensive,80,Expense ratio,0.16191114962517783,0.1562880680271647,-0.005623081598013141,,True,Fav,False
+base,Unspecified | Motor Rent a Car | Comprehensive,90,Combined ratio,0.6435343696769013,0.6129774927658007,-0.03055687691110054,,True,Fav,True
+base,Unspecified | Motor Rent a Car | Comprehensive,100,Underwriting margin,0.3564656303230988,0.3870225072341991,0.030556876911100317,,True,Fav,True
+base,Unspecified | Motor Rent a Car | Comprehensive,110,Retained exposure (yrs),5.278028747433263,5.114822947078716,-0.16320580035454668,-0.030921733882922606,False,-,False
+base,Unspecified | Motor Rent a Car | Comprehensive,120,Retained policies,5.4,5.232556496665152,-0.16744350333484803,-0.031008056173120004,False,-,False
+base,Western | Motor Commercial | Comprehensive,10,Expected premium,286130.07,295543.1806278244,9413.110627824382,0.032898012529142366,False,Fav,False
+base,Western | Motor Commercial | Comprehensive,20,Expected claims,-430363.39116760826,-385306.4462202248,45056.94494738348,0.10469511550492387,False,Fav,True
+base,Western | Motor Commercial | Comprehensive,30,Commission,-22085.199,-23019.741318132477,-934.5423181324768,-0.04231532249867782,False,Unfav,False
+base,Western | Motor Commercial | Comprehensive,40,Admin expense,-28613.007,-25477.86039895039,3135.1466010496115,0.10957067885418724,False,Fav,True
+base,Western | Motor Commercial | Comprehensive,50,Total expenses,-50698.206000000006,-48497.60171708286,2200.604282917142,0.04340595962936325,False,Fav,False
+base,Western | Motor Commercial | Comprehensive,60,UNDERWRITING PROFIT,-194931.52716760823,-138260.86730948326,56670.65985812497,0.29072085301726364,False,Fav,True
+base,Western | Motor Commercial | Comprehensive,70,Loss ratio,1.5040830597343657,1.3037230140168203,-0.2003600457175454,,True,Fav,True
+base,Western | Motor Commercial | Comprehensive,80,Expense ratio,0.17718587214548964,0.164096500599537,-0.013089371545952633,,True,Fav,True
+base,Western | Motor Commercial | Comprehensive,90,Combined ratio,1.6812689318798555,1.4678195146163573,-0.2134494172634982,,True,Fav,True
+base,Western | Motor Commercial | Comprehensive,100,Underwriting margin,-0.6812689318798553,-0.46781951461635746,0.2134494172634978,,True,Fav,True
+base,Western | Motor Commercial | Comprehensive,110,Retained exposure (yrs),46.58069815195069,41.42434904190677,-5.156349110043919,-0.11069711950695577,False,-,True
+base,Western | Motor Commercial | Comprehensive,120,Retained policies,47.7,42.424525508486994,-5.275474491513009,-0.11059694950761025,False,-,True
+base,Western | Motor Commercial | Third Party,10,Expected premium,135585.56699999998,140098.86850251435,4513.301502514369,0.03328747743861535,False,Fav,False
+base,Western | Motor Commercial | Third Party,20,Expected claims,-43573.060527437,-38966.04804982687,4607.012477610129,0.10573075248430608,False,Fav,True
+base,Western | Motor Commercial | Third Party,30,Commission,-9436.833,-9813.863782717255,-377.0307827172546,-0.03995310531798694,False,Unfav,False
+base,Western | Motor Commercial | Third Party,40,Admin expense,-13558.556699999996,-12077.488664009858,1481.068035990138,0.10923493324257283,False,Fav,True
+base,Western | Motor Commercial | Third Party,50,Total expenses,-22995.3897,-21891.352446727116,1104.0372532728834,0.048011243456895336,False,Fav,False
+base,Western | Motor Commercial | Third Party,60,UNDERWRITING PROFIT,69017.11677256298,79241.46800596037,10224.351233397392,0.14814225385697327,False,Fav,True
+base,Western | Motor Commercial | Third Party,70,Loss ratio,0.32136946056682425,0.2781324964742849,-0.043236964092539354,,True,Fav,True
+base,Western | Motor Commercial | Third Party,80,Expense ratio,0.16960057186617808,0.1562564543220007,-0.013344117544177386,,True,Fav,True
+base,Western | Motor Commercial | Third Party,90,Combined ratio,0.49097003243300236,0.4343889507962856,-0.05658108163671677,,True,Fav,True
+base,Western | Motor Commercial | Third Party,100,Underwriting margin,0.5090299675669977,0.5656110492037145,0.05658108163671682,,True,Fav,True
+base,Western | Motor Commercial | Third Party,110,Retained exposure (yrs),24.648049281314165,21.957852520783803,-2.6901967605303625,-0.10914440854229454,False,-,True
+base,Western | Motor Commercial | Third Party,120,Retained policies,25.199999999999992,22.45132912033317,-2.7486708796668218,-0.10907424125661995,False,-,True
+base,Western | Motor Private | Comprehensive,10,Expected premium,388105.3619999999,396439.77368337696,8334.411683377053,0.021474611019100157,False,Fav,False
+base,Western | Motor Private | Comprehensive,20,Expected claims,-269235.07845424785,-262080.80241749104,7154.276036756812,0.02657259996665912,False,Fav,False
+base,Western | Motor Private | Comprehensive,30,Commission,-31714.938,-32441.30781710611,-726.3698171061114,-0.02290308173095314,False,Unfav,False
+base,Western | Motor Private | Comprehensive,40,Admin expense,-38810.5362,-37756.16892222637,1054.3672777736356,0.027167037124667077,False,Fav,False
+base,Western | Motor Private | Comprehensive,50,Total expenses,-70525.4742,-70197.47673933249,327.9974606675096,0.00465076576071444,False,Fav,False
+base,Western | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,48344.80934575206,64161.49452655343,15816.685180801374,0.327164082242702,False,Fav,True
+base,Western | Motor Private | Comprehensive,70,Loss ratio,0.693716461599023,0.6610860458890437,-0.032630415709979266,,True,Fav,True
+base,Western | Motor Private | Comprehensive,80,Expense ratio,0.1817173404576668,0.17706971247389733,-0.00464762798376947,,True,Fav,False
+base,Western | Motor Private | Comprehensive,90,Combined ratio,0.8754338020566897,0.838155758362941,-0.037278043693748764,,True,Fav,True
+base,Western | Motor Private | Comprehensive,100,Underwriting margin,0.12456619794331023,0.16184424163705896,0.037278043693748736,,True,Fav,True
+base,Western | Motor Private | Comprehensive,110,Retained exposure (yrs),92.3112936344969,89.75421914541124,-2.5570744890856645,-0.027700559578444483,False,-,False
+base,Western | Motor Private | Comprehensive,120,Retained policies,94.50000000000004,91.88232788579344,-2.6176721142065986,-0.027700234012768228,False,-,False
+base,Western | Motor Private | Third Party,10,Expected premium,70130.56499999999,71806.72323917433,1676.1582391743432,0.023900538077432337,False,Fav,False
+base,Western | Motor Private | Third Party,20,Expected claims,-97741.35684485036,-94527.9176950762,3213.43914977416,0.03287696481311395,False,Fav,False
+base,Western | Motor Private | Third Party,30,Commission,-5292.405,-5427.822254916648,-135.41725491664783,-0.025587092241929302,False,Unfav,False
+base,Western | Motor Private | Third Party,40,Admin expense,-7013.0565,-6774.219173507012,238.8373264929878,0.03405609615336591,False,Fav,False
+base,Western | Motor Private | Third Party,50,Total expenses,-12305.4615,-12202.04142842366,103.42007157633998,0.008404404140091777,False,Fav,False
+base,Western | Motor Private | Third Party,60,UNDERWRITING PROFIT,-39916.25334485036,-34923.23588432552,4993.017460524839,0.12508732764541874,False,Fav,True
+base,Western | Motor Private | Third Party,70,Loss ratio,1.3937055383034542,1.3164215470495981,-0.0772839912538561,,True,Fav,True
+base,Western | Motor Private | Third Party,80,Expense ratio,0.17546502726735486,0.16992895481083317,-0.0055360724565216846,,True,Fav,False
+base,Western | Motor Private | Third Party,90,Combined ratio,1.569170565570809,1.4863505018604313,-0.08282006371037776,,True,Fav,True
+base,Western | Motor Private | Third Party,100,Underwriting margin,-0.5691705655708088,-0.48635050186043116,0.08282006371037764,,True,Fav,True
+base,Western | Motor Private | Third Party,110,Retained exposure (yrs),175.10882956878845,169.15378086726523,-5.955048701523225,-0.034007700903419535,False,-,False
+base,Western | Motor Private | Third Party,120,Retained policies,179.10000000000008,173.00768362413334,-6.092316375866744,-0.034016283505676946,False,-,False
+base,Western | Motor Rent a Car | Comprehensive,10,Expected premium,196980.588,203950.9750378348,6970.387037834822,0.03538616220312441,False,Fav,False
+base,Western | Motor Rent a Car | Comprehensive,20,Expected claims,-166775.1524208945,-150850.5730788958,15924.579341998702,0.09548532326811762,False,Fav,True
+base,Western | Motor Rent a Car | Comprehensive,30,Commission,-15879.599999999997,-16563.90674922909,-684.306749229092,-0.04309345003835689,False,Unfav,False
+base,Western | Motor Rent a Car | Comprehensive,40,Admin expense,-19698.0588,-17734.867394594334,1963.1914054056651,0.0996642067798917,False,Fav,True
+base,Western | Motor Rent a Car | Comprehensive,50,Total expenses,-35577.6588,-34298.77414382342,1278.884656176575,0.03594628481221409,False,Fav,False
+base,Western | Motor Rent a Car | Comprehensive,60,UNDERWRITING PROFIT,-5372.223220894513,18801.627815115586,24173.8510360101,4.49978529223977,False,Fav,True
+base,Western | Motor Rent a Car | Comprehensive,70,Loss ratio,0.8466578057980745,0.7396413429791724,-0.10701646281890209,,True,Fav,True
+base,Western | Motor Rent a Car | Comprehensive,80,Expense ratio,0.18061505025053534,0.1681716605545067,-0.01244338969602865,,True,Fav,True
+base,Western | Motor Rent a Car | Comprehensive,90,Combined ratio,1.0272728560486097,0.9078130035336791,-0.11945985251493063,,True,Fav,True
+base,Western | Motor Rent a Car | Comprehensive,100,Underwriting margin,-0.027272856048609795,0.09218699646632093,0.11945985251493073,,True,Fav,True
+base,Western | Motor Rent a Car | Comprehensive,110,Retained exposure (yrs),29.002053388090346,26.079180702557935,-2.922872685532411,-0.10078157730489128,False,-,True
+base,Western | Motor Rent a Car | Comprehensive,120,Retained policies,29.7,26.70437465748873,-2.9956253425112678,-0.10086280614516054,False,-,True
+high,PORTFOLIO,10,Expected premium,3680434.7999999993,3644076.7155899364,-36358.08441006299,-0.009878747046425872,False,Unfav,False
+high,PORTFOLIO,20,Expected claims,-3481903.027264173,-3196227.7539063087,285675.27335786447,0.08204572933851273,False,Fav,True
+high,PORTFOLIO,30,Commission,-287139.636,-285892.11361841357,1247.5223815864301,0.0043446540469474935,False,Fav,False
+high,PORTFOLIO,40,Admin expense,-368043.48000000004,-338255.46698479337,29788.01301520667,0.0809361247622337,False,Fav,True
+high,PORTFOLIO,50,Total expenses,-655183.116,-624147.5806032069,31035.53539679316,0.04736925393662488,False,Fav,False
+high,PORTFOLIO,60,UNDERWRITING PROFIT,-456651.3432641736,-176298.618919579,280352.72434459464,0.6139316756206498,False,Fav,True
+high,PORTFOLIO,70,Loss ratio,0.9460575221341168,0.8771022136368153,-0.06895530849730147,,True,Fav,True
+high,PORTFOLIO,80,Expense ratio,0.17801785702058903,0.17127728895854602,-0.006740568062043012,,True,Fav,False
+high,PORTFOLIO,90,Combined ratio,1.1240753791547058,1.0483795025953613,-0.07569587655934451,,True,Fav,True
+high,PORTFOLIO,100,Underwriting margin,-0.12407537915470576,-0.04837950259536129,0.07569587655934447,,True,Fav,True
+high,PORTFOLIO,110,Retained exposure (yrs),1287.6344969199176,1217.582069357894,-70.0524275620237,-0.05440396923940171,False,-,True
+high,PORTFOLIO,120,Retained policies,1315.8000000000004,1244.2196109781842,-71.58038902181625,-0.05440066045129672,False,-,True
+high,Central | Motor Commercial | Comprehensive,10,Expected premium,273767.10300000006,268809.16180245427,-4957.9411975457915,-0.018110069264040796,False,Unfav,False
+high,Central | Motor Commercial | Comprehensive,20,Expected claims,-517891.60423712153,-463448.8900000535,54442.71423706802,0.10512376294893731,False,Fav,True
+high,Central | Motor Commercial | Comprehensive,30,Commission,-20331.512999999995,-20058.24017392899,273.2728260710064,0.013440850470449814,False,Fav,False
+high,Central | Motor Commercial | Comprehensive,40,Admin expense,-27376.7103,-24437.19652749584,2939.5137725041604,0.107372790240037,False,Fav,True
+high,Central | Motor Commercial | Comprehensive,50,Total expenses,-47708.2233,-44495.43670142483,3212.7865985751705,0.06734240716474492,False,Fav,True
+high,Central | Motor Commercial | Comprehensive,60,UNDERWRITING PROFIT,-291832.7245371215,-239135.164899024,52697.559638097475,0.18057453879335003,False,Fav,True
+high,Central | Motor Commercial | Comprehensive,70,Loss ratio,1.8917232880136128,1.7240814520326448,-0.16764183598096793,,True,Fav,True
+high,Central | Motor Commercial | Comprehensive,80,Expense ratio,0.17426572724481065,0.16552797681101425,-0.008737750433796404,,True,Fav,False
+high,Central | Motor Commercial | Comprehensive,90,Combined ratio,2.0659890152584235,1.8896094288436591,-0.17637958641476437,,True,Fav,True
+high,Central | Motor Commercial | Comprehensive,100,Underwriting margin,-1.0659890152584235,-0.8896094288436588,0.1763795864147647,,True,Fav,True
+high,Central | Motor Commercial | Comprehensive,110,Retained exposure (yrs),47.51704312114987,42.27834105820077,-5.238702062949095,-0.11024890689415279,False,-,True
+high,Central | Motor Commercial | Comprehensive,120,Retained policies,48.6,43.23189039361748,-5.368109606382518,-0.11045493017247979,False,-,True
+high,Central | Motor Commercial | Third Party,10,Expected premium,126723.474,123915.65528545243,-2807.8187145475677,-0.02215705287993894,False,Unfav,False
+high,Central | Motor Commercial | Third Party,20,Expected claims,-48455.16080290551,-43359.6993791682,5095.46142373731,0.10515828116768464,False,Fav,True
+high,Central | Motor Commercial | Third Party,30,Commission,-10326.996,-10176.677991895103,150.31800810489585,0.014555830960416356,False,Fav,False
+high,Central | Motor Commercial | Third Party,40,Admin expense,-12672.3474,-11265.059571404763,1407.2878285952374,0.11105186625449026,False,Fav,True
+high,Central | Motor Commercial | Third Party,50,Total expenses,-22999.3434,-21441.737563299863,1557.6058367001388,0.06772392627087513,False,Fav,True
+high,Central | Motor Commercial | Third Party,60,UNDERWRITING PROFIT,55268.96979709448,59114.21834298438,3845.2485458898955,0.06957337109786407,False,Fav,True
+high,Central | Motor Commercial | Third Party,70,Loss ratio,0.38236925861822185,0.34991300557855004,-0.03245625303967181,,True,Fav,True
+high,Central | Motor Commercial | Third Party,80,Expense ratio,0.18149236817797468,0.1730349366583796,-0.008457431519595077,,True,Fav,False
+high,Central | Motor Commercial | Third Party,90,Combined ratio,0.5638616267961966,0.5229479422369296,-0.040913684559266916,,True,Fav,True
+high,Central | Motor Commercial | Third Party,100,Underwriting margin,0.43613837320380344,0.4770520577630704,0.04091368455926697,,True,Fav,True
+high,Central | Motor Commercial | Third Party,110,Retained exposure (yrs),22.07556468172484,19.66968555829005,-2.40587912343479,-0.10898380893633433,False,-,True
+high,Central | Motor Commercial | Third Party,120,Retained policies,22.5,20.0486778599498,-2.4513221400501983,-0.10894765066889771,False,-,True
+high,Central | Motor Private | Comprehensive,10,Expected premium,417224.259,410836.568729828,-6387.690270172025,-0.015309968517846955,False,Unfav,False
+high,Central | Motor Private | Comprehensive,20,Expected claims,-350727.1262527296,-318295.3563721467,32431.769880582928,0.09247009271023136,False,Fav,True
+high,Central | Motor Private | Comprehensive,30,Commission,-34272.522,-34052.77966406286,219.7423359371387,0.006411618495339757,False,Fav,False
+high,Central | Motor Private | Comprehensive,40,Admin expense,-41722.4259,-37691.42832383744,4030.997576162561,0.09661465001637311,False,Fav,True
+high,Central | Motor Private | Comprehensive,50,Total expenses,-75994.9479,-71744.2079879003,4250.7399120997,0.055934506563425114,False,Fav,True
+high,Central | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,-9497.815152729658,20797.004369781003,30294.81952251066,3.1896619417576235,False,Fav,True
+high,Central | Motor Private | Comprehensive,70,Loss ratio,0.840620166941754,0.7747493300224262,-0.06587083691932782,,True,Fav,True
+high,Central | Motor Private | Comprehensive,80,Expense ratio,0.18214412575659938,0.17462955697860558,-0.0075145687779938075,,True,Fav,False
+high,Central | Motor Private | Comprehensive,90,Combined ratio,1.0227642926983533,0.9493788870010318,-0.07338540569732155,,True,Fav,True
+high,Central | Motor Private | Comprehensive,100,Underwriting margin,-0.02276429269835352,0.05062111299896824,0.07338540569732176,,True,Fav,True
+high,Central | Motor Private | Comprehensive,110,Retained exposure (yrs),98.70554414784394,89.12460426098394,-9.580939886859994,-0.09706587375182688,False,-,True
+high,Central | Motor Private | Comprehensive,120,Retained policies,100.80000000000004,91.01621340005973,-9.783786599940314,-0.09706137499940784,False,-,True
+high,Central | Motor Private | Third Party,10,Expected premium,67758.06599999999,67599.26596673782,-158.8000332621741,-0.0023436329080315566,False,Unfav,False
+high,Central | Motor Private | Third Party,20,Expected claims,-122037.33897729105,-115138.65016316384,6898.688814127207,0.05652932841653429,False,Fav,True
+high,Central | Motor Private | Third Party,30,Commission,-5455.169999999998,-5469.56109301097,-14.391093010971417,-0.0026380649935696635,False,Unfav,False
+high,Central | Motor Private | Third Party,40,Admin expense,-6775.8066,-6377.289242145078,398.517357854922,0.05881474802644485,False,Fav,True
+high,Central | Motor Private | Third Party,50,Total expenses,-12230.976599999998,-11846.850335156048,384.1262648439497,0.03140601747565683,False,Fav,False
+high,Central | Motor Private | Third Party,60,UNDERWRITING PROFIT,-66510.24957729105,-59386.23453158207,7124.015045708977,0.10711153680802556,False,Fav,True
+high,Central | Motor Private | Third Party,70,Loss ratio,1.8010747086153707,1.703252964607896,-0.09782174400747468,,True,Fav,True
+high,Central | Motor Private | Third Party,80,Expense ratio,0.18050952930091008,0.17525116827430176,-0.005258361026608316,,True,Fav,False
+high,Central | Motor Private | Third Party,90,Combined ratio,1.9815842379162807,1.8785041328821979,-0.10308010503408283,,True,Fav,True
+high,Central | Motor Private | Third Party,100,Underwriting margin,-0.9815842379162808,-0.8785041328821978,0.10308010503408305,,True,Fav,True
+high,Central | Motor Private | Third Party,110,Retained exposure (yrs),174.54702258726894,164.29377709739862,-10.253245489870324,-0.05874202457245565,False,-,True
+high,Central | Motor Private | Third Party,120,Retained policies,178.20000000000007,167.73494752502057,-10.465052474979501,-0.058726444865204806,False,-,True
+high,Central | Motor Rent a Car | Comprehensive,10,Expected premium,185823.819,186786.17778531477,962.3587853147765,0.005178877446893805,False,Fav,False
+high,Central | Motor Rent a Car | Comprehensive,20,Expected claims,-177258.4395087121,-167536.69080729206,9721.74870142003,0.054845054082416286,False,Fav,True
+high,Central | Motor Rent a Car | Comprehensive,30,Commission,-17041.238999999998,-17201.892246590658,-160.65324659066027,-0.009427321956499776,False,Unfav,False
+high,Central | Motor Rent a Car | Comprehensive,40,Admin expense,-18582.3819,-17621.337526916483,961.0443730835177,0.05171804014444013,False,Fav,True
+high,Central | Motor Rent a Car | Comprehensive,50,Total expenses,-35623.620899999994,-34823.22977350714,800.3911264928538,0.022467989111484562,False,Fav,False
+high,Central | Motor Rent a Car | Comprehensive,60,UNDERWRITING PROFIT,-27058.2414087121,-15573.742795484468,11484.498613227632,0.42443625362622056,False,Fav,True
+high,Central | Motor Rent a Car | Comprehensive,70,Loss ratio,0.9539059118611275,0.8969437288869021,-0.056962182974225395,,True,Fav,True
+high,Central | Motor Rent a Car | Comprehensive,80,Expense ratio,0.1917064297338545,0.18643365470828197,-0.005272775025572524,,True,Fav,False
+high,Central | Motor Rent a Car | Comprehensive,90,Combined ratio,1.145612341594982,1.083377383595184,-0.062234957999797835,,True,Fav,True
+high,Central | Motor Rent a Car | Comprehensive,100,Underwriting margin,-0.14561234159498196,-0.08337738359518423,0.062234957999797724,,True,Fav,True
+high,Central | Motor Rent a Car | Comprehensive,110,Retained exposure (yrs),25.527720739219703,24.056073129361145,-1.4716476098585574,-0.05764900144796636,False,-,True
+high,Central | Motor Rent a Car | Comprehensive,120,Retained policies,26.09999999999999,24.592290883481727,-1.5077091165182637,-0.05776663281679173,False,-,True
+high,Eastern | Motor Commercial | Comprehensive,10,Expected premium,79801.002,78176.74039296558,-1624.2616070344084,-0.020353899905096538,False,Unfav,False
+high,Eastern | Motor Commercial | Comprehensive,20,Expected claims,-118198.90390233412,-105952.7885273958,12246.115374938323,0.10360599777690911,False,Fav,True
+high,Eastern | Motor Commercial | Comprehensive,30,Commission,-6600.671999999999,-6500.719400943422,99.95259905657622,0.015142791378904487,False,Fav,False
+high,Eastern | Motor Commercial | Comprehensive,40,Admin expense,-7980.1002,-7106.976399360508,873.1238006394915,0.10941263627736046,False,Fav,True
+high,Eastern | Motor Commercial | Comprehensive,50,Total expenses,-14580.7722,-13607.69580030393,973.0763996960686,0.06673695921921534,False,Fav,True
+high,Eastern | Motor Commercial | Comprehensive,60,UNDERWRITING PROFIT,-52978.67410233413,-41383.74393473414,11594.930167599989,0.21886033133262464,False,Fav,True
+high,Eastern | Motor Commercial | Comprehensive,70,Loss ratio,1.4811706738009898,1.3552981103434383,-0.1258725634575515,,True,Fav,True
+high,Eastern | Motor Commercial | Comprehensive,80,Expense ratio,0.18271414937872585,0.1740632281661153,-0.008650921212610546,,True,Fav,False
+high,Eastern | Motor Commercial | Comprehensive,90,Combined ratio,1.6638848231797154,1.5293613385095535,-0.13452348467016195,,True,Fav,True
+high,Eastern | Motor Commercial | Comprehensive,100,Underwriting margin,-0.6638848231797156,-0.5293613385095536,0.13452348467016206,,True,Fav,True
+high,Eastern | Motor Commercial | Comprehensive,110,Retained exposure (yrs),12.340041067761806,11.025453258070698,-1.3145878096911083,-0.10653026213384748,False,-,True
+high,Eastern | Motor Commercial | Comprehensive,120,Retained policies,12.6,11.259070119674885,-1.340929880325115,-0.10642300637500914,False,-,True
+high,Eastern | Motor Private | Comprehensive,10,Expected premium,54623.214,54048.26075739691,-574.9532426030928,-0.010525803966846272,False,Unfav,False
+high,Eastern | Motor Private | Comprehensive,20,Expected claims,-36455.646674689335,-33171.674123653065,3283.9725510362696,0.09008131388645171,False,Fav,True
+high,Eastern | Motor Private | Comprehensive,30,Commission,-4929.606,-4895.232950353496,34.373049646504114,0.006972778280151419,False,Fav,False
+high,Eastern | Motor Private | Comprehensive,40,Admin expense,-5462.321400000001,-4958.556032788707,503.7653672112938,0.09222550822646461,False,Fav,True
+high,Eastern | Motor Private | Comprehensive,50,Total expenses,-10391.9274,-9853.788983142204,538.138416857797,0.0517842740950824,False,Fav,True
+high,Eastern | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,7775.639925310665,11022.797650601638,3247.1577252909738,0.4176064936753406,False,Fav,True
+high,Eastern | Motor Private | Comprehensive,70,Loss ratio,0.6674020806371689,0.6137417496660755,-0.05366033097109335,,True,Fav,True
+high,Eastern | Motor Private | Comprehensive,80,Expense ratio,0.19024745413186417,0.1823146359393931,-0.007932818192471075,,True,Fav,False
+high,Eastern | Motor Private | Comprehensive,90,Combined ratio,0.857649534769033,0.7960563856054687,-0.0615931491635644,,True,Fav,True
+high,Eastern | Motor Private | Comprehensive,100,Underwriting margin,0.1423504652309669,0.2039436143945314,0.06159314916356451,,True,Fav,True
+high,Eastern | Motor Private | Comprehensive,110,Retained exposure (yrs),12.39425051334702,11.238652527823966,-1.1555979855230536,-0.09323661679087596,False,-,True
+high,Eastern | Motor Private | Comprehensive,120,Retained policies,12.6,11.42538412338889,-1.17461587661111,-0.09322348227072302,False,-,True
+high,Eastern | Motor Private | Third Party,10,Expected premium,11404.971,11436.49339240737,31.522392407370717,0.0027639169277476213,False,Fav,False
+high,Eastern | Motor Private | Third Party,20,Expected claims,-15677.426446383111,-15422.72823733218,254.69820905093184,0.01624617470998835,False,Fav,False
+high,Eastern | Motor Private | Third Party,30,Commission,-980.694,-984.6878510861576,-3.9938510861576333,-0.004072474274501153,False,Unfav,False
+high,Eastern | Motor Private | Third Party,40,Admin expense,-1140.4971,-1121.2248423928795,19.272257607120537,0.016898120659070974,False,Fav,False
+high,Eastern | Motor Private | Third Party,50,Total expenses,-2121.1911,-2105.912693479037,15.278406520963017,0.00720274873912257,False,Fav,False
+high,Eastern | Motor Private | Third Party,60,UNDERWRITING PROFIT,-6393.646546383114,-6092.147538403847,301.49900797926693,0.047156033070020885,False,Fav,False
+high,Eastern | Motor Private | Third Party,70,Loss ratio,1.37461344236501,1.3485539411557086,-0.02605950120930145,,True,Fav,True
+high,Eastern | Motor Private | Third Party,80,Expense ratio,0.18598829405177797,0.18413972021154157,-0.0018485738402364005,,True,Fav,False
+high,Eastern | Motor Private | Third Party,90,Combined ratio,1.560601736416788,1.5326936613672502,-0.02790807504953774,,True,Fav,True
+high,Eastern | Motor Private | Third Party,100,Underwriting margin,-0.5606017364167882,-0.5326936613672503,0.02790807504953796,,True,Fav,True
+high,Eastern | Motor Private | Third Party,110,Retained exposure (yrs),28.132238193018477,27.658238012165523,-0.47400018085295414,-0.016849003538246234,False,-,False
+high,Eastern | Motor Private | Third Party,120,Retained policies,28.8,28.31453456214429,-0.48546543785571217,-0.01685643881443445,False,-,False
+high,Eastern | Motor Rent a Car | Comprehensive,10,Expected premium,25760.780999999995,25995.17828140561,234.3972814056142,0.009098997480146826,False,Fav,False
+high,Eastern | Motor Rent a Car | Comprehensive,20,Expected claims,-23522.45970694706,-22357.674296131656,1164.7854108154024,0.04951801067264228,False,Fav,False
+high,Eastern | Motor Rent a Car | Comprehensive,30,Commission,-2410.191,-2448.4992956019687,-38.308295601968894,-0.015894298668432873,False,Unfav,False
+high,Eastern | Motor Rent a Car | Comprehensive,40,Admin expense,-2576.0781,-2452.3753095665666,123.70279043343362,0.048019813697975075,False,Fav,False
+high,Eastern | Motor Rent a Car | Comprehensive,50,Total expenses,-4986.2691,-4900.874605168536,85.39449483146473,0.01712592985233483,False,Fav,False
+high,Eastern | Motor Rent a Car | Comprehensive,60,UNDERWRITING PROFIT,-2747.9478069470624,-1263.370619894582,1484.5771870524804,0.540249412051908,False,Fav,True
+high,Eastern | Motor Rent a Car | Comprehensive,70,Loss ratio,0.9131112797763027,0.8600700504571701,-0.05304122931913258,,True,Fav,True
+high,Eastern | Motor Rent a Car | Comprehensive,80,Expense ratio,0.19356047862058223,0.18853014017119238,-0.005030338449389854,,True,Fav,False
+high,Eastern | Motor Rent a Car | Comprehensive,90,Combined ratio,1.106671758396885,1.0486001906283626,-0.0580715677685224,,True,Fav,True
+high,Eastern | Motor Rent a Car | Comprehensive,100,Underwriting margin,-0.10667175839688489,-0.04860019062836252,0.05807156776852237,,True,Fav,True
+high,Eastern | Motor Rent a Car | Comprehensive,110,Retained exposure (yrs),4.403285420944558,4.173994613471352,-0.2292908074732054,-0.052072665192805005,False,-,True
+high,Eastern | Motor Rent a Car | Comprehensive,120,Retained policies,4.5,4.265456701919414,-0.23454329808058638,-0.052120732906796974,False,-,True
+high,Northern | Motor Commercial | Comprehensive,10,Expected premium,30359.016,29952.67255469974,-406.3434453002592,-0.013384605261918212,False,Unfav,False
+high,Northern | Motor Commercial | Comprehensive,20,Expected claims,-65858.32662961193,-59314.87696188137,6543.449667730558,0.09935645198717245,False,Fav,True
+high,Northern | Motor Commercial | Comprehensive,30,Commission,-1977.291,-1958.5051306498167,18.785869350183248,0.009500811640867858,False,Fav,False
+high,Northern | Motor Commercial | Comprehensive,40,Admin expense,-3035.9016,-2722.970232245431,312.93136775456924,0.10307691387447117,False,Fav,True
+high,Northern | Motor Commercial | Comprehensive,50,Total expenses,-5013.1926,-4681.475362895248,331.7172371047527,0.06616885956162001,False,Fav,True
+high,Northern | Motor Commercial | Comprehensive,60,UNDERWRITING PROFIT,-40512.50322961192,-34043.67977007687,6468.823459535044,0.1596747409774168,False,Fav,True
+high,Northern | Motor Commercial | Comprehensive,70,Loss ratio,2.1693169050542327,1.9802866289664203,-0.18903027608781242,,True,Fav,True
+high,Northern | Motor Commercial | Comprehensive,80,Expense ratio,0.16513027299699043,0.1562957480453843,-0.008834524951606137,,True,Fav,False
+high,Northern | Motor Commercial | Comprehensive,90,Combined ratio,2.3344471780512226,2.1365823770118046,-0.19786480103941795,,True,Fav,True
+high,Northern | Motor Commercial | Comprehensive,100,Underwriting margin,-1.3344471780512226,-1.1365823770118046,0.19786480103941795,,True,Fav,True
+high,Northern | Motor Commercial | Comprehensive,110,Retained exposure (yrs),7.042299794661189,6.312743579223389,-0.7295562154378006,-0.10359630187724778,False,-,True
+high,Northern | Motor Commercial | Comprehensive,120,Retained policies,7.199999999999999,6.457837249514451,-0.7421627504855479,-0.10307815978965944,False,-,True
+high,Northern | Motor Commercial | Third Party,10,Expected premium,17338.598999999995,17104.74310088863,-233.85589911136412,-0.013487589113247512,False,Unfav,False
+high,Northern | Motor Commercial | Third Party,20,Expected claims,-7852.823535750851,-7105.787941795911,747.0355939549399,0.09512955315422249,False,Fav,True
+high,Northern | Motor Commercial | Third Party,30,Commission,-1348.8390000000002,-1332.089826667645,16.749173332355213,0.01241747408872016,False,Fav,False
+high,Northern | Motor Commercial | Third Party,40,Admin expense,-1733.8599,-1554.97664553533,178.88325446467002,0.10317053555749806,False,Fav,True
+high,Northern | Motor Commercial | Third Party,50,Total expenses,-3082.6989000000003,-2887.066472202975,195.63242779702523,0.06346141291873339,False,Fav,True
+high,Northern | Motor Commercial | Third Party,60,UNDERWRITING PROFIT,6403.076564249143,7111.888686889743,708.8121226406001,0.11069867984996037,False,Fav,True
+high,Northern | Motor Commercial | Third Party,70,Loss ratio,0.4529099228692499,0.4154279254522536,-0.037481997416996315,,True,Fav,True
+high,Northern | Motor Commercial | Third Party,80,Expense ratio,0.17779400169529275,0.1687874793075954,-0.009006522387697335,,True,Fav,False
+high,Northern | Motor Commercial | Third Party,90,Combined ratio,0.6307039245645427,0.584215404759849,-0.046488519804693706,,True,Fav,True
+high,Northern | Motor Commercial | Third Party,100,Underwriting margin,0.36929607543545734,0.41578459524015093,0.046488519804693595,,True,Fav,True
+high,Northern | Motor Commercial | Third Party,110,Retained exposure (yrs),4.459958932238192,4.025823162290634,-0.43413576994755765,-0.09734075504809421,False,-,True
+high,Northern | Motor Commercial | Third Party,120,Retained policies,4.5,4.061126413832038,-0.43887358616796224,-0.0975274635928805,False,-,True
+high,Northern | Motor Private | Comprehensive,10,Expected premium,57313.72799999999,56264.64478300431,-1049.0832169956775,-0.01830422227979443,False,Unfav,False
+high,Northern | Motor Private | Comprehensive,20,Expected claims,-43490.21041661316,-39016.04860673086,4474.161809882302,0.10287744683279762,False,Fav,True
+high,Northern | Motor Private | Comprehensive,30,Commission,-4196.079,-4139.8801515127725,56.198848487227224,0.013393181703020183,False,Fav,False
+high,Northern | Motor Private | Comprehensive,40,Admin expense,-5731.372799999999,-5114.967707545846,616.4050924541534,0.10754929298163148,False,Fav,True
+high,Northern | Motor Private | Comprehensive,50,Total expenses,-9927.4518,-9254.847859058618,672.6039409413825,0.06775192209358119,False,Fav,True
+high,Northern | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,3896.065783386828,7993.748317214833,4097.682533828005,1.0517488055003816,False,Fav,True
+high,Northern | Motor Private | Comprehensive,70,Loss ratio,0.7588096592951198,0.6934381041096755,-0.06537155518544424,,True,Fav,True
+high,Northern | Motor Private | Comprehensive,80,Expense ratio,0.17321245967458274,0.16448780392645795,-0.008724655748124782,,True,Fav,False
+high,Northern | Motor Private | Comprehensive,90,Combined ratio,0.9320221189697026,0.8579259080361336,-0.074096210933569,,True,Fav,True
+high,Northern | Motor Private | Comprehensive,100,Underwriting margin,0.06797788103029746,0.14207409196386644,0.07409621093356898,,True,Fav,True
+high,Northern | Motor Private | Comprehensive,110,Retained exposure (yrs),15.06283367556468,13.438780974864947,-1.6240527006997318,-0.10781853771208484,False,-,True
+high,Northern | Motor Private | Comprehensive,120,Retained policies,15.3,13.651391199747644,-1.6486088002523562,-0.10775220916682067,False,-,True
+high,Northern | Motor Private | Third Party,10,Expected premium,9893.925,9921.247452150075,27.32245215007606,0.00276153823180144,False,Fav,False
+high,Northern | Motor Private | Third Party,20,Expected claims,-13037.901733533106,-12824.132263933565,213.76946959954148,0.016396002513942298,False,Fav,False
+high,Northern | Motor Private | Third Party,30,Commission,-705.9239999999999,-708.1742561184551,-2.2502561184552405,-0.0031876747616673196,False,Unfav,False
+high,Northern | Motor Private | Third Party,40,Admin expense,-989.3925,-972.6713188382428,16.721181161757272,0.01690045271392018,False,Fav,False
+high,Northern | Motor Private | Third Party,50,Total expenses,-1695.3165,-1680.845574956698,14.470925043301804,0.008535825047005561,False,Fav,False
+high,Northern | Motor Private | Third Party,60,UNDERWRITING PROFIT,-4839.293233533107,-4583.730386740186,255.56284679292094,0.0528099527059115,False,Fav,True
+high,Northern | Motor Private | Third Party,70,Loss ratio,1.3177684016740685,1.2925927234235441,-0.025175678250524358,,True,Fav,True
+high,Northern | Motor Private | Third Party,80,Expense ratio,0.17134923703181498,0.16941877350236184,-0.0019304635294531414,,True,Fav,False
+high,Northern | Motor Private | Third Party,90,Combined ratio,1.4891176387058833,1.4620114969259062,-0.027106141779977166,,True,Fav,True
+high,Northern | Motor Private | Third Party,100,Underwriting margin,-0.4891176387058834,-0.4620114969259059,0.0271061417799775,,True,Fav,True
+high,Northern | Motor Private | Third Party,110,Retained exposure (yrs),24.54209445585215,24.12996603725722,-0.4121284185949321,-0.016792715851383196,False,-,False
+high,Northern | Motor Private | Third Party,120,Retained policies,25.199999999999992,24.77676583930844,-0.4232341606915533,-0.016795006376648946,False,-,False
+high,Northern | Motor Rent a Car | Comprehensive,10,Expected premium,30226.329,30530.782112301797,304.45311230179504,0.010072447510969494,False,Fav,False
+high,Northern | Motor Rent a Car | Comprehensive,20,Expected claims,-13021.801534237971,-12421.569661442403,600.231872795568,0.04609438035262556,False,Fav,False
+high,Northern | Motor Rent a Car | Comprehensive,30,Commission,-1927.845,-1945.395411310804,-17.550411310804066,-0.009103642310872536,False,Unfav,False
+high,Northern | Motor Rent a Car | Comprehensive,40,Admin expense,-3022.6329,-2880.2624634246977,142.3704365753024,0.04710146461229294,False,Fav,False
+high,Northern | Motor Rent a Car | Comprehensive,50,Total expenses,-4950.4779,-4825.6578747355015,124.82002526449833,0.025213732448840613,False,Fav,False
+high,Northern | Motor Rent a Car | Comprehensive,60,UNDERWRITING PROFIT,12254.049565762023,13283.554576123886,1029.5050103618632,0.08401345243765897,False,Fav,True
+high,Northern | Motor Rent a Car | Comprehensive,70,Loss ratio,0.4308098920725031,0.40685396187205336,-0.023955930200449727,,True,Fav,True
+high,Northern | Motor Rent a Car | Comprehensive,80,Expense ratio,0.1637803221158613,0.1580587702268883,-0.005721551888972998,,True,Fav,False
+high,Northern | Motor Rent a Car | Comprehensive,90,Combined ratio,0.5945902141883644,0.5649127320989416,-0.02967748208942289,,True,Fav,True
+high,Northern | Motor Rent a Car | Comprehensive,100,Underwriting margin,0.40540978581163534,0.4350872679010582,0.029677482089422835,,True,Fav,True
+high,Northern | Motor Rent a Car | Comprehensive,110,Retained exposure (yrs),2.663655030800821,2.536566365681462,-0.1270886651193588,-0.04771213375973461,False,-,False
+high,Northern | Motor Rent a Car | Comprehensive,120,Retained policies,2.7,2.571199954125781,-0.12880004587421912,-0.047703720694155224,False,-,False
+high,Other | Motor Private | Comprehensive,10,Expected premium,4372.829999999999,4568.421556160417,195.5915561604179,0.044728826906241026,False,Fav,False
+high,Other | Motor Private | Comprehensive,20,Expected claims,-1904.0731921810157,-1824.990965514581,79.08222666643474,0.041533186324549956,False,Fav,False
+high,Other | Motor Private | Comprehensive,30,Commission,-141.56099999999995,-147.89285746567435,-6.331857465674403,-0.044728826906241165,False,Unfav,False
+high,Other | Motor Private | Comprehensive,40,Admin expense,-437.283,-419.1212436844419,18.161756315558137,0.04153318632454986,False,Fav,False
+high,Other | Motor Private | Comprehensive,50,Total expenses,-578.8439999999999,-567.0141011501162,11.829898849883762,0.020437110603001435,False,Fav,False
+high,Other | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,1889.9128078189835,2176.41648949572,286.5036816767363,0.1515962432189505,False,Fav,True
+high,Other | Motor Private | Comprehensive,70,Loss ratio,0.4354327042626894,0.3994795451951277,-0.03595315906756169,,True,Fav,True
+high,Other | Motor Private | Comprehensive,80,Expense ratio,0.1323728569370408,0.12411597620309579,-0.008256880733944996,,True,Fav,False
+high,Other | Motor Private | Comprehensive,90,Combined ratio,0.5678055611997302,0.5235955213982235,-0.04421003980150673,,True,Fav,True
+high,Other | Motor Private | Comprehensive,100,Underwriting margin,0.43219443880026986,0.4764044786017765,0.04421003980150662,,True,Fav,True
+high,Other | Motor Private | Comprehensive,110,Retained exposure (yrs),0.8698151950718683,0.8336889985070238,-0.036126196564844504,-0.04153318632454976,False,-,False
+high,Other | Motor Private | Comprehensive,120,Retained policies,0.8999999999999999,0.8626201323079051,-0.03737986769209478,-0.04153318632454976,False,-,False
+high,Other | Motor Private | Third Party,10,Expected premium,328.032,342.704486547708,14.67248654770799,0.044728826906240825,False,Fav,False
+high,Other | Motor Private | Third Party,20,Expected claims,-384.3770038035183,-368.4126020856746,15.964401717843657,0.04153318632454966,False,Fav,False
+high,Other | Motor Private | Third Party,30,Commission,-0.0,-0.0,0.0,,False,-,False
+high,Other | Motor Private | Third Party,40,Admin expense,-32.8032,-31.44077858235853,1.3624214176414675,0.041533186324549665,False,Fav,False
+high,Other | Motor Private | Third Party,50,Total expenses,-32.8032,-31.44077858235853,1.3624214176414675,0.041533186324549665,False,Fav,False
+high,Other | Motor Private | Third Party,60,UNDERWRITING PROFIT,-89.1482038035183,-57.14889412032517,31.999309683193133,0.3589450860246077,False,Fav,True
+high,Other | Motor Private | Third Party,70,Loss ratio,1.171766790445805,1.0750154040787203,-0.09675138636708458,,True,Fav,True
+high,Other | Motor Private | Third Party,80,Expense ratio,0.09999999999999999,0.09174311926605505,-0.00825688073394494,,True,Fav,False
+high,Other | Motor Private | Third Party,90,Combined ratio,1.271766790445805,1.1667585233447753,-0.10500826710102973,,True,Fav,True
+high,Other | Motor Private | Third Party,100,Underwriting margin,-0.271766790445805,-0.16675852334477523,0.10500826710102976,,True,Fav,True
+high,Other | Motor Private | Third Party,110,Retained exposure (yrs),0.8698151950718683,0.8336889985070238,-0.036126196564844504,-0.04153318632454976,False,-,False
+high,Other | Motor Private | Third Party,120,Retained policies,0.8999999999999999,0.8626201323079051,-0.03737986769209478,-0.04153318632454976,False,-,False
+high,Southern | Motor Commercial | Comprehensive,10,Expected premium,236733.462,233091.60548542175,-3641.8565145782486,-0.015383784293993253,False,Unfav,False
+high,Southern | Motor Commercial | Comprehensive,20,Expected claims,-289658.50895515457,-258991.48949412024,30667.01946103433,0.1058730143010653,False,Fav,True
+high,Southern | Motor Commercial | Comprehensive,30,Commission,-18876.851999999995,-18689.741625310395,187.11037468960058,0.009912159860637813,False,Fav,False
+high,Southern | Motor Commercial | Comprehensive,40,Admin expense,-23673.3462,-21190.14595322016,2483.200246779841,0.1048943493581757,False,Fav,True
+high,Southern | Motor Commercial | Comprehensive,50,Total expenses,-42550.1982,-39879.88757853056,2670.3106214694417,0.06275671405613903,False,Fav,True
+high,Southern | Motor Commercial | Comprehensive,60,UNDERWRITING PROFIT,-95475.24515515455,-65779.77158722901,29695.47356792554,0.31102798971260176,False,Fav,True
+high,Southern | Motor Commercial | Comprehensive,70,Loss ratio,1.2235638616865856,1.1111146150233984,-0.11244924666318723,,True,Fav,True
+high,Southern | Motor Commercial | Comprehensive,80,Expense ratio,0.17973884148240943,0.17109105021383864,-0.008647791268570793,,True,Fav,False
+high,Southern | Motor Commercial | Comprehensive,90,Combined ratio,1.403302703168995,1.2822056652372371,-0.12109703793175797,,True,Fav,True
+high,Southern | Motor Commercial | Comprehensive,100,Underwriting margin,-0.40330270316899497,-0.28220566523723684,0.12109703793175813,,True,Fav,True
+high,Southern | Motor Commercial | Comprehensive,110,Retained exposure (yrs),39.49650924024638,35.13931938325686,-4.357189856989521,-0.11031835321156956,False,-,True
+high,Southern | Motor Commercial | Comprehensive,120,Retained policies,40.49999999999999,36.03298017904411,-4.467019820955883,-0.11029678570261442,False,-,True
+high,Southern | Motor Commercial | Third Party,10,Expected premium,117011.29499999998,114181.73712039064,-2829.557879609347,-0.024181920895836144,False,Unfav,False
+high,Southern | Motor Commercial | Third Party,20,Expected claims,-30404.685511203428,-27221.380808806185,3183.304702397243,0.10469783353701417,False,Fav,True
+high,Southern | Motor Commercial | Third Party,30,Commission,-8674.65,-8510.016263679463,164.63373632053663,0.018978718025572976,False,Fav,False
+high,Southern | Motor Commercial | Third Party,40,Admin expense,-11701.1295,-10380.157920035514,1320.9715799644855,0.11289265535985099,False,Fav,True
+high,Southern | Motor Commercial | Third Party,50,Total expenses,-20375.7795,-18890.17418371497,1485.6053162850294,0.07291035497734108,False,Fav,True
+high,Southern | Motor Commercial | Third Party,60,UNDERWRITING PROFIT,66230.82998879655,68070.1821278695,1839.3521390729438,0.0277718418957468,False,Fav,False
+high,Southern | Motor Commercial | Third Party,70,Loss ratio,0.2598440219912397,0.2384039820668044,-0.021440039924435272,,True,Fav,True
+high,Southern | Motor Commercial | Third Party,80,Expense ratio,0.17413515079890368,0.16543954103446157,-0.008695609764442114,,True,Fav,False
+high,Southern | Motor Commercial | Third Party,90,Combined ratio,0.43397917279014336,0.403843523101266,-0.030135649688877386,,True,Fav,True
+high,Southern | Motor Commercial | Third Party,100,Underwriting margin,0.5660208272098567,0.5961564768987342,0.030135649688877497,,True,Fav,True
+high,Southern | Motor Commercial | Third Party,110,Retained exposure (yrs),21.14661190965092,18.853849135238047,-2.292762774412875,-0.10842222783530162,False,-,True
+high,Southern | Motor Commercial | Third Party,120,Retained policies,21.6,19.256826682354497,-2.3431733176455047,-0.10848024618729188,False,-,True
+high,Southern | Motor Private | Comprehensive,10,Expected premium,354131.757,354947.7535841792,815.9965841792291,0.002304217478522349,False,Fav,False
+high,Southern | Motor Private | Comprehensive,20,Expected claims,-179531.83214655065,-171432.00413582602,8099.828010724625,0.04511638918781149,False,Fav,False
+high,Southern | Motor Private | Comprehensive,30,Commission,-27552.609,-27688.799330338603,-136.1903303386025,-0.004942919573917755,False,Unfav,False
+high,Southern | Motor Private | Comprehensive,40,Admin expense,-35413.17569999999,-33804.54796039801,1608.6277396019796,0.04542455478235972,False,Fav,False
+high,Southern | Motor Private | Comprehensive,50,Total expenses,-62965.78469999999,-61493.347290736616,1472.4374092633734,0.023384722612110536,False,Fav,False
+high,Southern | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,111634.14015344936,122022.40215761655,10388.26200416719,0.09305631762727565,False,Fav,True
+high,Southern | Motor Private | Comprehensive,70,Loss ratio,0.5069633790187043,0.4829781352459505,-0.02398524377275374,,True,Fav,True
+high,Southern | Motor Private | Comprehensive,80,Expense ratio,0.17780327083176556,0.17324619375609848,-0.004557077075667076,,True,Fav,False
+high,Southern | Motor Private | Comprehensive,90,Combined ratio,0.6847666498504698,0.656224329002049,-0.028542320848420788,,True,Fav,True
+high,Southern | Motor Private | Comprehensive,100,Underwriting margin,0.3152333501495303,0.3437756709979509,0.02854232084842062,,True,Fav,True
+high,Southern | Motor Private | Comprehensive,110,Retained exposure (yrs),79.2936344969199,75.54924486677407,-3.7443896301458324,-0.047221818673115305,False,-,False
+high,Southern | Motor Private | Comprehensive,120,Retained policies,81.00000000000003,77.17659755930747,-3.8234024406925613,-0.04720249926780938,False,-,False
+high,Southern | Motor Private | Third Party,10,Expected premium,78867.612,78867.612,0.0,0.0,False,-,False
+high,Southern | Motor Private | Third Party,20,Expected claims,-88673.06374845613,-88673.06374845613,0.0,0.0,False,-,False
+high,Southern | Motor Private | Third Party,30,Commission,-5941.808999999999,-5941.808999999999,0.0,0.0,False,-,False
+high,Southern | Motor Private | Third Party,40,Admin expense,-7886.761199999999,-7886.761199999999,0.0,0.0,False,-,False
+high,Southern | Motor Private | Third Party,50,Total expenses,-13828.570199999998,-13828.570199999998,0.0,0.0,False,-,False
+high,Southern | Motor Private | Third Party,60,UNDERWRITING PROFIT,-23634.02194845613,-23634.02194845613,0.0,0.0,False,-,False
+high,Southern | Motor Private | Third Party,70,Loss ratio,1.1243279909179467,1.1243279909179467,0.0,,True,-,False
+high,Southern | Motor Private | Third Party,80,Expense ratio,0.17533902509942864,0.17533902509942864,0.0,,True,-,False
+high,Southern | Motor Private | Third Party,90,Combined ratio,1.2996670160173753,1.2996670160173753,0.0,,True,-,False
+high,Southern | Motor Private | Third Party,100,Underwriting margin,-0.2996670160173752,-0.2996670160173752,0.0,,True,-,False
+high,Southern | Motor Private | Third Party,110,Retained exposure (yrs),200.08213552361397,200.08213552361397,0.0,0.0,False,-,False
+high,Southern | Motor Private | Third Party,120,Retained policies,204.30000000000007,204.30000000000007,0.0,0.0,False,-,False
+high,Southern | Motor Rent a Car | Comprehensive,10,Expected premium,170729.262,170391.44423760445,-337.81776239554165,-0.001978675233748399,False,Unfav,False
+high,Southern | Motor Rent a Car | Comprehensive,20,Expected claims,-110288.03737520342,-104196.95529579668,6091.08207940674,0.055228855498486065,False,Fav,True
+high,Southern | Motor Rent a Car | Comprehensive,30,Commission,-12353.022,-12331.79943175342,21.22256824658143,0.0017180061888160995,False,Fav,False
+high,Southern | Motor Rent a Car | Comprehensive,40,Admin expense,-17072.926199999994,-16074.664550717398,998.2616492825964,0.05847044833372481,False,Fav,True
+high,Southern | Motor Rent a Car | Comprehensive,50,Total expenses,-29425.948199999995,-28406.463982470817,1019.4842175291778,0.03464575586825705,False,Fav,False
+high,Southern | Motor Rent a Car | Comprehensive,60,UNDERWRITING PROFIT,31015.27642479657,37788.024959336966,6772.748534540395,0.21836814999738688,False,Fav,True
+high,Southern | Motor Rent a Car | Comprehensive,70,Loss ratio,0.645982042464422,0.6115151835352599,-0.034466858929162125,,True,Fav,True
+high,Southern | Motor Rent a Car | Comprehensive,80,Expense ratio,0.17235445087321935,0.16671297147325703,-0.005641479399962318,,True,Fav,False
+high,Southern | Motor Rent a Car | Comprehensive,90,Combined ratio,0.8183364933376412,0.7782281550085169,-0.040108338329124305,,True,Fav,True
+high,Southern | Motor Rent a Car | Comprehensive,100,Underwriting margin,0.18166350666235864,0.2217718449914832,0.040108338329124554,,True,Fav,True
+high,Southern | Motor Rent a Car | Comprehensive,110,Retained exposure (yrs),24.63572895277207,23.21452666494752,-1.4212022878245492,-0.05768866391366236,False,-,True
+high,Southern | Motor Rent a Car | Comprehensive,120,Retained policies,25.199999999999992,23.7464829146129,-1.453517085387091,-0.057679249420122675,False,-,True
+high,Unspecified | Motor Commercial | Comprehensive,10,Expected premium,64934.892,63350.1251051959,-1584.7668948041028,-0.024405475176644674,False,Unfav,False
+high,Unspecified | Motor Commercial | Comprehensive,20,Expected claims,-117025.09673496714,-105323.80850229206,11701.288232675084,0.09998956257370677,False,Fav,True
+high,Unspecified | Motor Commercial | Comprehensive,30,Commission,-3839.103,-3813.639386012816,25.46361398718409,0.006632698832822169,False,Fav,False
+high,Unspecified | Motor Commercial | Comprehensive,40,Admin expense,-6493.4892,-5759.102282290536,734.3869177094639,0.11309588652422244,False,Fav,True
+high,Unspecified | Motor Commercial | Comprehensive,50,Total expenses,-10332.5922,-9572.741668303352,759.8505316966475,0.07353919684323239,False,Fav,True
+high,Unspecified | Motor Commercial | Comprehensive,60,UNDERWRITING PROFIT,-62422.79693496714,-51546.42506539951,10876.371869567629,0.17423717621782905,False,Fav,True
+high,Unspecified | Motor Commercial | Comprehensive,70,Loss ratio,1.8021912893143357,1.6625667009717322,-0.1396245883426035,,True,Fav,True
+high,Unspecified | Motor Commercial | Comprehensive,80,Expense ratio,0.1591223436546256,0.15110848877421093,-0.008013854880414673,,True,Fav,False
+high,Unspecified | Motor Commercial | Comprehensive,90,Combined ratio,1.9613136329689613,1.813675189745943,-0.14763844322301822,,True,Fav,True
+high,Unspecified | Motor Commercial | Comprehensive,100,Underwriting margin,-0.9613136329689613,-0.8136751897459432,0.1476384432230181,,True,Fav,True
+high,Unspecified | Motor Commercial | Comprehensive,110,Retained exposure (yrs),14.146201232032851,12.62492914602248,-1.521272086010372,-0.10753926521033666,False,-,True
+high,Unspecified | Motor Commercial | Comprehensive,120,Retained policies,14.4,12.852066158771644,-1.5479338412283568,-0.1074954056408581,False,-,True
+high,Unspecified | Motor Commercial | Third Party,10,Expected premium,49139.96399999999,49786.09442348514,646.1304234851486,0.013148776899493633,False,Fav,False
+high,Unspecified | Motor Commercial | Third Party,20,Expected claims,-7014.291913513318,-6364.575652405907,649.7162611074109,0.09262749100243549,False,Fav,True
+high,Unspecified | Motor Commercial | Third Party,30,Commission,-3813.723,-3886.5709177001336,-72.84791770013362,-0.019101523026222308,False,Unfav,False
+high,Unspecified | Motor Commercial | Third Party,40,Admin expense,-4913.996400000001,-4526.008583953195,387.9878160468061,0.07895565736409697,False,Fav,True
+high,Unspecified | Motor Commercial | Third Party,50,Total expenses,-8727.719400000002,-8412.579501653328,315.13989834667336,0.03610793196979652,False,Fav,False
+high,Unspecified | Motor Commercial | Third Party,60,UNDERWRITING PROFIT,33397.95268648667,35008.93926942591,1610.9865829392365,0.04823608794412918,False,Fav,False
+high,Unspecified | Motor Commercial | Third Party,70,Loss ratio,0.14274108775320468,0.12783842006702184,-0.014902667686182841,,True,Fav,True
+high,Unspecified | Motor Commercial | Third Party,80,Expense ratio,0.1776093975160422,0.16897448171160295,-0.008634915804439258,,True,Fav,False
+high,Unspecified | Motor Commercial | Third Party,90,Combined ratio,0.32035048526924687,0.2968129017786248,-0.02353758349062207,,True,Fav,True
+high,Unspecified | Motor Commercial | Third Party,100,Underwriting margin,0.6796495147307531,0.7031870982213753,0.023537583490622183,,True,Fav,True
+high,Unspecified | Motor Commercial | Third Party,110,Retained exposure (yrs),4.37371663244353,3.946002558459626,-0.42771407398390426,-0.09779190330054528,False,-,True
+high,Unspecified | Motor Commercial | Third Party,120,Retained policies,4.5,4.05928192346067,-0.44071807653932993,-0.09793735034207332,False,-,True
+high,Unspecified | Motor Private | Comprehensive,10,Expected premium,76074.786,74920.40157089072,-1154.3844291092682,-0.015174336857277105,False,Unfav,False
+high,Unspecified | Motor Private | Comprehensive,20,Expected claims,-56776.59134894868,-51739.60105595549,5036.990292993185,0.08871596855887078,False,Fav,True
+high,Unspecified | Motor Private | Comprehensive,30,Commission,-5015.924999999999,-5011.187587567445,4.737412432554265,0.0009444743357514847,False,Fav,False
+high,Unspecified | Motor Private | Comprehensive,40,Admin expense,-7607.478599999999,-6873.4313367789655,734.0472632210331,0.09649021730025414,False,Fav,True
+high,Unspecified | Motor Private | Comprehensive,50,Total expenses,-12623.403599999998,-11884.61892434641,738.7846756535873,0.05852499841275672,False,Fav,True
+high,Unspecified | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,6674.7910510513175,11296.181590588822,4621.390539537504,0.6923648252344332,False,Fav,True
+high,Unspecified | Motor Private | Comprehensive,70,Loss ratio,0.7463260080540836,0.6905942836811781,-0.05573172437290541,,True,Fav,True
+high,Unspecified | Motor Private | Comprehensive,80,Expense ratio,0.16593413223666512,0.1586299415800784,-0.007304190656586718,,True,Fav,False
+high,Unspecified | Motor Private | Comprehensive,90,Combined ratio,0.9122601402907486,0.8492242252612565,-0.06303591502949213,,True,Fav,True
+high,Unspecified | Motor Private | Comprehensive,100,Underwriting margin,0.08773985970925134,0.15077577473874346,0.06303591502949212,,True,Fav,True
+high,Unspecified | Motor Private | Comprehensive,110,Retained exposure (yrs),22.129774127310057,20.02343556142875,-2.1063385658813054,-0.09518120491261144,False,-,True
+high,Unspecified | Motor Private | Comprehensive,120,Retained policies,22.5,20.358138832308484,-2.1418611676915162,-0.0951938296751785,False,-,True
+high,Unspecified | Motor Private | Third Party,10,Expected premium,11418.336,11418.336,0.0,0.0,False,-,False
+high,Unspecified | Motor Private | Third Party,20,Expected claims,-14149.04637086533,-14149.04637086533,0.0,0.0,False,-,False
+high,Unspecified | Motor Private | Third Party,30,Commission,-813.4110000000001,-813.4110000000001,0.0,0.0,False,-,False
+high,Unspecified | Motor Private | Third Party,40,Admin expense,-1141.8336,-1141.8336,0.0,0.0,False,-,False
+high,Unspecified | Motor Private | Third Party,50,Total expenses,-1955.2446,-1955.2446,0.0,0.0,False,-,False
+high,Unspecified | Motor Private | Third Party,60,UNDERWRITING PROFIT,-4685.95497086533,-4685.95497086533,0.0,0.0,False,-,False
+high,Unspecified | Motor Private | Third Party,70,Loss ratio,1.2391513413920672,1.2391513413920672,0.0,,True,-,False
+high,Unspecified | Motor Private | Third Party,80,Expense ratio,0.17123726259237773,0.17123726259237773,0.0,,True,-,False
+high,Unspecified | Motor Private | Third Party,90,Combined ratio,1.4103886039844449,1.4103886039844449,0.0,,True,-,False
+high,Unspecified | Motor Private | Third Party,100,Underwriting margin,-0.4103886039844449,-0.4103886039844449,0.0,,True,-,False
+high,Unspecified | Motor Private | Third Party,110,Retained exposure (yrs),28.248049281314163,28.248049281314163,0.0,0.0,False,-,False
+high,Unspecified | Motor Private | Third Party,120,Retained policies,28.8,28.8,0.0,0.0,False,-,False
+high,Unspecified | Motor Rent a Car | Comprehensive,10,Expected premium,51742.13399999999,51573.51809034925,-168.61590965073992,-0.0032587737809720014,False,Unfav,False
+high,Unspecified | Motor Rent a Car | Comprehensive,20,Expected claims,-24920.213189427755,-23654.81720976371,1265.3959796640447,0.05077789543954949,False,Fav,True
+high,Unspecified | Motor Rent a Car | Comprehensive,30,Commission,-3203.415,-3196.52621983925,6.888780160749775,0.0021504488680828973,False,Fav,False
+high,Unspecified | Motor Rent a Car | Comprehensive,40,Admin expense,-5174.2134,-4865.426234938608,308.78716506139153,0.059678088472615284,False,Fav,True
+high,Unspecified | Motor Rent a Car | Comprehensive,50,Total expenses,-8377.6284,-8061.952454777858,315.6759452221413,0.03768082447081818,False,Fav,False
+high,Unspecified | Motor Rent a Car | Comprehensive,60,UNDERWRITING PROFIT,18444.292410572238,19856.748425807677,1412.4560152354388,0.07657957181517147,False,Fav,True
+high,Unspecified | Motor Rent a Car | Comprehensive,70,Loss ratio,0.4816232200517234,0.4586620825114923,-0.022961137540231102,,True,Fav,True
+high,Unspecified | Motor Rent a Car | Comprehensive,80,Expense ratio,0.16191114962517783,0.15631961427673982,-0.005591535348438009,,True,Fav,False
+high,Unspecified | Motor Rent a Car | Comprehensive,90,Combined ratio,0.6435343696769013,0.6149816967882322,-0.02855267288866903,,True,Fav,True
+high,Unspecified | Motor Rent a Car | Comprehensive,100,Underwriting margin,0.3564656303230988,0.3850183032117677,0.028552672888668917,,True,Fav,True
+high,Unspecified | Motor Rent a Car | Comprehensive,110,Retained exposure (yrs),5.278028747433263,4.9977056580295045,-0.2803230894037583,-0.05311132296126297,False,-,True
+high,Unspecified | Motor Rent a Car | Comprehensive,120,Retained policies,5.4,5.1123593872523205,-0.2876406127476798,-0.05326678013845922,False,-,True
+high,Western | Motor Commercial | Comprehensive,10,Expected premium,286130.07,280256.46438845433,-5873.605611545674,-0.020527746739605782,False,Unfav,False
+high,Western | Motor Commercial | Comprehensive,20,Expected claims,-430363.39116760826,-385306.4462202248,45056.94494738348,0.10469511550492387,False,Fav,True
+high,Western | Motor Commercial | Comprehensive,30,Commission,-22085.199,-21829.065043056664,256.13395694333667,0.011597539009874291,False,Fav,False
+high,Western | Motor Commercial | Comprehensive,40,Admin expense,-28613.007,-25477.86039895039,3135.1466010496115,0.10957067885418724,False,Fav,True
+high,Western | Motor Commercial | Comprehensive,50,Total expenses,-50698.206000000006,-47306.92544200705,3391.2805579929554,0.0668915298106003,False,Fav,True
+high,Western | Motor Commercial | Comprehensive,60,UNDERWRITING PROFIT,-194931.52716760823,-152356.9072737775,42574.619893830735,0.21840807647920257,False,Fav,True
+high,Western | Motor Commercial | Comprehensive,70,Loss ratio,1.5040830597343657,1.374835178417737,-0.12924788131662868,,True,Fav,True
+high,Western | Motor Commercial | Comprehensive,80,Expense ratio,0.17718587214548964,0.16879869495690372,-0.00838717718858592,,True,Fav,False
+high,Western | Motor Commercial | Comprehensive,90,Combined ratio,1.6812689318798555,1.5436338733746409,-0.13763505850521462,,True,Fav,True
+high,Western | Motor Commercial | Comprehensive,100,Underwriting margin,-0.6812689318798553,-0.5436338733746408,0.1376350585052145,,True,Fav,True
+high,Western | Motor Commercial | Comprehensive,110,Retained exposure (yrs),46.58069815195069,41.42434904190677,-5.156349110043919,-0.11069711950695577,False,-,True
+high,Western | Motor Commercial | Comprehensive,120,Retained policies,47.7,42.424525508486994,-5.275474491513009,-0.11059694950761025,False,-,True
+high,Western | Motor Commercial | Third Party,10,Expected premium,135585.56699999998,132852.37530410846,-2733.1916958915244,-0.020158426566830118,False,Unfav,False
+high,Western | Motor Commercial | Third Party,20,Expected claims,-43573.060527437,-38966.04804982687,4607.012477610129,0.10573075248430608,False,Fav,True
+high,Western | Motor Commercial | Third Party,30,Commission,-9436.833,-9306.250138783607,130.5828612163932,0.013837572543287902,False,Fav,False
+high,Western | Motor Commercial | Third Party,40,Admin expense,-13558.556699999996,-12077.488664009858,1481.068035990138,0.10923493324257283,False,Fav,True
+high,Western | Motor Commercial | Third Party,50,Total expenses,-22995.3897,-21383.738802793465,1611.6508972065349,0.07008582669101428,False,Fav,True
+high,Western | Motor Commercial | Third Party,60,UNDERWRITING PROFIT,69017.11677256298,72502.58845148812,3485.4716789251397,0.0505015544246953,False,Fav,True
+high,Western | Motor Commercial | Third Party,70,Loss ratio,0.32136946056682425,0.2933033599183367,-0.028066100648487524,,True,Fav,True
+high,Western | Motor Commercial | Third Party,80,Expense ratio,0.16960057186617808,0.16095864867936743,-0.008641923186810646,,True,Fav,False
+high,Western | Motor Commercial | Third Party,90,Combined ratio,0.49097003243300236,0.45426200859770416,-0.0367080238352982,,True,Fav,True
+high,Western | Motor Commercial | Third Party,100,Underwriting margin,0.5090299675669977,0.5457379914022958,0.03670802383529814,,True,Fav,True
+high,Western | Motor Commercial | Third Party,110,Retained exposure (yrs),24.648049281314165,21.957852520783803,-2.6901967605303625,-0.10914440854229454,False,-,True
+high,Western | Motor Commercial | Third Party,120,Retained policies,25.199999999999992,22.45132912033317,-2.7486708796668218,-0.10907424125661995,False,-,True
+high,Western | Motor Private | Comprehensive,10,Expected premium,388105.3619999999,388647.8448468759,542.4828468759661,0.0013977721000308317,False,Fav,False
+high,Western | Motor Private | Comprehensive,20,Expected claims,-269235.07845424785,-257058.9222765551,12176.156177692756,0.04522499908852663,False,Fav,False
+high,Western | Motor Private | Comprehensive,30,Commission,-31714.938,-31840.142276754497,-125.204276754499,-0.003947801403694972,False,Unfav,False
+high,Western | Motor Private | Comprehensive,40,Admin expense,-38810.5362,-37014.08046160723,1796.455738392775,0.046287836095208985,False,Fav,False
+high,Western | Motor Private | Comprehensive,50,Total expenses,-70525.4742,-68854.22273836173,1671.2514616382687,0.023697131860451477,False,Fav,False
+high,Western | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,48344.80934575206,62734.69983195905,14389.89048620699,0.2976511993933718,False,Fav,True
+high,Western | Motor Private | Comprehensive,70,Loss ratio,0.693716461599023,0.6614186227581791,-0.03229783884084392,,True,Fav,True
+high,Western | Motor Private | Comprehensive,80,Expense ratio,0.1817173404576668,0.17716352644510286,-0.004553814012563939,,True,Fav,False
+high,Western | Motor Private | Comprehensive,90,Combined ratio,0.8754338020566897,0.838582149203282,-0.036851652853407746,,True,Fav,True
+high,Western | Motor Private | Comprehensive,100,Underwriting margin,0.12456619794331023,0.16141785079671808,0.03685165285340786,,True,Fav,True
+high,Western | Motor Private | Comprehensive,110,Retained exposure (yrs),92.3112936344969,87.95083021200395,-4.3604634224929555,-0.04723651084078668,False,-,False
+high,Western | Motor Private | Comprehensive,120,Retained policies,94.50000000000004,90.03620764587566,-4.463792354124379,-0.04723589792724209,False,-,False
+high,Western | Motor Private | Third Party,10,Expected premium,70130.56499999999,70309.30635195268,178.741351952689,0.0025486940245339393,False,Fav,False
+high,Western | Motor Private | Third Party,20,Expected claims,-97741.35684485036,-96124.3030209568,1617.0538238935696,0.016544212972819664,False,Fav,False
+high,Western | Motor Private | Third Party,30,Commission,-5292.405,-5310.008195577997,-17.603195577997212,-0.0033261240547534086,False,Unfav,False
+high,Western | Motor Private | Third Party,40,Admin expense,-7013.0565,-6893.069250191438,119.9872498085615,0.017109123505359113,False,Fav,False
+high,Western | Motor Private | Third Party,50,Total expenses,-12305.4615,-12203.077445769435,102.38405423056429,0.008320212470744335,False,Fav,False
+high,Western | Motor Private | Third Party,60,UNDERWRITING PROFIT,-39916.25334485036,-38018.07411477357,1898.179230076792,0.04755404305303314,False,Fav,False
+high,Western | Motor Private | Third Party,70,Loss ratio,1.3937055383034542,1.3671632961329474,-0.026542242170506825,,True,Fav,True
+high,Western | Motor Private | Third Party,80,Expense ratio,0.17546502726735486,0.1735627625834275,-0.001902264683927346,,True,Fav,False
+high,Western | Motor Private | Third Party,90,Combined ratio,1.569170565570809,1.540726058716375,-0.028444506854434115,,True,Fav,True
+high,Western | Motor Private | Third Party,100,Underwriting margin,-0.5691705655708088,-0.5407260587163751,0.02844450685443367,,True,Fav,True
+high,Western | Motor Private | Third Party,110,Retained exposure (yrs),175.10882956878845,172.1166440743273,-2.992185494461154,-0.017087576347974653,False,-,False
+high,Western | Motor Private | Third Party,120,Retained policies,179.10000000000008,176.03887155834025,-3.0611284416598323,-0.017091727759128036,False,-,False
+high,Western | Motor Rent a Car | Comprehensive,10,Expected premium,196980.588,193193.3786413123,-3787.209358687687,-0.01922630751151828,False,Unfav,False
+high,Western | Motor Rent a Car | Comprehensive,20,Expected claims,-166775.1524208945,-149465.32115473555,17309.83126615896,0.10379142824869808,False,Fav,True
+high,Western | Motor Rent a Car | Comprehensive,30,Commission,-15879.599999999997,-15702.918900840485,176.6810991595121,0.011126294060273063,False,Fav,False
+high,Western | Motor Rent a Car | Comprehensive,40,Admin expense,-19698.0588,-17563.034421937486,2135.0243780625133,0.10838755228319825,False,Fav,True
+high,Western | Motor Rent a Car | Comprehensive,50,Total expenses,-35577.6588,-33265.95332277797,2311.705477222029,0.06497632377153578,False,Fav,True
+high,Western | Motor Rent a Car | Comprehensive,60,UNDERWRITING PROFIT,-5372.223220894513,10462.104163798787,15834.3273846933,2.947444053163668,False,Fav,True
+high,Western | Motor Rent a Car | Comprehensive,70,Loss ratio,0.8466578057980745,0.7736565414710026,-0.07300126432707188,,True,Fav,True
+high,Western | Motor Rent a Car | Comprehensive,80,Expense ratio,0.18061505025053534,0.17218992471030994,-0.008425125540225398,,True,Fav,False
+high,Western | Motor Rent a Car | Comprehensive,90,Combined ratio,1.0272728560486097,0.9458464661813125,-0.08142638986729722,,True,Fav,True
+high,Western | Motor Rent a Car | Comprehensive,100,Underwriting margin,-0.027272856048609795,0.054153533818687406,0.0814263898672972,,True,Fav,True
+high,Western | Motor Rent a Car | Comprehensive,110,Retained exposure (yrs),29.002053388090346,25.823118097689274,-3.1789352904010713,-0.10961069714141333,False,-,True
+high,Western | Motor Rent a Car | Comprehensive,120,Retained policies,29.7,26.441917017635078,-3.2580829823649218,-0.10969976371599063,False,-,True
+low,PORTFOLIO,10,Expected premium,3680434.7999999993,3992191.106305872,311756.30630587274,0.08470637934025425,False,Fav,True
+low,PORTFOLIO,20,Expected claims,-3481903.027264173,-3249679.904395221,232223.12286895234,0.06669431085546815,False,Fav,True
+low,PORTFOLIO,30,Commission,-287139.636,-312436.5152607506,-25296.879260750604,-0.08809957278329421,False,Unfav,True
+low,PORTFOLIO,40,Admin expense,-368043.48000000004,-346313.3159808318,21730.164019168238,0.05904238276186345,False,Fav,True
+low,PORTFOLIO,50,Total expenses,-655183.116,-658749.8312415824,-3566.7152415823657,-0.005443844864864261,False,Unfav,False
+low,PORTFOLIO,60,UNDERWRITING PROFIT,-456651.3432641736,83761.37066906877,540412.7139332424,1.1834252146732713,False,Fav,True
+low,PORTFOLIO,70,Loss ratio,0.9460575221341168,0.814009103738091,-0.13204841839602577,,True,Fav,True
+low,PORTFOLIO,80,Expense ratio,0.17801785702058903,0.16500959340374588,-0.013008263616843152,,True,Fav,True
+low,PORTFOLIO,90,Combined ratio,1.1240753791547058,0.9790186971418369,-0.14505668201286892,,True,Fav,True
+low,PORTFOLIO,100,Underwriting margin,-0.12407537915470576,0.020981302858163117,0.14505668201286886,,True,Fav,True
+low,PORTFOLIO,110,Retained exposure (yrs),1287.6344969199176,1216.3487800058467,-71.28571691407092,-0.05536176382707182,False,-,True
+low,PORTFOLIO,120,Retained policies,1315.8000000000004,1242.954694649392,-72.84530535060844,-0.055361989170549034,False,-,True
+low,Central | Motor Commercial | Comprehensive,10,Expected premium,273767.10300000006,309109.17671583075,35342.07371583069,0.12909540017242568,False,Fav,True
+low,Central | Motor Commercial | Comprehensive,20,Expected claims,-517891.60423712153,-465209.8724609351,52681.73177618644,0.10172347136962973,False,Fav,True
+low,Central | Motor Commercial | Comprehensive,30,Commission,-20331.512999999995,-23060.93477377188,-2729.4217737718864,-0.13424587603351934,False,Unfav,True
+low,Central | Motor Commercial | Comprehensive,40,Admin expense,-27376.7103,-24532.474342526253,2844.2359574737457,0.10389253954569354,False,Fav,True
+low,Central | Motor Commercial | Comprehensive,50,Total expenses,-47708.2233,-47593.409116298135,114.81418370186293,0.002406591060410815,False,Fav,False
+low,Central | Motor Commercial | Comprehensive,60,UNDERWRITING PROFIT,-291832.7245371215,-203694.10486140248,88138.619675719,0.3020176020887187,False,Fav,True
+low,Central | Motor Commercial | Comprehensive,70,Loss ratio,1.8917232880136128,1.5050018165219674,-0.3867214714916454,,True,Fav,True
+low,Central | Motor Commercial | Comprehensive,80,Expense ratio,0.17426572724481065,0.15396957677530082,-0.020296150469509833,,True,Fav,True
+low,Central | Motor Commercial | Comprehensive,90,Combined ratio,2.0659890152584235,1.6589713932972683,-0.4070176219611552,,True,Fav,True
+low,Central | Motor Commercial | Comprehensive,100,Underwriting margin,-1.0659890152584235,-0.6589713932972682,0.4070176219611553,,True,Fav,True
+low,Central | Motor Commercial | Comprehensive,110,Retained exposure (yrs),47.51704312114987,42.448777795276,-5.068265325873867,-0.10666205203366239,False,-,True
+low,Central | Motor Commercial | Comprehensive,120,Retained policies,48.6,43.40658010639542,-5.193419893604585,-0.10686049163795441,False,-,True
+low,Central | Motor Commercial | Third Party,10,Expected premium,126723.474,142516.59595197663,15793.121951976631,0.12462664929764024,False,Fav,True
+low,Central | Motor Commercial | Third Party,20,Expected claims,-48455.16080290551,-43524.53599492837,4930.624807977147,0.1017564429934054,False,Fav,True
+low,Central | Motor Commercial | Third Party,30,Commission,-10326.996,-11700.660955236654,-1373.6649552366544,-0.13301689622390234,False,Unfav,True
+low,Central | Motor Commercial | Third Party,40,Admin expense,-12672.3474,-11310.840948569576,1361.506451430425,0.10743916722409495,False,Fav,True
+low,Central | Motor Commercial | Third Party,50,Total expenses,-22999.3434,-23011.50190380623,-12.158503806229419,-0.0005286456919561198,False,Unfav,False
+low,Central | Motor Commercial | Third Party,60,UNDERWRITING PROFIT,55268.96979709448,75980.55805324204,20711.58825614756,0.3747417100804433,False,Fav,True
+low,Central | Motor Commercial | Third Party,70,Loss ratio,0.38236925861822185,0.3053997725962715,-0.07696948602195036,,True,Fav,True
+low,Central | Motor Commercial | Third Party,80,Expense ratio,0.18149236817797468,0.16146541916816723,-0.02002694900980745,,True,Fav,True
+low,Central | Motor Commercial | Third Party,90,Combined ratio,0.5638616267961966,0.46686519176443864,-0.09699643503175792,,True,Fav,True
+low,Central | Motor Commercial | Third Party,100,Underwriting margin,0.43613837320380344,0.5331348082355614,0.09699643503175792,,True,Fav,True
+low,Central | Motor Commercial | Third Party,110,Retained exposure (yrs),22.07556468172484,19.747849997247577,-2.327714684477261,-0.10544304157275984,False,-,True
+low,Central | Motor Commercial | Third Party,120,Retained policies,22.5,20.12831419367628,-2.3716858063237183,-0.10540825805883193,False,-,True
+low,Central | Motor Private | Comprehensive,10,Expected premium,417224.259,451934.7159243673,34710.45692436729,0.08319376492527317,False,Fav,True
+low,Central | Motor Private | Comprehensive,20,Expected claims,-350727.1262527296,-333942.1629118205,16784.963340909104,0.047857613753017975,False,Fav,False
+low,Central | Motor Private | Comprehensive,30,Commission,-34272.522,-37275.85749144046,-3003.3354914404626,-0.08763100338634149,False,Unfav,True
+low,Central | Motor Private | Comprehensive,40,Admin expense,-41722.4259,-39643.39613371642,2079.02976628358,0.049830030767304447,False,Fav,False
+low,Central | Motor Private | Comprehensive,50,Total expenses,-75994.9479,-76919.25362515688,-924.3057251568825,-0.012162725953482528,False,Unfav,False
+low,Central | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,-9497.815152729658,41073.29938738991,50571.11454011957,5.324499764094219,False,Fav,True
+low,Central | Motor Private | Comprehensive,70,Loss ratio,0.840620166941754,0.738916819498564,-0.10170334744318998,,True,Fav,True
+low,Central | Motor Private | Comprehensive,80,Expense ratio,0.18214412575659938,0.17019992249949117,-0.01194420325710821,,True,Fav,True
+low,Central | Motor Private | Comprehensive,90,Combined ratio,1.0227642926983533,0.9091167419980551,-0.1136475507002982,,True,Fav,True
+low,Central | Motor Private | Comprehensive,100,Underwriting margin,-0.02276429269835352,0.09088325800194481,0.11364755070029833,,True,Fav,True
+low,Central | Motor Private | Comprehensive,110,Retained exposure (yrs),98.70554414784394,93.76528087893776,-4.940263268906179,-0.050050514503081144,False,-,True
+low,Central | Motor Private | Comprehensive,120,Retained policies,100.80000000000004,95.75503764306396,-5.044962356936082,-0.050049229731508736,False,-,True
+low,Central | Motor Private | Third Party,10,Expected premium,67758.06599999999,75028.4670830631,7270.401083063101,0.10729941853805423,False,Fav,True
+low,Central | Motor Private | Third Party,20,Expected claims,-122037.33897729105,-112988.23123521492,9049.107742076128,0.07415032004065579,False,Fav,True
+low,Central | Motor Private | Third Party,30,Commission,-5455.169999999998,-6082.242923795409,-627.072923795411,-0.11495020756372601,False,Unfav,True
+low,Central | Motor Private | Third Party,40,Admin expense,-6775.8066,-6252.372256921926,523.4343430780737,0.0772504845516213,False,Fav,True
+low,Central | Motor Private | Third Party,50,Total expenses,-12230.976599999998,-12334.615180717336,-103.63858071733739,-0.008473450984881895,False,Unfav,False
+low,Central | Motor Private | Third Party,60,UNDERWRITING PROFIT,-66510.24957729105,-50294.37933286916,16215.870244421887,0.243810094646804,False,Fav,True
+low,Central | Motor Private | Third Party,70,Loss ratio,1.8010747086153707,1.5059381542492003,-0.29513655436617037,,True,Fav,True
+low,Central | Motor Private | Third Party,80,Expense ratio,0.18050952930091008,0.16439913622467903,-0.01611039307623105,,True,Fav,True
+low,Central | Motor Private | Third Party,90,Combined ratio,1.9815842379162807,1.6703372904738794,-0.31124694744240133,,True,Fav,True
+low,Central | Motor Private | Third Party,100,Underwriting margin,-0.9815842379162808,-0.6703372904738794,0.31124694744240144,,True,Fav,True
+low,Central | Motor Private | Third Party,110,Retained exposure (yrs),174.54702258726894,161.0800910935851,-13.46693149368383,-0.07715360190089016,False,-,True
+low,Central | Motor Private | Third Party,120,Retained policies,178.20000000000007,164.45499870028215,-13.745001299717927,-0.07713244275935983,False,-,True
+low,Central | Motor Rent a Car | Comprehensive,10,Expected premium,185823.819,193568.718509972,7744.89950997202,0.041678723167195376,False,Fav,False
+low,Central | Motor Rent a Car | Comprehensive,20,Expected claims,-177258.4395087121,-174028.96308520297,3229.476423509128,0.018219027722797945,False,Fav,False
+low,Central | Motor Rent a Car | Comprehensive,30,Commission,-17041.238999999998,-17773.67013109331,-732.4311310933117,-0.04297992247472803,False,Unfav,False
+low,Central | Motor Rent a Car | Comprehensive,40,Admin expense,-18582.3819,-18261.199859431323,321.1820405686776,0.01728422342717419,False,Fav,False
+low,Central | Motor Rent a Car | Comprehensive,50,Total expenses,-35623.620899999994,-36034.86999052463,-411.2490905246377,-0.011544281017335825,False,Unfav,False
+low,Central | Motor Rent a Car | Comprehensive,60,UNDERWRITING PROFIT,-27058.2414087121,-16495.11456575562,10563.12684295648,0.39038482521467227,False,Fav,True
+low,Central | Motor Rent a Car | Comprehensive,70,Loss ratio,0.9539059118611275,0.8990552007825457,-0.05485071107858175,,True,Fav,True
+low,Central | Motor Rent a Car | Comprehensive,80,Expense ratio,0.1917064297338545,0.1861606062586411,-0.005545823475213402,,True,Fav,False
+low,Central | Motor Rent a Car | Comprehensive,90,Combined ratio,1.145612341594982,1.0852158070411868,-0.06039653455379512,,True,Fav,True
+low,Central | Motor Rent a Car | Comprehensive,100,Underwriting margin,-0.14561234159498196,-0.08521580704118702,0.06039653455379494,,True,Fav,True
+low,Central | Motor Rent a Car | Comprehensive,110,Retained exposure (yrs),25.527720739219703,25.04110495786325,-0.486615781356452,-0.019062249478812115,False,-,False
+low,Central | Motor Rent a Car | Comprehensive,120,Retained policies,26.09999999999999,25.601549984985034,-0.49845001501495645,-0.01909770172471098,False,-,False
+low,Eastern | Motor Commercial | Comprehensive,10,Expected premium,79801.002,90076.63410601408,10275.63210601409,0.128765702791728,False,Fav,True
+low,Eastern | Motor Commercial | Comprehensive,20,Expected claims,-118198.90390233412,-105753.58768646524,12445.31621586888,0.10529129970741731,False,Fav,True
+low,Eastern | Motor Commercial | Comprehensive,30,Commission,-6600.671999999999,-7491.025084285584,-890.3530842855853,-0.1348882483913131,False,Unfav,True
+low,Eastern | Motor Commercial | Comprehensive,40,Admin expense,-7980.1002,-7092.6483548042615,887.4518451957383,0.11120810803800914,False,Fav,True
+low,Eastern | Motor Commercial | Comprehensive,50,Total expenses,-14580.7722,-14583.673439089844,-2.901239089844239,-0.00019897705348172431,False,Unfav,False
+low,Eastern | Motor Commercial | Comprehensive,60,UNDERWRITING PROFIT,-52978.67410233413,-30260.62701954103,22718.047082793102,0.4288149423843771,False,Fav,True
+low,Eastern | Motor Commercial | Comprehensive,70,Loss ratio,1.4811706738009898,1.1740401796319393,-0.30713049416905047,,True,Fav,True
+low,Eastern | Motor Commercial | Comprehensive,80,Expense ratio,0.18271414937872585,0.1619029572300165,-0.020811192148709357,,True,Fav,True
+low,Eastern | Motor Commercial | Comprehensive,90,Combined ratio,1.6638848231797154,1.3359431368619559,-0.32794168631775955,,True,Fav,True
+low,Eastern | Motor Commercial | Comprehensive,100,Underwriting margin,-0.6638848231797156,-0.33594313686195604,0.3279416863177596,,True,Fav,True
+low,Eastern | Motor Commercial | Comprehensive,110,Retained exposure (yrs),12.340041067761806,11.003994989967026,-1.33604607779478,-0.1082691759661305,False,-,True
+low,Eastern | Motor Commercial | Comprehensive,120,Retained policies,12.6,11.237185573417312,-1.3628144265826876,-0.10815987512561014,False,-,True
+low,Eastern | Motor Private | Comprehensive,10,Expected premium,54623.214,57819.49355937712,3196.2795593771225,0.05851504013251806,False,Fav,True
+low,Eastern | Motor Private | Comprehensive,20,Expected claims,-36455.646674689335,-35425.3524874673,1030.2941872220326,0.028261580336671192,False,Fav,False
+low,Eastern | Motor Private | Comprehensive,30,Commission,-4929.606,-5223.04158562668,-293.4355856266802,-0.059525159947200694,False,Unfav,True
+low,Eastern | Motor Private | Comprehensive,40,Admin expense,-5462.321400000001,-5304.540693520836,157.78070647916502,0.028885284282093873,False,Fav,False
+low,Eastern | Motor Private | Comprehensive,50,Total expenses,-10391.9274,-10527.582279147517,-135.6548791475161,-0.013053870944817811,False,Unfav,False
+low,Eastern | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,7775.639925310665,11866.558792762298,4090.9188674516336,0.5261198958217175,False,Fav,True
+low,Eastern | Motor Private | Comprehensive,70,Loss ratio,0.6674020806371689,0.6126887370794352,-0.05471334355773372,,True,Fav,True
+low,Eastern | Motor Private | Comprehensive,80,Expense ratio,0.19024745413186417,0.18207669474545513,-0.008170759386409043,,True,Fav,False
+low,Eastern | Motor Private | Comprehensive,90,Combined ratio,0.857649534769033,0.7947654318248902,-0.06288410294414282,,True,Fav,True
+low,Eastern | Motor Private | Comprehensive,100,Underwriting margin,0.1423504652309669,0.20523456817510966,0.06288410294414276,,True,Fav,True
+low,Eastern | Motor Private | Comprehensive,110,Retained exposure (yrs),12.39425051334702,12.033041700089868,-0.3612088132571518,-0.029143255807858346,False,-,False
+low,Eastern | Motor Private | Comprehensive,120,Retained policies,12.6,12.232815329947837,-0.36718467005216304,-0.0291416404803304,False,-,False
+low,Eastern | Motor Private | Third Party,10,Expected premium,11404.971,12411.45592056661,1006.4849205666105,0.08824966942630635,False,Fav,True
+low,Eastern | Motor Private | Third Party,20,Expected claims,-15677.426446383111,-14871.255192964134,806.1712534189774,0.0514224229452511,False,Fav,True
+low,Eastern | Motor Private | Third Party,30,Commission,-980.694,-1072.2646131156175,-91.57061311561756,-0.09337327761321836,False,Unfav,True
+low,Eastern | Motor Private | Third Party,40,Admin expense,-1140.4971,-1079.2570365710098,61.2400634289902,0.05369593962929866,False,Fav,True
+low,Eastern | Motor Private | Third Party,50,Total expenses,-2121.1911,-2151.521649686628,-30.33054968662782,-0.014298829410809719,False,Unfav,False
+low,Eastern | Motor Private | Third Party,60,UNDERWRITING PROFIT,-6393.646546383114,-4611.320922084151,1782.3256242989628,0.27876511649009195,False,Fav,True
+low,Eastern | Motor Private | Third Party,70,Loss ratio,1.37461344236501,1.1981878103697305,-0.1764256319952795,,True,Fav,True
+low,Eastern | Motor Private | Third Party,80,Expense ratio,0.18598829405177797,0.1733496588519815,-0.012638635199796466,,True,Fav,True
+low,Eastern | Motor Private | Third Party,90,Combined ratio,1.560601736416788,1.371537469221712,-0.18906426719507596,,True,Fav,True
+low,Eastern | Motor Private | Third Party,100,Underwriting margin,-0.5606017364167882,-0.3715374692217119,0.18906426719507635,,True,Fav,True
+low,Eastern | Motor Private | Third Party,110,Retained exposure (yrs),28.132238193018477,26.626685141408124,-1.5055530516103524,-0.05351700214112301,False,-,True
+low,Eastern | Motor Private | Third Party,120,Retained policies,28.8,27.25792333356635,-1.5420766664336512,-0.05354432869561289,False,-,True
+low,Eastern | Motor Rent a Car | Comprehensive,10,Expected premium,25760.780999999995,26866.6860283977,1105.9050283977049,0.04292979426352427,False,Fav,False
+low,Eastern | Motor Rent a Car | Comprehensive,20,Expected claims,-23522.45970694706,-23132.133639907915,390.3260670391428,0.016593760682428335,False,Fav,False
+low,Eastern | Motor Rent a Car | Comprehensive,30,Commission,-2410.191,-2518.7209325524896,-108.52993255248975,-0.04502959829842936,False,Unfav,False
+low,Eastern | Motor Rent a Car | Comprehensive,40,Admin expense,-2576.0781,-2534.593021546953,41.48507845304721,0.016103967675920698,False,Fav,False
+low,Eastern | Motor Rent a Car | Comprehensive,50,Total expenses,-4986.2691,-5053.3139540994425,-67.04485409944209,-0.01344589566965852,False,Unfav,False
+low,Eastern | Motor Rent a Car | Comprehensive,60,UNDERWRITING PROFIT,-2747.9478069470624,-1318.7615656096575,1429.186241337405,0.5200922076191884,False,Fav,True
+low,Eastern | Motor Rent a Car | Comprehensive,70,Loss ratio,0.9131112797763027,0.8609969095353845,-0.05211437024091814,,True,Fav,True
+low,Eastern | Motor Rent a Car | Comprehensive,80,Expense ratio,0.19356047862058223,0.18808847316554644,-0.005472005455035789,,True,Fav,False
+low,Eastern | Motor Rent a Car | Comprehensive,90,Combined ratio,1.106671758396885,1.049085382700931,-0.05758637569595404,,True,Fav,True
+low,Eastern | Motor Rent a Car | Comprehensive,100,Underwriting margin,-0.10667175839688489,-0.04908538270093102,0.05758637569595387,,True,Fav,True
+low,Eastern | Motor Rent a Car | Comprehensive,110,Retained exposure (yrs),4.403285420944558,4.32677363085254,-0.07651179009201758,-0.017376068725430224,False,-,False
+low,Eastern | Motor Rent a Car | Comprehensive,120,Retained policies,4.5,4.421747069737593,-0.07825293026240665,-0.01738954005831259,False,-,False
+low,Northern | Motor Commercial | Comprehensive,10,Expected premium,30359.016,34516.991205057275,4157.975205057275,0.1369601440658444,False,Fav,True
+low,Northern | Motor Commercial | Comprehensive,20,Expected claims,-65858.32662961193,-59208.77198340926,6649.554646202669,0.10096756152946079,False,Fav,True
+low,Northern | Motor Commercial | Comprehensive,30,Commission,-1977.291,-2257.124108363021,-279.8331083630212,-0.14152348256428682,False,Unfav,True
+low,Northern | Motor Commercial | Comprehensive,40,Admin expense,-3035.9016,-2717.873323232857,318.0282767671433,0.10475579207413814,False,Fav,True
+low,Northern | Motor Commercial | Comprehensive,50,Total expenses,-5013.1926,-4974.997431595878,38.19516840412234,0.007618930979057604,False,Fav,False
+low,Northern | Motor Commercial | Comprehensive,60,UNDERWRITING PROFIT,-40512.50322961192,-29666.77820994786,10845.725019664056,0.26771303067090063,False,Fav,True
+low,Northern | Motor Commercial | Comprehensive,70,Loss ratio,2.1693169050542327,1.715351481004354,-0.4539654240498787,,True,Fav,True
+low,Northern | Motor Commercial | Comprehensive,80,Expense ratio,0.16513027299699043,0.14413183936110177,-0.020998433635888658,,True,Fav,True
+low,Northern | Motor Commercial | Comprehensive,90,Combined ratio,2.3344471780512226,1.8594833203654557,-0.4749638576857669,,True,Fav,True
+low,Northern | Motor Commercial | Comprehensive,100,Underwriting margin,-1.3344471780512226,-0.8594833203654557,0.4749638576857669,,True,Fav,True
+low,Northern | Motor Commercial | Comprehensive,110,Retained exposure (yrs),7.042299794661189,6.300855162038339,-0.7414446326228505,-0.10528444602499659,False,-,True
+low,Northern | Motor Commercial | Comprehensive,120,Retained policies,7.199999999999999,6.445751490242687,-0.7542485097573124,-0.1047567374662934,False,-,True
+low,Northern | Motor Commercial | Third Party,10,Expected premium,17338.598999999995,19711.29908451252,2372.700084512526,0.13684497141392604,False,Fav,True
+low,Northern | Motor Commercial | Third Party,20,Expected claims,-7852.823535750851,-7093.759296728192,759.0642390226594,0.0966613136748757,False,Fav,True
+low,Northern | Motor Commercial | Third Party,30,Commission,-1348.8390000000002,-1535.1175345496756,-186.27853454967544,-0.13810286813302064,False,Unfav,True
+low,Northern | Motor Commercial | Third Party,40,Admin expense,-1733.8599,-1552.0707940561038,181.78910594389617,0.10484647920163341,False,Fav,True
+low,Northern | Motor Commercial | Third Party,50,Total expenses,-3082.6989000000003,-3087.188328605779,-4.489428605778812,-0.0014563305568957162,False,Unfav,False
+low,Northern | Motor Commercial | Third Party,60,UNDERWRITING PROFIT,6403.076564249143,9530.351459178546,3127.2748949294028,0.4884019210999584,False,Fav,True
+low,Northern | Motor Commercial | Third Party,70,Loss ratio,0.4529099228692499,0.3598828908390858,-0.0930270320301641,,True,Fav,True
+low,Northern | Motor Commercial | Third Party,80,Expense ratio,0.17779400169529275,0.1566202367164847,-0.021173764978808046,,True,Fav,True
+low,Northern | Motor Commercial | Third Party,90,Combined ratio,0.6307039245645427,0.5165031275555705,-0.11420079700897223,,True,Fav,True
+low,Northern | Motor Commercial | Third Party,100,Underwriting margin,0.36929607543545734,0.4834968724444293,0.11420079700897195,,True,Fav,True
+low,Northern | Motor Commercial | Third Party,110,Retained exposure (yrs),4.459958932238192,4.018817016776476,-0.4411419154617162,-0.0989116541573922,False,-,True
+low,Northern | Motor Commercial | Third Party,120,Retained policies,4.5,4.054042316857356,-0.4459576831426437,-0.09910170736503193,False,-,True
+low,Northern | Motor Private | Comprehensive,10,Expected premium,57313.72799999999,61882.56032999988,4568.832329999888,0.07971619521940519,False,Fav,True
+low,Northern | Motor Private | Comprehensive,20,Expected claims,-43490.21041661316,-41631.39758989015,1858.8128267230131,0.04274094811031199,False,Fav,False
+low,Northern | Motor Private | Comprehensive,30,Commission,-4196.079,-4538.412469408214,-342.3334694082141,-0.0815841335227993,False,Unfav,True
+low,Northern | Motor Private | Comprehensive,40,Admin expense,-5731.372799999999,-5476.332772566362,255.04002743363708,0.04449894228371205,False,Fav,False
+low,Northern | Motor Private | Comprehensive,50,Total expenses,-9927.4518,-10014.745241974577,-87.29344197457613,-0.008793136822339054,False,Unfav,False
+low,Northern | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,3896.065783386828,10236.417498135152,6340.3517147483235,1.6273728595097516,False,Fav,True
+low,Northern | Motor Private | Comprehensive,70,Loss ratio,0.7588096592951198,0.6727484669005813,-0.08606119239453847,,True,Fav,True
+low,Northern | Motor Private | Comprehensive,80,Expense ratio,0.17321245967458274,0.16183469443683565,-0.011377765237747084,,True,Fav,True
+low,Northern | Motor Private | Comprehensive,90,Combined ratio,0.9320221189697026,0.834583161337417,-0.0974389576322856,,True,Fav,True
+low,Northern | Motor Private | Comprehensive,100,Underwriting margin,0.06797788103029746,0.16541683866258305,0.09743895763228559,,True,Fav,True
+low,Northern | Motor Private | Comprehensive,110,Retained exposure (yrs),15.06283367556468,14.39107497786675,-0.6717586976979284,-0.04459709986625377,False,-,False
+low,Northern | Motor Private | Comprehensive,120,Retained policies,15.3,14.618022809152457,-0.6819771908475438,-0.044573672604414624,False,-,False
+low,Northern | Motor Private | Third Party,10,Expected premium,9893.925,10673.744440293736,779.819440293737,0.0788180060283191,False,Fav,True
+low,Northern | Motor Private | Third Party,20,Expected claims,-13037.901733533106,-12466.068825223098,571.8329083100089,0.043859274290990485,False,Fav,False
+low,Northern | Motor Private | Third Party,30,Commission,-705.9239999999999,-762.5389937630587,-56.614993763058806,-0.08019984270694695,False,Unfav,True
+low,Northern | Motor Private | Third Party,40,Admin expense,-989.3925,-944.5791540082956,44.81334599170441,0.04529379997493857,False,Fav,False
+low,Northern | Motor Private | Third Party,50,Total expenses,-1695.3165,-1707.1181477713544,-11.80164777135451,-0.0069613241960156174,False,Unfav,False
+low,Northern | Motor Private | Third Party,60,UNDERWRITING PROFIT,-4839.293233533107,-3499.442532700716,1339.8507008323909,0.27686908731798066,False,Fav,True
+low,Northern | Motor Private | Third Party,70,Loss ratio,1.3177684016740685,1.1679189899060425,-0.14984941176802602,,True,Fav,True
+low,Northern | Motor Private | Third Party,80,Expense ratio,0.17134923703181498,0.15993620208171064,-0.011413034950104345,,True,Fav,True
+low,Northern | Motor Private | Third Party,90,Combined ratio,1.4891176387058833,1.3278551919877533,-0.16126244671813006,,True,Fav,True
+low,Northern | Motor Private | Third Party,100,Underwriting margin,-0.4891176387058834,-0.3278551919877532,0.16126244671813017,,True,Fav,True
+low,Northern | Motor Private | Third Party,110,Retained exposure (yrs),24.54209445585215,23.437697062929324,-1.1043973929228272,-0.04500012804161788,False,-,False
+low,Northern | Motor Private | Third Party,120,Retained policies,25.199999999999992,24.06580420294632,-1.1341957970536711,-0.04500776972435204,False,-,False
+low,Northern | Motor Rent a Car | Comprehensive,10,Expected premium,30226.329,31531.71117207827,1305.382172078269,0.04318692395885285,False,Fav,False
+low,Northern | Motor Rent a Car | Comprehensive,20,Expected claims,-13021.801534237971,-12819.556983650731,202.24455058724016,0.015531226616799716,False,Fav,False
+low,Northern | Motor Rent a Car | Comprehensive,30,Commission,-1927.845,-2010.5267006394367,-82.68170063943671,-0.04288814745969552,False,Unfav,False
+low,Northern | Motor Rent a Car | Comprehensive,40,Admin expense,-3022.6329,-2974.6897332149315,47.94316678506857,0.015861392491648117,False,Fav,False
+low,Northern | Motor Rent a Car | Comprehensive,50,Total expenses,-4950.4779,-4985.216433854369,-34.73853385436905,-0.007017208147595014,False,Unfav,False
+low,Northern | Motor Rent a Car | Comprehensive,60,UNDERWRITING PROFIT,12254.049565762023,13726.937754573166,1472.8881888111428,0.12019603649445093,False,Fav,True
+low,Northern | Motor Rent a Car | Comprehensive,70,Loss ratio,0.4308098920725031,0.40656077666354534,-0.024249115408957744,,True,Fav,True
+low,Northern | Motor Rent a Car | Comprehensive,80,Expense ratio,0.1637803221158613,0.15810167759841848,-0.005678644517442821,,True,Fav,False
+low,Northern | Motor Rent a Car | Comprehensive,90,Combined ratio,0.5945902141883644,0.5646624542619638,-0.02992775992640062,,True,Fav,True
+low,Northern | Motor Rent a Car | Comprehensive,100,Underwriting margin,0.40540978581163534,0.435337545738036,0.029927759926400677,,True,Fav,True
+low,Northern | Motor Rent a Car | Comprehensive,110,Retained exposure (yrs),2.663655030800821,2.620954279602297,-0.04270075119852379,-0.016030886396608917,False,-,False
+low,Northern | Motor Rent a Car | Comprehensive,120,Retained policies,2.7,2.6567194677844133,-0.04328053221558692,-0.016029826746513674,False,-,False
+low,Other | Motor Private | Comprehensive,10,Expected premium,4372.829999999999,4698.4744610049565,325.6444610049575,0.07446995675682741,False,Fav,True
+low,Other | Motor Private | Comprehensive,20,Expected claims,-1904.0731921810157,-1876.944440793183,27.128751387832608,0.014247746094654087,False,Fav,False
+low,Other | Motor Private | Comprehensive,30,Commission,-141.56099999999995,-152.1030415484532,-10.542041548453255,-0.07446995675682751,False,Unfav,True
+low,Other | Motor Private | Comprehensive,40,Admin expense,-437.283,-431.0527028444914,6.230297155508595,0.014247746094654021,False,Fav,False
+low,Other | Motor Private | Comprehensive,50,Total expenses,-578.8439999999999,-583.1557443929446,-4.311744392944661,-0.0074488884620807355,False,Unfav,False
+low,Other | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,1889.9128078189835,2238.3742758188287,348.4614679998451,0.18437965315552318,False,Fav,True
+low,Other | Motor Private | Comprehensive,70,Loss ratio,0.4354327042626894,0.39947954519512774,-0.035953159067561635,,True,Fav,True
+low,Other | Motor Private | Comprehensive,80,Expense ratio,0.1323728569370408,0.1241159762030958,-0.008256880733944982,,True,Fav,False
+low,Other | Motor Private | Comprehensive,90,Combined ratio,0.5678055611997302,0.5235955213982235,-0.04421003980150673,,True,Fav,True
+low,Other | Motor Private | Comprehensive,100,Underwriting margin,0.43219443880026986,0.47640447860177637,0.04421003980150651,,True,Fav,True
+low,Other | Motor Private | Comprehensive,110,Retained exposure (yrs),0.8698151950718683,0.8574222890232125,-0.012392906048655838,-0.014247746094653907,False,-,False
+low,Other | Motor Private | Comprehensive,120,Retained policies,0.8999999999999999,0.8871770285148114,-0.012822971485188517,-0.014247746094653908,False,-,False
+low,Other | Motor Private | Third Party,10,Expected premium,328.032,352.4605288548555,24.42852885485553,0.07446995675682717,False,Fav,True
+low,Other | Motor Private | Third Party,20,Expected claims,-384.3770038035183,-378.900497848702,5.476505954816275,0.01424774609465372,False,Fav,False
+low,Other | Motor Private | Third Party,30,Commission,-0.0,-0.0,0.0,,False,-,False
+low,Other | Motor Private | Third Party,40,Admin expense,-32.8032,-32.335828335307845,0.46737166469215197,0.014247746094653936,False,Fav,False
+low,Other | Motor Private | Third Party,50,Total expenses,-32.8032,-32.335828335307845,0.46737166469215197,0.014247746094653936,False,Fav,False
+low,Other | Motor Private | Third Party,60,UNDERWRITING PROFIT,-89.1482038035183,-58.77579732915428,30.37240647436402,0.3406956638330536,False,Fav,True
+low,Other | Motor Private | Third Party,70,Loss ratio,1.171766790445805,1.0750154040787205,-0.09675138636708436,,True,Fav,True
+low,Other | Motor Private | Third Party,80,Expense ratio,0.09999999999999999,0.09174311926605505,-0.00825688073394494,,True,Fav,False
+low,Other | Motor Private | Third Party,90,Combined ratio,1.271766790445805,1.1667585233447755,-0.1050082671010295,,True,Fav,True
+low,Other | Motor Private | Third Party,100,Underwriting margin,-0.271766790445805,-0.1667585233447753,0.10500826710102967,,True,Fav,True
+low,Other | Motor Private | Third Party,110,Retained exposure (yrs),0.8698151950718683,0.8574222890232125,-0.012392906048655838,-0.014247746094653907,False,-,False
+low,Other | Motor Private | Third Party,120,Retained policies,0.8999999999999999,0.8871770285148114,-0.012822971485188517,-0.014247746094653908,False,-,False
+low,Southern | Motor Commercial | Comprehensive,10,Expected premium,236733.462,268007.0968352988,31273.634835298813,0.13210483457255745,False,Fav,True
+low,Southern | Motor Commercial | Comprehensive,20,Expected claims,-289658.50895515457,-259984.74166550284,29673.767289651732,0.10244396892288732,False,Fav,True
+low,Southern | Motor Commercial | Comprehensive,30,Commission,-18876.851999999995,-21484.530739300557,-2607.6787393005616,-0.1381416106510006,False,Unfav,True
+low,Southern | Motor Commercial | Comprehensive,40,Admin expense,-23673.3462,-21270.404510738004,2402.9416892619956,0.1015040995455892,False,Fav,True
+low,Southern | Motor Commercial | Comprehensive,50,Total expenses,-42550.1982,-42754.93525003856,-204.73705003855866,-0.004811659139076788,False,Unfav,False
+low,Southern | Motor Commercial | Comprehensive,60,UNDERWRITING PROFIT,-95475.24515515455,-34732.58008024258,60742.66507491197,0.6362137638526145,False,Fav,True
+low,Southern | Motor Commercial | Comprehensive,70,Loss ratio,1.2235638616865856,0.9700666315760809,-0.25349723011050473,,True,Fav,True
+low,Southern | Motor Commercial | Comprehensive,80,Expense ratio,0.17973884148240943,0.15952911603797265,-0.020209725444436777,,True,Fav,True
+low,Southern | Motor Commercial | Comprehensive,90,Combined ratio,1.403302703168995,1.1295957476140535,-0.2737069555549416,,True,Fav,True
+low,Southern | Motor Commercial | Comprehensive,100,Underwriting margin,-0.40330270316899497,-0.12959574761405349,0.2737069555549415,,True,Fav,True
+low,Southern | Motor Commercial | Comprehensive,110,Retained exposure (yrs),39.49650924024638,35.28114131332229,-4.215367926924095,-0.10672760727494103,False,-,True
+low,Southern | Motor Commercial | Comprehensive,120,Retained policies,40.49999999999999,36.17837591519149,-4.321624084808505,-0.10670676752613595,False,-,True
+low,Southern | Motor Commercial | Third Party,10,Expected premium,117011.29499999998,130173.96229499516,13162.667294995175,0.11249057020516846,False,Fav,True
+low,Southern | Motor Commercial | Third Party,20,Expected claims,-30404.685511203428,-27914.804963909257,2489.8805472941713,0.08189134356863213,False,Fav,True
+low,Southern | Motor Commercial | Third Party,30,Commission,-8674.65,-9688.521627102462,-1013.8716271024623,-0.11687752556039291,False,Unfav,True
+low,Southern | Motor Commercial | Third Party,40,Admin expense,-11701.1295,-10669.996909425834,1031.132590574165,0.08812248343838645,False,Fav,True
+low,Southern | Motor Commercial | Third Party,50,Total expenses,-20375.7795,-20358.518536528296,17.2609634717046,0.0008471314420979378,False,Fav,False
+low,Southern | Motor Commercial | Third Party,60,UNDERWRITING PROFIT,66230.82998879655,81900.63879455761,15669.808805761058,0.23659387642298496,False,Fav,True
+low,Southern | Motor Commercial | Third Party,70,Loss ratio,0.2598440219912397,0.21444230836770425,-0.04540171362353543,,True,Fav,True
+low,Southern | Motor Commercial | Third Party,80,Expense ratio,0.17413515079890368,0.15639470580447276,-0.01774044499443092,,True,Fav,True
+low,Southern | Motor Commercial | Third Party,90,Combined ratio,0.43397917279014336,0.370837014172177,-0.06314215861796635,,True,Fav,True
+low,Southern | Motor Commercial | Third Party,100,Underwriting margin,0.5660208272098567,0.629162985827823,0.06314215861796635,,True,Fav,True
+low,Southern | Motor Commercial | Third Party,110,Retained exposure (yrs),21.14661190965092,19.35509074548951,-1.7915211641614128,-0.08471906382997438,False,-,True
+low,Southern | Motor Commercial | Third Party,120,Retained policies,21.6,19.76911918191142,-1.8308808180885805,-0.08476300083743428,False,-,True
+low,Southern | Motor Private | Comprehensive,10,Expected premium,354131.757,366127.5110055368,11995.754005536844,0.03387370313003825,False,Fav,False
+low,Southern | Motor Private | Comprehensive,20,Expected claims,-179531.83214655065,-176792.03321181083,2739.7989347398106,0.015260797497478502,False,Fav,False
+low,Southern | Motor Private | Comprehensive,30,Commission,-27552.609,-28508.48208897792,-955.8730889779181,-0.03469265248085646,False,Unfav,False
+low,Southern | Motor Private | Comprehensive,40,Admin expense,-35413.17569999999,-34869.28676243208,543.8889375679137,0.01535837797139198,False,Fav,False
+low,Southern | Motor Private | Comprehensive,50,Total expenses,-62965.78469999999,-63377.76885141,-411.9841514100117,-0.006542984469627546,False,Unfav,False
+low,Southern | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,111634.14015344936,125957.708942316,14323.568788866643,0.1283081391514983,False,Fav,True
+low,Southern | Motor Private | Comprehensive,70,Loss ratio,0.5069633790187043,0.4828701146392063,-0.024093264379497936,,True,Fav,True
+low,Southern | Motor Private | Comprehensive,80,Expense ratio,0.17780327083176556,0.17310299539455137,-0.004700275437214185,,True,Fav,False
+low,Southern | Motor Private | Comprehensive,90,Combined ratio,0.6847666498504698,0.6559731100337577,-0.028793539816712066,,True,Fav,True
+low,Southern | Motor Private | Comprehensive,100,Underwriting margin,0.3152333501495303,0.34402688996624237,0.028793539816712066,,True,Fav,True
+low,Southern | Motor Private | Comprehensive,110,Retained exposure (yrs),79.2936344969199,78.03152753999005,-1.2621069569298555,-0.01591687611417132,False,-,False
+low,Southern | Motor Private | Comprehensive,120,Retained policies,81.00000000000003,79.71121623269705,-1.2887837673029736,-0.015910910707444114,False,-,False
+low,Southern | Motor Private | Third Party,10,Expected premium,78867.612,83790.70609312138,4923.0940931213845,0.06242225380326445,False,Fav,True
+low,Southern | Motor Private | Third Party,20,Expected claims,-88673.06374845613,-85758.343129204,2914.720619252126,0.03287041741921175,False,Fav,False
+low,Southern | Motor Private | Third Party,30,Commission,-5941.808999999999,-6321.246602658015,-379.43760265801575,-0.06385893633706768,False,Unfav,True
+low,Southern | Motor Private | Third Party,40,Admin expense,-7886.761199999999,-7617.336917556489,269.4242824435096,0.034161587451577664,False,Fav,False
+low,Southern | Motor Private | Third Party,50,Total expenses,-13828.570199999998,-13938.583520214504,-110.01332021450617,-0.007955509399988885,False,Unfav,False
+low,Southern | Motor Private | Third Party,60,UNDERWRITING PROFIT,-23634.02194845613,-15906.22055629713,7727.801392159001,0.32697783767031713,False,Fav,True
+low,Southern | Motor Private | Third Party,70,Loss ratio,1.1243279909179467,1.0234827599363572,-0.10084523098158948,,True,Fav,True
+low,Southern | Motor Private | Third Party,80,Expense ratio,0.17533902509942864,0.16634999476819975,-0.008989030331228887,,True,Fav,False
+low,Southern | Motor Private | Third Party,90,Combined ratio,1.2996670160173753,1.1898327547045568,-0.10983426131281848,,True,Fav,True
+low,Southern | Motor Private | Third Party,100,Underwriting margin,-0.2996670160173752,-0.18983275470455688,0.10983426131281834,,True,Fav,True
+low,Southern | Motor Private | Third Party,110,Retained exposure (yrs),200.08213552361397,193.27105753969585,-6.811077983918125,-0.03404140987446764,False,-,False
+low,Southern | Motor Private | Third Party,120,Retained policies,204.30000000000007,197.34865123928105,-6.951348760719014,-0.03402520196142444,False,-,False
+low,Southern | Motor Rent a Car | Comprehensive,10,Expected premium,170729.262,177471.81344018262,6742.551440182637,0.039492652643122406,False,Fav,False
+low,Southern | Motor Rent a Car | Comprehensive,20,Expected claims,-110288.03737520342,-108266.00901003336,2022.0283651700593,0.01833406789433612,False,Fav,False
+low,Southern | Motor Rent a Car | Comprehensive,30,Commission,-12353.022,-12841.904040646168,-488.8820406461673,-0.03957590625566499,False,Unfav,False
+low,Southern | Motor Rent a Car | Comprehensive,40,Admin expense,-17072.926199999994,-16742.62390945119,330.3022905488033,0.019346554110261625,False,Fav,False
+low,Southern | Motor Rent a Car | Comprehensive,50,Total expenses,-29425.948199999995,-29584.52795009736,-158.579750097364,-0.005389112664086183,False,Unfav,False
+low,Southern | Motor Rent a Car | Comprehensive,60,UNDERWRITING PROFIT,31015.27642479657,39621.27648005191,8606.000055255336,0.27747616811097897,False,Fav,True
+low,Southern | Motor Rent a Car | Comprehensive,70,Loss ratio,0.645982042464422,0.6100462203623378,-0.035935822102084236,,True,Fav,True
+low,Southern | Motor Rent a Car | Comprehensive,80,Expense ratio,0.17235445087321935,0.1666998684276639,-0.005654582445555445,,True,Fav,False
+low,Southern | Motor Rent a Car | Comprehensive,90,Combined ratio,0.8183364933376412,0.7767460887900018,-0.041590404547639404,,True,Fav,True
+low,Southern | Motor Rent a Car | Comprehensive,100,Underwriting margin,0.18166350666235864,0.22325391120999827,0.041590404547639626,,True,Fav,True
+low,Southern | Motor Rent a Car | Comprehensive,110,Retained exposure (yrs),24.63572895277207,24.165621910077157,-0.470107042694913,-0.01908232728149152,False,-,False
+low,Southern | Motor Rent a Car | Comprehensive,120,Retained policies,25.199999999999992,24.719197462084143,-0.48080253791584937,-0.01907946579031149,False,-,False
+low,Unspecified | Motor Commercial | Comprehensive,10,Expected premium,64934.892,72986.89065960285,8051.998659602854,0.12400110959763903,False,Fav,True
+low,Unspecified | Motor Commercial | Comprehensive,20,Expected claims,-117025.09673496714,-105134.0694431969,11891.027291770239,0.1016109161498962,False,Fav,True
+low,Unspecified | Motor Commercial | Comprehensive,30,Commission,-3839.103,-4395.391829175744,-556.2888291757436,-0.14490073050286578,False,Unfav,True
+low,Unspecified | Motor Commercial | Comprehensive,40,Admin expense,-6493.4892,-5746.999264535657,746.489935464343,0.1149597562223316,False,Fav,True
+low,Unspecified | Motor Commercial | Comprehensive,50,Total expenses,-10332.5922,-10142.3910937114,190.20110628859948,0.0184078789336716,False,Fav,False
+low,Unspecified | Motor Commercial | Comprehensive,60,UNDERWRITING PROFIT,-62422.79693496714,-42289.56987730545,20133.227057661694,0.3225300378423726,False,Fav,True
+low,Unspecified | Motor Commercial | Comprehensive,70,Loss ratio,1.8021912893143357,1.4404514083703395,-0.36173988094399623,,True,Fav,True
+low,Unspecified | Motor Commercial | Comprehensive,80,Expense ratio,0.1591223436546256,0.1389618190616395,-0.02016052459298609,,True,Fav,True
+low,Unspecified | Motor Commercial | Comprehensive,90,Combined ratio,1.9613136329689613,1.579413227431979,-0.38190040553698235,,True,Fav,True
+low,Unspecified | Motor Commercial | Comprehensive,100,Underwriting margin,-0.9613136329689613,-0.5794132274319789,0.38190040553698246,,True,Fav,True
+low,Unspecified | Motor Commercial | Comprehensive,110,Retained exposure (yrs),14.146201232032851,12.600022561826004,-1.5461786702068476,-0.10929992051192228,False,-,True
+low,Unspecified | Motor Commercial | Comprehensive,120,Retained policies,14.4,12.826722321285764,-1.573277678714236,-0.10925539435515527,False,-,True
+low,Unspecified | Motor Commercial | Third Party,10,Expected premium,49139.96399999999,57402.57485627423,8262.610856274237,0.16814442225220674,False,Fav,True
+low,Unspecified | Motor Commercial | Third Party,20,Expected claims,-7014.291913513318,-6354.141009186938,660.1509043263795,0.0941151170304977,False,Fav,True
+low,Unspecified | Motor Commercial | Third Party,30,Commission,-3813.723,-4481.671719005787,-667.9487190057871,-0.17514348027001098,False,Unfav,True
+low,Unspecified | Motor Commercial | Third Party,40,Admin expense,-4913.996400000001,-4519.887783958601,394.1086160413997,0.08020124232109728,False,Fav,True
+low,Unspecified | Motor Commercial | Third Party,50,Total expenses,-8727.719400000002,-9001.559502964388,-273.84010296438646,-0.03137590593991672,False,Unfav,False
+low,Unspecified | Motor Commercial | Third Party,60,UNDERWRITING PROFIT,33397.95268648667,42046.8743441229,8648.92165763623,0.25896562399574025,False,Fav,True
+low,Unspecified | Motor Commercial | Third Party,70,Loss ratio,0.14274108775320468,0.1106943551765155,-0.03204673257668918,,True,Fav,True
+low,Unspecified | Motor Commercial | Third Party,80,Expense ratio,0.1776093975160422,0.15681455972145295,-0.020794837794589266,,True,Fav,True
+low,Unspecified | Motor Commercial | Third Party,90,Combined ratio,0.32035048526924687,0.26750891489796846,-0.0528415703712784,,True,Fav,True
+low,Unspecified | Motor Commercial | Third Party,100,Underwriting margin,0.6796495147307531,0.7324910851020315,0.05284157037127846,,True,Fav,True
+low,Unspecified | Motor Commercial | Third Party,110,Retained exposure (yrs),4.37371663244353,3.939084840325844,-0.43463179211768654,-0.09937355998183728,False,-,True
+low,Unspecified | Motor Commercial | Third Party,120,Retained policies,4.5,4.052152219021072,-0.4478477809789281,-0.09952172910642847,False,-,True
+low,Unspecified | Motor Private | Comprehensive,10,Expected premium,76074.786,80430.22928787736,4355.443287877366,0.057252126714853545,False,Fav,True
+low,Unspecified | Motor Private | Comprehensive,20,Expected claims,-56776.59134894868,-55193.51157027925,1583.079778669431,0.027882613962149114,False,Fav,False
+low,Unspecified | Motor Private | Comprehensive,30,Commission,-5015.924999999999,-5322.780410979374,-306.85541097937494,-0.061176235884582604,False,Unfav,True
+low,Unspecified | Motor Private | Comprehensive,40,Admin expense,-7607.478599999999,-7378.920118153887,228.55848184611114,0.03004392044508823,False,Fav,False
+low,Unspecified | Motor Private | Comprehensive,50,Total expenses,-12623.403599999998,-12701.70052913326,-78.29692913326289,-0.006202521254510385,False,Unfav,False
+low,Unspecified | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,6674.7910510513175,12535.017188464852,5860.226137413534,0.8779639830808659,False,Fav,True
+low,Unspecified | Motor Private | Comprehensive,70,Loss ratio,0.7463260080540836,0.6862284499119058,-0.060097558142177765,,True,Fav,True
+low,Unspecified | Motor Private | Comprehensive,80,Expense ratio,0.16593413223666512,0.15792197338728328,-0.008012158849381834,,True,Fav,False
+low,Unspecified | Motor Private | Comprehensive,90,Combined ratio,0.9122601402907486,0.8441504232991892,-0.06810971699155943,,True,Fav,True
+low,Unspecified | Motor Private | Comprehensive,100,Underwriting margin,0.08773985970925134,0.15584957670081093,0.06810971699155959,,True,Fav,True
+low,Unspecified | Motor Private | Comprehensive,110,Retained exposure (yrs),22.129774127310057,21.473222198755924,-0.6565519285541335,-0.02966826162694049,False,-,False
+low,Unspecified | Motor Private | Comprehensive,120,Retained policies,22.5,21.832355464298345,-0.6676445357016547,-0.029673090475629098,False,-,False
+low,Unspecified | Motor Private | Third Party,10,Expected premium,11418.336,12320.811054665077,902.4750546650776,0.07903735313666349,False,Fav,True
+low,Unspecified | Motor Private | Third Party,20,Expected claims,-14149.04637086533,-13543.772479398114,605.2738914672154,0.04277842305425973,False,Fav,False
+low,Unspecified | Motor Private | Third Party,30,Commission,-813.4110000000001,-882.2571116768338,-68.84611167683374,-0.08463877630968077,False,Unfav,True
+low,Unspecified | Motor Private | Third Party,40,Admin expense,-1141.8336,-1090.337261474786,51.496338525214014,0.04509968748967802,False,Fav,False
+low,Unspecified | Motor Private | Third Party,50,Total expenses,-1955.2446,-1972.59437315162,-17.349773151619956,-0.008873454068928234,False,Unfav,False
+low,Unspecified | Motor Private | Third Party,60,UNDERWRITING PROFIT,-4685.95497086533,-3195.5557978846573,1490.399172980673,0.31805665702021224,False,Fav,True
+low,Unspecified | Motor Private | Third Party,70,Loss ratio,1.2391513413920672,1.0992598149023625,-0.1398915264897047,,True,Fav,True
+low,Unspecified | Motor Private | Third Party,80,Expense ratio,0.17123726259237773,0.16010263970444777,-0.011134622887929962,,True,Fav,True
+low,Unspecified | Motor Private | Third Party,90,Combined ratio,1.4103886039844449,1.2593624546068103,-0.1510261493776346,,True,Fav,True
+low,Unspecified | Motor Private | Third Party,100,Underwriting margin,-0.4103886039844449,-0.2593624546068103,0.1510261493776346,,True,Fav,True
+low,Unspecified | Motor Private | Third Party,110,Retained exposure (yrs),28.248049281314163,26.967782584317973,-1.2802666969961898,-0.0453223047101902,False,-,False
+low,Unspecified | Motor Private | Third Party,120,Retained policies,28.8,27.49573093382815,-1.3042690661718517,-0.04528712035318929,False,-,False
+low,Unspecified | Motor Rent a Car | Comprehensive,10,Expected premium,51742.13399999999,53765.57732964474,2023.443329644746,0.03910629835338346,False,Fav,False
+low,Unspecified | Motor Rent a Car | Comprehensive,20,Expected claims,-24920.213189427755,-24497.17907723532,423.0341121924357,0.01697554146013106,False,Fav,False
+low,Unspecified | Motor Rent a Car | Comprehensive,30,Commission,-3203.415,-3329.781593163635,-126.36659316363512,-0.03944746252472287,False,Unfav,False
+low,Unspecified | Motor Rent a Car | Comprehensive,40,Admin expense,-5174.2134,-5072.224276381578,101.98912361842122,0.019711039289261094,False,Fav,False
+low,Unspecified | Motor Rent a Car | Comprehensive,50,Total expenses,-8377.6284,-8402.005869545213,-24.3774695452139,-0.002909829414875205,False,Unfav,False
+low,Unspecified | Motor Rent a Car | Comprehensive,60,UNDERWRITING PROFIT,18444.292410572238,20866.39238286421,2422.0999722919732,0.131319755639074,False,Fav,True
+low,Unspecified | Motor Rent a Car | Comprehensive,70,Loss ratio,0.4816232200517234,0.45562942488349895,-0.025993795168224476,,True,Fav,True
+low,Unspecified | Motor Rent a Car | Comprehensive,80,Expense ratio,0.16191114962517783,0.15627109922081311,-0.005640050404364716,,True,Fav,False
+low,Unspecified | Motor Rent a Car | Comprehensive,90,Combined ratio,0.6435343696769013,0.611900524104312,-0.0316338455725893,,True,Fav,True
+low,Unspecified | Motor Rent a Car | Comprehensive,100,Underwriting margin,0.3564656303230988,0.38809947589568805,0.03163384557258925,,True,Fav,True
+low,Unspecified | Motor Rent a Car | Comprehensive,110,Retained exposure (yrs),5.278028747433263,5.184676598119369,-0.09335214931389402,-0.017686934607791163,False,-,False
+low,Unspecified | Motor Rent a Car | Comprehensive,120,Retained policies,5.4,5.304232909267789,-0.09576709073221146,-0.01773464643189101,False,-,False
+low,Western | Motor Commercial | Comprehensive,10,Expected premium,286130.07,322305.3768286118,36175.30682861182,0.1264295878745349,False,Fav,True
+low,Western | Motor Commercial | Comprehensive,20,Expected claims,-430363.39116760826,-386763.47762660106,43599.913541007205,0.1013095315164177,False,Fav,True
+low,Western | Motor Commercial | Comprehensive,30,Commission,-22085.199,-25095.043660383697,-3009.8446603836965,-0.13628333891778363,False,Unfav,True
+low,Western | Motor Commercial | Comprehensive,40,Admin expense,-28613.007,-25579.791811794592,3033.2151882054095,0.10600826359163891,False,Fav,True
+low,Western | Motor Commercial | Comprehensive,50,Total expenses,-50698.206000000006,-50674.83547217829,23.370527821716678,0.00046097346761573134,False,Fav,False
+low,Western | Motor Commercial | Comprehensive,60,UNDERWRITING PROFIT,-194931.52716760823,-115132.93627016753,79798.5908974407,0.40936728941146283,False,Fav,True
+low,Western | Motor Commercial | Comprehensive,70,Loss ratio,1.5040830597343657,1.1999907709645976,-0.3040922887697681,,True,Fav,True
+low,Western | Motor Commercial | Comprehensive,80,Expense ratio,0.17718587214548964,0.15722615604742143,-0.01995971609806821,,True,Fav,True
+low,Western | Motor Commercial | Comprehensive,90,Combined ratio,1.6812689318798555,1.3572169270120191,-0.32405200486783636,,True,Fav,True
+low,Western | Motor Commercial | Comprehensive,100,Underwriting margin,-0.6812689318798553,-0.35721692701201907,0.3240520048678362,,True,Fav,True
+low,Western | Motor Commercial | Comprehensive,110,Retained exposure (yrs),46.58069815195069,41.59227629114324,-4.988421860807449,-0.10709203723256229,False,-,True
+low,Western | Motor Commercial | Comprehensive,120,Retained policies,47.7,42.59631598125796,-5.103684018742044,-0.10699547209102817,False,-,True
+low,Western | Motor Commercial | Third Party,10,Expected premium,135585.56699999998,152781.86091591473,17196.29391591475,0.1268298263333202,False,Fav,True
+low,Western | Motor Commercial | Third Party,20,Expected claims,-43573.060527437,-39115.08770340284,4457.972824034165,0.10231029838326543,False,Fav,True
+low,Western | Motor Commercial | Third Party,30,Commission,-9436.833,-10699.548434446617,-1262.7154344466162,-0.13380711881270085,False,Unfav,True
+low,Western | Motor Commercial | Third Party,40,Admin expense,-13558.556699999996,-12125.54451713609,1433.0121828639058,0.10569061402117426,False,Fav,True
+low,Western | Motor Commercial | Third Party,50,Total expenses,-22995.3897,-22825.09295158271,170.29674841729138,0.007405690907568806,False,Fav,False
+low,Western | Motor Commercial | Third Party,60,UNDERWRITING PROFIT,69017.11677256298,90841.6802609292,21824.563488366228,0.316219577243226,False,Fav,True
+low,Western | Motor Commercial | Third Party,70,Loss ratio,0.32136946056682425,0.25601918623658,-0.06535027433024426,,True,Fav,True
+low,Western | Motor Commercial | Third Party,80,Expense ratio,0.16960057186617808,0.14939661563714532,-0.02020395622903276,,True,Fav,True
+low,Western | Motor Commercial | Third Party,90,Combined ratio,0.49097003243300236,0.40541580187372533,-0.08555423055927702,,True,Fav,True
+low,Western | Motor Commercial | Third Party,100,Underwriting margin,0.5090299675669977,0.5945841981262748,0.08555423055927713,,True,Fav,True
+low,Western | Motor Commercial | Third Party,110,Retained exposure (yrs),24.648049281314165,22.045214175549585,-2.60283510576458,-0.10560004469553723,False,-,True
+low,Western | Motor Commercial | Third Party,120,Retained policies,25.199999999999992,22.54058253245345,-2.659417467546543,-0.10553243918835492,False,-,True
+low,Western | Motor Private | Comprehensive,10,Expected premium,388105.3619999999,401143.0143984032,13037.652398403268,0.03359307465173148,False,Fav,False
+low,Western | Motor Private | Comprehensive,20,Expected claims,-269235.07845424785,-265117.03088735265,4118.0475668951985,0.01529536043571304,False,Fav,False
+low,Western | Motor Private | Comprehensive,30,Commission,-31714.938,-32805.54171272278,-1090.6037127227792,-0.03438769808481982,False,Unfav,False
+low,Western | Motor Private | Comprehensive,40,Admin expense,-38810.5362,-38204.09660937173,606.4395906282734,0.015625643188827507,False,Fav,False
+low,Western | Motor Private | Comprehensive,50,Total expenses,-70525.4742,-71009.63832209451,-484.16412209451664,-0.0068650955925726575,False,Unfav,False
+low,Western | Motor Private | Comprehensive,60,UNDERWRITING PROFIT,48344.80934575206,65016.34518895601,16671.53584320395,0.34484644926351,False,Fav,True
+low,Western | Motor Private | Comprehensive,70,Loss ratio,0.693716461599023,0.6609040201907801,-0.03281244140824291,,True,Fav,True
+low,Western | Motor Private | Comprehensive,80,Expense ratio,0.1817173404576668,0.17701825975603275,-0.004699080701634051,,True,Fav,False
+low,Western | Motor Private | Comprehensive,90,Combined ratio,0.8754338020566897,0.8379222799468129,-0.03751152210987685,,True,Fav,True
+low,Western | Motor Private | Comprehensive,100,Underwriting margin,0.12456619794331023,0.16207772005318713,0.037511522109876905,,True,Fav,True
+low,Western | Motor Private | Comprehensive,110,Retained exposure (yrs),92.3112936344969,90.84139428452292,-1.4698993499739856,-0.01592328838759423,False,-,False
+low,Western | Motor Private | Comprehensive,120,Retained policies,94.50000000000004,92.99526565790346,-1.504734342096583,-0.015923114731180767,False,-,False
+low,Western | Motor Private | Third Party,10,Expected premium,70130.56499999999,76260.97772052785,6130.412720527864,0.08741427821846103,False,Fav,True
+low,Western | Motor Private | Third Party,20,Expected claims,-97741.35684485036,-92614.9849297656,5126.371915084761,0.05244833999206806,False,Fav,True
+low,Western | Motor Private | Third Party,30,Commission,-5292.405,-5771.25047662066,-478.8454766206605,-0.09047785961593274,False,Unfav,True
+low,Western | Motor Private | Third Party,40,Admin expense,-7013.0565,-6631.389367002423,381.667132997577,0.054422366766555645,False,Fav,True
+low,Western | Motor Private | Third Party,50,Total expenses,-12305.4615,-12402.639843623085,-97.17834362308531,-0.007897171806444262,False,Unfav,False
+low,Western | Motor Private | Third Party,60,UNDERWRITING PROFIT,-39916.25334485036,-28756.647052860837,11159.606291989523,0.2795754951141785,False,Fav,True
+low,Western | Motor Private | Third Party,70,Loss ratio,1.3937055383034542,1.2144479089839364,-0.17925762931951783,,True,Fav,True
+low,Western | Motor Private | Third Party,80,Expense ratio,0.17546502726735486,0.1626341572629032,-0.012830870004451655,,True,Fav,True
+low,Western | Motor Private | Third Party,90,Combined ratio,1.569170565570809,1.3770820662468395,-0.19208849932396954,,True,Fav,True
+low,Western | Motor Private | Third Party,100,Underwriting margin,-0.5691705655708088,-0.37708206624683954,0.19208849932396926,,True,Fav,True
+low,Western | Motor Private | Third Party,110,Retained exposure (yrs),175.10882956878845,165.59413726957297,-9.514692299215483,-0.05433587970775512,False,-,True
+low,Western | Motor Private | Third Party,120,Retained policies,179.10000000000008,169.36589403847353,-9.734105961526552,-0.05435011703811585,False,-,True
+low,Western | Motor Rent a Car | Comprehensive,10,Expected premium,196980.588,214523.51856384825,17542.930563848262,0.08905918467381295,False,Fav,True
+low,Western | Motor Rent a Car | Comprehensive,20,Expected claims,-166775.1524208945,-158279.22337589168,8495.92904500282,0.050942415112063204,False,Fav,True
+low,Western | Motor Rent a Car | Comprehensive,30,Commission,-15879.599999999997,-17354.32187470038,-1474.7218747003844,-0.09286895606314924,False,Unfav,True
+low,Western | Motor Rent a Car | Comprehensive,40,Admin expense,-19698.0588,-18654.219005552022,1043.8397944479766,0.05299201332711915,False,Fav,True
+low,Western | Motor Rent a Car | Comprehensive,50,Total expenses,-35577.6588,-36008.5408802524,-430.882080252406,-0.012111029640106786,False,Unfav,False
+low,Western | Motor Rent a Car | Comprehensive,60,UNDERWRITING PROFIT,-5372.223220894513,20235.754307704134,25607.977528598647,4.7667374335824295,False,Fav,True
+low,Western | Motor Rent a Car | Comprehensive,70,Loss ratio,0.8466578057980745,0.7378175802611746,-0.10884022553689987,,True,Fav,True
+low,Western | Motor Rent a Car | Comprehensive,80,Expense ratio,0.18061505025053534,0.16785358137567208,-0.012761468874863263,,True,Fav,True
+low,Western | Motor Rent a Car | Comprehensive,90,Combined ratio,1.0272728560486097,0.9056711616368467,-0.12160169441176305,,True,Fav,True
+low,Western | Motor Rent a Car | Comprehensive,100,Underwriting margin,-0.027272856048609795,0.09432883836315319,0.12160169441176298,,True,Fav,True
+low,Western | Motor Rent a Car | Comprehensive,110,Retained exposure (yrs),29.002053388090346,27.448686890651235,-1.5533664974391108,-0.05356056954494811,False,-,True
+low,Western | Motor Rent a Car | Comprehensive,120,Retained policies,29.7,28.10803628135268,-1.591963718647321,-0.05360147200832731,False,-,True

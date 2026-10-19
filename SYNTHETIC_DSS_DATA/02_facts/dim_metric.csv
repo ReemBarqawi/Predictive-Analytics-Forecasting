@@ -1,0 +1,7 @@
+METRIC,DISPLAY_NAME,FORMAT_TYPE,DIRECTION,DELTA_TYPE,SORT_ORDER
+claims_cost,Expected Claims,currency,-1,pct,1
+frequency,Expected Frequency,rate,-1,pct,2
+severity,Expected Severity,currency,-1,pct,3
+premium,Expected Premium,currency,1,pct,4
+loss_ratio,Expected Loss Ratio,percent,-1,pts,5
+uw_margin,Expected U/W Margin,currency,1,pct,6
