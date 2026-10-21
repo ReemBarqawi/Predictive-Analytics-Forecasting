@@ -1,0 +1,8 @@
+# Aman Prediction — Python pipeline (pipeline/01 ... 11)
+pandas>=2.2,<3     # code written for pandas 2.x
+numpy>=1.26,<3
+statsmodels>=0.14.2
+openpyxl>=3.1        # reads ORIGINAL_DATA/*.xlsx
+matplotlib>=3.8      # 07_forecast_seasonal validation chart
+# Optional: 07_forecast_seasonal also tries Prophet and skips it if missing
+# prophet>=1.1.6
