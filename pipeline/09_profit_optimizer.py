@@ -1,5 +1,5 @@
 """
-08_profit_optimizer.py  --  Phase 1 PROTOTYPE  (v0.3)
+09_profit_optimizer.py  --  Phase 1 PROTOTYPE  (v0.3)
 Constrained Retained-Portfolio Profit Optimization (Annualized Renewal Run-Rate)
 
 Reads : SYNTHETIC_DSS_DATA/02_facts/fact_policy_pricing.csv
@@ -32,8 +32,8 @@ import numpy as np
 import pandas as pd
 
 # ------------------------------------------------------------------ CONFIG
-BASE = r"C:\predicting insurance\SYNTHETIC_DSS_DATA\02_facts"
-if len(sys.argv) > 1:               # allows: python 08_profit_optimizer.py <folder>
+BASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "SYNTHETIC_DSS_DATA", "02_facts")
+if len(sys.argv) > 1:               # allows: python pipeline/09_profit_optimizer.py <folder>
     BASE = sys.argv[1]
 
 ASSUMPTIONS = {
@@ -46,7 +46,7 @@ ASSUMPTIONS = {
     "sensitivity_cases": {"low": 3.0, "base": 5.0, "high": 8.0},   # [Assumption]
     # risk heterogeneity: low-risk policies react more (1+gamma), high-risk less (1-gamma)
     "risk_gamma": 0.5,              # 0 switches the risk-mix effect OFF. [Assumption]
-    "admin_rate_of_baseline_premium": 0.10,   # matches build_synthetic_dss.py. Fixed PER POLICY.
+    "admin_rate_of_baseline_premium": 0.10,   # matches 01_build_synthetic_data.py. Fixed PER POLICY.
     # external shocks (independent of pricing decision)                 [External]
     "ext_freq_trend": 0.0,
     "ext_severity_inflation": 0.0,
@@ -175,7 +175,7 @@ def run_segment(g, seg_key, case, k, a):
     res["segment_id"] = " | ".join(seg_key)
     res["sensitivity_case"] = case
     res["retention_floor"] = a["retention_floor"]
-    # no-change baseline carried on every row (used by Power BI and 09)
+    # no-change baseline carried on every row (used by Power BI and 10_underwriting_pnl)
     res["nochange_premium"] = base["scenario_premium"]
     res["nochange_claims"] = base["expected_claims"]
     res["nochange_expenses"] = base["expected_total_expenses"]

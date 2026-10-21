@@ -1,5 +1,5 @@
 """
-10_segment_performance_by_year.py
+05_segment_performance_by_year.py
 ---------------------------------
 Builds fact_segment_performance_by_year.csv at the grain
     ZONE x CLASS_DESC x POLICY_TYPE_DESC x POLICY_YEAR
@@ -29,7 +29,7 @@ import numpy as np
 import pandas as pd
 
 # ---- settings -------------------------------------------------------------
-FACTS = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(r"C:\predicting insurance\SYNTHETIC_DSS_DATA\02_facts")
+FACTS = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent / "SYNTHETIC_DSS_DATA" / "02_facts"
 LATEST_MATURE_YEAR = 2023      # years after this use model-expected claims
 ADMIN_RATE = 0.10
 RISK_MARGIN = 0.05

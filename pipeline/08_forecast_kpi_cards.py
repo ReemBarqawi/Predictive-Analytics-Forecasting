@@ -1,9 +1,9 @@
 """
-notebooks/10_build_forecast_page.py
+pipeline/08_forecast_kpi_cards.py
 ===================================
 Builds the three tables behind the Power BI "Portfolio Forecast" page.
 
-Replaces the forecast half of 09_premium_vs_claims.py. Fixes carried in:
+Replaces legacy/premium_vs_claims_linear_forecast.py. Fixes carried in:
   1. Window truncation      — drops the earning ramp-up and the run-off tail
   2. Development to ultimate — chains paid dev factors onto immature quarters
   3. Quarterly grain         — monthly/fortnightly is noise at ~90 claims/quarter
@@ -58,7 +58,7 @@ def _log(m: str) -> None:
 
 
 # =========================================================================
-# Feature encoding (mirrors 06_pure_premium.transform_features)
+# Feature encoding (mirrors 03_pure_premium.transform_features)
 # =========================================================================
 def transform_features(df: pd.DataFrame, encoder_meta: dict) -> pd.DataFrame:
     feature_cols = list(encoder_meta["category_maps"].keys())

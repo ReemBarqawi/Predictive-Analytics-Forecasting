@@ -1,5 +1,5 @@
 """
-08_Build_alerts.py - Dynamic Management Alert Generator
+11_build_alerts.py - Dynamic Management Alert Generator
 =======================================================
 
 Reads existing fact CSVs from the Saudi Motor Insurance DSS and evaluates
@@ -14,9 +14,9 @@ Each alert is stored as separate business-friendly fields:
     TITLE, ISSUE, IMPACT, ACTION
 
 Usage:
-    python 08_Build_alerts.py
-    python 08_Build_alerts.py --facts-dir ./02_facts
-    python 08_Build_alerts.py --out ./02_facts/fact_alerts.csv
+    python pipeline/11_build_alerts.py
+    python pipeline/11_build_alerts.py --facts-dir ./02_facts
+    python pipeline/11_build_alerts.py --out ./02_facts/fact_alerts.csv
 """
 
 import argparse
@@ -682,7 +682,7 @@ def main():
     parser = argparse.ArgumentParser(description="Build management alerts")
     parser.add_argument(
         "--facts-dir",
-        default=os.path.join("SYNTHETIC_DSS_DATA", "02_facts"),
+        default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "SYNTHETIC_DSS_DATA", "02_facts"),
         help="Path to the 02_facts directory",
     )
     parser.add_argument(

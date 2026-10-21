@@ -1,6 +1,6 @@
 """
-09_underwriting_pnl.py  --  Underwriting P&L statement + variance bridge for the optimizer
-Runs AFTER 08_profit_optimizer.py.
+10_underwriting_pnl.py  --  Underwriting P&L statement + variance bridge for the optimizer
+Runs AFTER 09_profit_optimizer.py.
 
 Reads : fact_scenario_results.csv, fact_optimal_scenarios.csv   (from 08)
 Writes: fact_uw_pnl.csv          long-format statement, one row per case x segment x line item
@@ -18,7 +18,7 @@ import sys
 import numpy as np
 import pandas as pd
 
-BASE = r"C:\predicting insurance\SYNTHETIC_DSS_DATA\02_facts"
+BASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "SYNTHETIC_DSS_DATA", "02_facts")
 if len(sys.argv) > 1:
     BASE = sys.argv[1]
 

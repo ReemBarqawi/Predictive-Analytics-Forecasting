@@ -1,6 +1,6 @@
 # Assumption Register
 
-Every synthetic assumption used in the build. All values are configurable in `build_synthetic_dss.py`.
+Every synthetic assumption used in the build. All values are configurable in `pipeline/01_build_synthetic_data.py`.
 
 | Assumption | Value | Reason | Impact | Configurable |
 |---|---|---|---|---|

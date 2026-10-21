@@ -61,7 +61,7 @@ SYNTHETIC_DSS_DATA/
 ## How to rebuild
 
 ```
-python3 build_synthetic_dss.py
+python pipeline/01_build_synthetic_data.py   (run from anywhere; paths are relative to the repo)
 ```
 
 The script is fully reproducible (fixed `SEED = 20260829`). Every assumption

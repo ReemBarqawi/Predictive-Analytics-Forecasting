@@ -1,5 +1,5 @@
 """
-build_synthetic_dss.py
+01_build_synthetic_data.py
 ======================
 Turns the demo insurance dataset into a credible synthetic DSS dataset.
 
@@ -40,7 +40,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 SEED = 20260829
 RNG = np.random.default_rng(SEED)
 
-BASE = Path(__file__).parent
+BASE = Path(__file__).resolve().parent.parent   # project root
 IN_DIR = BASE / "ORIGINAL_DATA"
 OUT_DIR = BASE / "SYNTHETIC_DSS_DATA"
 SRC_DIR = OUT_DIR / "01_source"
@@ -911,7 +911,7 @@ def persist(policies_enriched, claims_developed, earned_premium, segments, trian
     # Assumption register
     with open(DOC_DIR / "assumption_register.md", "w") as f:
         f.write("# Assumption Register\n\n")
-        f.write("Every synthetic assumption used in the build. All values are configurable in `build_synthetic_dss.py`.\n\n")
+        f.write("Every synthetic assumption used in the build. All values are configurable in `pipeline/01_build_synthetic_data.py`.\n\n")
         f.write("| Assumption | Value | Reason | Impact | Configurable |\n|---|---|---|---|---|\n")
         rows = [
             ("Random seed", ASSUMPTIONS["SEED"], "Reproducibility", "Deterministic outputs", "Yes"),
@@ -944,7 +944,7 @@ def persist(policies_enriched, claims_developed, earned_premium, segments, trian
              "Small realistic gap in SUM_INSURED for DQ demo", "Feeds DQ page", "Yes"),
             ("Zone mapping", "keyword → city → region",
              "Convert OFFICE_NAME into 5-zone geographic dimension",
-             "Enables segmentation, safe-zone by zone", "Yes (in zone_mapping.py)"),
+             "Enables segmentation, safe-zone by zone", "Yes (in pipeline/zone_mapping.py)"),
         ]
         for row in rows:
             f.write("| " + " | ".join(str(x) for x in row) + " |\n")

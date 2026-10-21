@@ -1,5 +1,5 @@
 """
-notebooks/05_glm_refit.py
+pipeline/02_glm_refit.py
 ==========================
 Phase 1 of the post-data plan (Days 1-2).
 
@@ -29,7 +29,7 @@ Outputs
   outputs/severity_coefficients_v3.csv
   outputs/glm_refit_report.md           — one-page v2 vs v3 comparison
 
-Prerequisite: run SYNTHETIC_DSS_DATA/build_synthetic_dss.py first.
+Prerequisite: run pipeline/01_build_synthetic_data.py first.
 """
 
 from __future__ import annotations

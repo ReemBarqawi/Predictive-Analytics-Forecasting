@@ -1,5 +1,5 @@
 """
-notebooks/06_pure_premium.py
+pipeline/03_pure_premium.py
 =============================
 Phase 2 of the post-data plan (Day 3).
 
@@ -25,7 +25,7 @@ Outputs
       One-page summary: portfolio adequacy, top under- and over-priced segments,
       credibility caveats.
 
-Prerequisite: run notebooks/05_glm_refit.py first (produces the two .pkl files).
+Prerequisite: run pipeline/02_glm_refit.py first (produces the two .pkl files).
 """
 
 from __future__ import annotations
@@ -63,7 +63,7 @@ def _log(msg: str) -> None:
 # =========================================================================
 # Encoder — the TRANSFORM half of Phase 1's encode_features
 # (Duplicated here so the file is self-contained. When you add Phase 3,
-# consider extracting this + Phase 1's version into notebooks/_utils.py.)
+# consider extracting this + Phase 1's version into pipeline/_utils.py.)
 # =========================================================================
 def transform_features(df: pd.DataFrame, encoder_meta: dict) -> pd.DataFrame:
     """

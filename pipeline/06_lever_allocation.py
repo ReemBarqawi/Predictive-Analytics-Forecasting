@@ -1,3 +1,14 @@
+"""
+06_lever_allocation.py
+======================
+Splits each segment's combined-ratio gap across the 5 profitability levers
+(Risk-Based Repricing, Bonus-Malus, UW Controls, Claims Management, Distribution & Mix).
+
+Reads : SYNTHETIC_DSS_DATA/02_facts/fact_segment_performance.csv
+Writes: SYNTHETIC_DSS_DATA/02_facts/fact_lever_allocation.csv
+
+Lever values are raw (unscaled); the proportional "never overshoot" allocation is done in DAX.
+"""
 import os
 import pandas as pd
 

@@ -1,5 +1,5 @@
 """
-12_forecast seasonal.py
+07_forecast_seasonal.py
 =======================
 
 Portfolio-level seasonal forecast for Saudi Motor Insurance DSS.
@@ -53,7 +53,7 @@ import pandas as pd
 # CONFIGURATION
 # =============================================================================
 
-BASE_DIR = Path(r"C:\predicting insurance")
+BASE_DIR = Path(__file__).resolve().parent.parent   # project root
 
 FACTS_DIR = BASE_DIR / "SYNTHETIC_DSS_DATA" / "02_facts"
 OUTPUT_DIR = BASE_DIR / "outputs"
