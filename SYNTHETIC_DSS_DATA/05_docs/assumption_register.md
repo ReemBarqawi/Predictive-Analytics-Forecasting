@@ -17,4 +17,4 @@ Every synthetic assumption used in the build. All values are configurable in `pi
 | Sum insured (Comprehensive) — log-normal μ,σ | μ=11.2,σ=0.55 | Realistic sum-insured spread for pricing features | Feature added to pricing dataset | Yes |
 | Sum insured (Third Party) — log-normal μ,σ | μ=9.9,σ=0.4 | Realistic sum-insured spread for pricing features | Feature added to pricing dataset | Yes |
 | Data-quality missing rate | 2% | Small realistic gap in SUM_INSURED for DQ demo | Feeds DQ page | Yes |
-| Zone mapping | keyword → city → region | Convert OFFICE_NAME into 5-zone geographic dimension | Enables segmentation, safe-zone by zone | Yes (in zone_mapping.py) |
+| Zone mapping | keyword → city → region | Convert OFFICE_NAME into 5-zone geographic dimension | Enables segmentation, safe-zone by zone | Yes (in pipeline/zone_mapping.py) |

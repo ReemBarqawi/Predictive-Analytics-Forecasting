@@ -859,7 +859,7 @@ def run_validation(*, policies_enriched, claims_developed, earned_premium, segme
         f"{abs(zero['scenario_premium'] - portfolio_baseline['earned_premium']):.2f}")
 
     # Save
-    with open(VAL_DIR / "validation_report.md", "w") as f:
+    with open(VAL_DIR / "validation_report.md", "w", encoding="utf-8") as f:
         f.write("# Synthetic DSS — Validation Report\n\n")
         f.write(f"_As-of date: {AS_OF.date()}._\n\n")
         f.write("| Metric | Value |\n|---|---|\n")
@@ -909,7 +909,7 @@ def persist(policies_enriched, claims_developed, earned_premium, segments, trian
         df.to_csv(DIM_DIR / f"{name}.csv", index=False)
 
     # Assumption register
-    with open(DOC_DIR / "assumption_register.md", "w") as f:
+    with open(DOC_DIR / "assumption_register.md", "w", encoding="utf-8") as f:
         f.write("# Assumption Register\n\n")
         f.write("Every synthetic assumption used in the build. All values are configurable in `pipeline/01_build_synthetic_data.py`.\n\n")
         f.write("| Assumption | Value | Reason | Impact | Configurable |\n|---|---|---|---|---|\n")
@@ -950,7 +950,7 @@ def persist(policies_enriched, claims_developed, earned_premium, segments, trian
             f.write("| " + " | ".join(str(x) for x in row) + " |\n")
 
     # Data dictionary
-    with open(DOC_DIR / "data_dictionary.md", "w") as f:
+    with open(DOC_DIR / "data_dictionary.md", "w", encoding="utf-8") as f:
         f.write("# Data Dictionary\n\n")
         f.write("Fields added, modified, or preserved during the synthetic enrichment.\n\n")
         f.write("Columns are labelled O = original (preserved), M = modified, S = synthetic (new).\n\n")
@@ -1107,7 +1107,7 @@ def main():
 
     # Save before/after separately for easy consumption
     pd.DataFrame(orig_stats).to_csv(DOC_DIR / "before_after.csv", index=False)
-    with open(DOC_DIR / "before_after.md", "w") as f:
+    with open(DOC_DIR / "before_after.md", "w", encoding="utf-8") as f:
         f.write("# Before vs After\n\n")
         f.write("| Metric | Before | After | Target | Status |\n|---|---|---|---|---|\n")
         for r in orig_stats:
