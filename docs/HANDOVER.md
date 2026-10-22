@@ -195,6 +195,8 @@ Gate: the open items in §12 need a decision from the owner/manager before Phase
 7. Rebuild old Scenario Simulation + Safe Zone pages on the new optimizer logic.
 8. Build the Distribution & Mix lever detail page (the other 4 exist), and confirm the CR Glide Path's toggle behaviour.
 
+**Report Server publishing (2026-10-21):** PBIRS rejects reports saved by the regular Power BI Desktop (PBIR format). Edit reports only in *Power BI Desktop for Report Server* with the PBIR preview features off, and convert affected files with `tools/pbir_to_legacy.py`. Full explanation: [`docs/PBIRS_REPORT_FORMAT_GUIDE.md`](PBIRS_REPORT_FORMAT_GUIDE.md).
+
 **PHASE 3 — Deployment (later):**
 9. Research/install **Power BI Report Server (on-prem)**; document requirements, limitations, and an installation guide.
 10. Deploy to the **company server**; test by uploading the Power BI Desktop work there.
