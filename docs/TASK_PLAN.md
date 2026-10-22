@@ -61,7 +61,7 @@ Tasks 1 and 2 can run in parallel. Task 1 blocks the Python work (4 and 5); task
 
 | # | Decision | Today in the code | Options |
 |---|---|---|---|
-| 1 | **Target combined ratio** | 0.85 (lever script), 0.95 (optimizer and Power BI), 0.70 loss-ratio target (alerts) | One company target, e.g. 95%, plus an alert threshold |
+| 1 | **Target combined ratio** | 0.85 (lever script), 0.95 (optimizer and Power BI), 0.70 loss-ratio target (alerts) | **Proposed:** a default suggested from the last 5 profitable mature years, which the manager may override, with every value checked against history. The manager approves the rule's parameters. See `docs/TARGET_CR.md` §8 |
 | 2 | **Credibility rule** | ≥30 claims, ≥300 policies, ≥30 policies, 1,082 claims (4 different rules) | One rule, e.g. classical 1,082 claims for full credibility, with partial credibility below |
 | 3 | **Lever baseline** | Levers use all years; Power BI shows by-year | All years, or latest mature year |
 | 4 | **Real data access** | — | Oracle host, service name, read-only account, schemas and tables for policies and claims, refresh frequency |
@@ -132,6 +132,7 @@ Also confirm with the manager: the motor classes in the real data, the expense l
 1. **Create `config.yaml`** (or `config.py`) holding:
    - data and output folders
    - target CR, credibility rule, expense loadings, retention assumptions
+     (target CR: build the design in `docs/TARGET_CR.md` §7 once real data is connected)
    - forecast windows, alert thresholds
 
    Use the values decided in Task 1. Make every script read it.

@@ -251,7 +251,7 @@ Resolved by the audit:
 Still open (owner / manager decision needed):
 - [ ] Requirements file (to be uploaded): align this handover to it.
 - [ ] Oracle connection details + warehouse schema for the real-data phase.
-- [ ] **One target CR.** The lever script uses 0.85. The optimizer and Power BI default use 0.95. Alerts use an LR target of 0.70.
+- [ ] **One target CR.** The lever script uses 0.85. The optimizer and Power BI default use 0.95. Alerts use an LR target of 0.70. **Design ready** (not built): `docs/TARGET_CR.md`. A data-suggested default with a manager override, a history check, and all target comparisons in DAX.
 - [ ] **One credibility rule.** Today: ≥30 claims (segments), ≥300 policies (pure premium/backtest), ≥30 policies (optimizer), 1082 claims (Power BI what-if).
 - [ ] **Lever baseline.** Should levers use all years (as now) or the by-year table that Power BI's `fact_segment_performance` uses?
 - [ ] **Repoint Power BI sources** from `C:\predicting insurance\` to this repo (work laptop: `C:\Users\rbarqawi\Projects\Predictive-Analytics-Forecasting`), ideally through one `DataFolder` parameter. The scripts are already fixed (relative paths).
