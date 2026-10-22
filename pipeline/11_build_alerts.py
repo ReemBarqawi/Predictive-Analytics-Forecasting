@@ -26,6 +26,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from settings import S, is_motor  # folders + motor classes for the active data source
+
 
 # ---------------------------------------------------------------------
 # CONFIGURATION
@@ -682,7 +684,7 @@ def main():
     parser = argparse.ArgumentParser(description="Build management alerts")
     parser.add_argument(
         "--facts-dir",
-        default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "SYNTHETIC_DSS_DATA", "02_facts"),
+        default=str(S.facts_dir),
         help="Path to the 02_facts directory",
     )
     parser.add_argument(

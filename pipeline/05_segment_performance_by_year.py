@@ -29,7 +29,8 @@ import numpy as np
 import pandas as pd
 
 # ---- settings -------------------------------------------------------------
-FACTS = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent / "SYNTHETIC_DSS_DATA" / "02_facts"
+from settings import S, is_motor  # folders + motor classes for the active data source
+FACTS = Path(sys.argv[1]) if len(sys.argv) > 1 else S.facts_dir
 LATEST_MATURE_YEAR = 2023      # years after this use model-expected claims
 ADMIN_RATE = 0.10
 RISK_MARGIN = 0.05

@@ -15,9 +15,8 @@ import pandas as pd
 # ─────────────────────────────────────────────────────────────
 # Paths
 # ─────────────────────────────────────────────────────────────
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-BASE_DIR   = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
-FACTS_DIR  = os.path.join(BASE_DIR, "SYNTHETIC_DSS_DATA", "02_facts")
+from settings import S, is_motor  # folders + motor classes for the active data source
+FACTS_DIR  = str(S.facts_dir)
 
 INPUT_PATH  = os.path.join(FACTS_DIR, "fact_segment_performance.csv")
 OUTPUT_PATH = os.path.join(FACTS_DIR, "fact_lever_allocation.csv")

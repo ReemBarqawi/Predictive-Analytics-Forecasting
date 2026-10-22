@@ -13,3 +13,7 @@ Thumbs.db
 
 # Python virtual environment
 .venv/
+
+# Real company data and per-machine settings: NEVER commit
+data/
+config.local.toml

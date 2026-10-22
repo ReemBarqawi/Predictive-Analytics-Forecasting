@@ -18,7 +18,8 @@ import sys
 import numpy as np
 import pandas as pd
 
-BASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "SYNTHETIC_DSS_DATA", "02_facts")
+from settings import S, is_motor  # folders + motor classes for the active data source
+BASE = str(S.facts_dir)
 if len(sys.argv) > 1:
     BASE = sys.argv[1]
 

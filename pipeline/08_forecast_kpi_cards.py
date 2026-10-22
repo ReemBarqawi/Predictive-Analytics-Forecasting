@@ -26,9 +26,9 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 
-BASE = Path(__file__).resolve().parent.parent
-FACT_DIR = BASE / "SYNTHETIC_DSS_DATA" / "02_facts"
-MODELS_DIR = BASE / "models"
+from settings import S, is_motor  # folders + motor classes for the active data source
+FACT_DIR = S.facts_dir
+MODELS_DIR = S.models_dir
 
 # ── Window truncation ────────────────────────────────────────────────────
 # Premium and claims end on DIFFERENT dates because they die for different
@@ -40,7 +40,6 @@ PREMIUM_END_Q = pd.Period("2024Q4", freq="Q")
 CLAIMS_END_Q = pd.Period("2023Q4", freq="Q")
 VALUATION_DATE = pd.Timestamp("2025-01-31")
 
-MOTOR_CLASSES = ["Motor Private", "Motor Commercial", "Motor Rent a Car"]
 
 # ── Backtest-derived constants (outputs/backtest_report.md, claim_cost row) ──
 # BIAS is signed: negative means the GLM under-predicts, so we divide by (1+bias).
@@ -194,7 +193,7 @@ def glm_forecast_rates() -> dict:
         sev_b = pickle.load(f)
 
     pol = pd.read_csv(FACT_DIR / "fact_policy.csv", low_memory=False)
-    pol = pol[pol["CLASS_DESC"].isin(MOTOR_CLASSES)]
+    pol = pol[is_motor(pol["CLASS_DESC"])]
     pol = pol[pol["EXPOSURE_YEARS"] > 0]
     # Recent mix = the cohort we assume renews forward
     recent = pol[pol["POLICY_YEAR"] >= pol["POLICY_YEAR"].max() - 1].copy()

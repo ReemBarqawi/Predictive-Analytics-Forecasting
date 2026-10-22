@@ -44,12 +44,10 @@ warnings.filterwarnings("ignore")
 # =========================================================================
 # Config
 # =========================================================================
-BASE = Path(__file__).resolve().parent.parent
-FACT_DIR = BASE / "SYNTHETIC_DSS_DATA" / "02_facts"
-OUTPUTS_DIR = BASE / "outputs"
-OUTPUTS_DIR.mkdir(exist_ok=True)
+from settings import S, is_motor  # folders + motor classes for the active data source
+FACT_DIR = S.facts_dir
+OUTPUTS_DIR = S.reports_dir
 
-MOTOR_CLASSES = ["Motor Private", "Motor Commercial", "Motor Rent a Car"]
 
 PRICING_FEATURES = [
     "POLICY_TYPE_DESC",
@@ -131,7 +129,7 @@ def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     p["POLICY_EXPIRY_DATE"]    = pd.to_datetime(p["POLICY_EXPIRY_DATE"])
     c["ACC_DATE"]              = pd.to_datetime(c["ACC_DATE"])
 
-    p = p[p["CLASS_DESC"].isin(MOTOR_CLASSES)].copy()
+    p = p[is_motor(p["CLASS_DESC"])].copy()
     c = c[c["POLICY_MATCHED"] == True].copy()
     c = c.dropna(subset=["POLICY_NO", "POLICY_YEAR", "ACC_DATE"])
     c["POLICY_NO"]   = c["POLICY_NO"].astype(int)
@@ -424,7 +422,7 @@ def write_report(results: pd.DataFrame) -> None:
     # Determine which segments are Full credibility using the current portfolio
     seg_policy_counts = (
         pd.read_csv(FACT_DIR / "fact_policy.csv", low_memory=False)
-          .query("CLASS_DESC in @MOTOR_CLASSES")
+          .loc[lambda d: is_motor(d["CLASS_DESC"])]
           .assign(seg_id=lambda d: d["ZONE"].astype(str) + "|" + d["CLASS_DESC"].astype(str) + "|" + d["POLICY_TYPE_DESC"].astype(str))
           .groupby("seg_id").size()
     )

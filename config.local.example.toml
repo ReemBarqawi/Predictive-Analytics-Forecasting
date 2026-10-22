@@ -1,0 +1,12 @@
+# Copy this file to config.local.toml (git-ignored) and fill in your own values.
+# Anything here overrides config.toml. Never put a password in this file.
+
+[run]
+# source = "oracle"            # uncomment to make the warehouse the default source
+
+[oracle]
+dsn  = "db-host.company.local:1521/SERVICE_NAME"   # host:port/service_name from the DBA
+user = "READONLY_USER"
+
+# [profiles.oracle]
+# output_root = "D:/AmanPrediction/real"           # e.g. a different disk or a shared folder

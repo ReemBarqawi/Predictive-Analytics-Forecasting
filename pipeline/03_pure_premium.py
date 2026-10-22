@@ -40,13 +40,11 @@ import statsmodels.api as sm
 # =========================================================================
 # Config
 # =========================================================================
-BASE = Path(__file__).resolve().parent.parent
-FACT_DIR = BASE / "SYNTHETIC_DSS_DATA" / "02_facts"
-MODELS_DIR = BASE / "models"
-OUTPUTS_DIR = BASE / "outputs"
-OUTPUTS_DIR.mkdir(exist_ok=True)
+from settings import S, is_motor  # folders + motor classes for the active data source
+FACT_DIR = S.facts_dir
+MODELS_DIR = S.models_dir
+OUTPUTS_DIR = S.reports_dir
 
-MOTOR_CLASSES = ["Motor Private", "Motor Commercial", "Motor Rent a Car"]
 
 # Segment definition for the adequacy roll-up
 SEGMENT_KEYS = ["ZONE", "CLASS_DESC", "POLICY_TYPE_DESC"]
@@ -113,7 +111,7 @@ def load_models() -> tuple[dict, dict]:
 def load_policies() -> pd.DataFrame:
     _log("Loading motor policies from fact_policy.csv")
     p = pd.read_csv(FACT_DIR / "fact_policy.csv", low_memory=False)
-    p = p[p["CLASS_DESC"].isin(MOTOR_CLASSES)].copy()
+    p = p[is_motor(p["CLASS_DESC"])].copy()
     p = p[p["EXPOSURE_YEARS"] > 0].copy()
 
     # Count how many policies have missing SUM_INSURED_BAND for the report

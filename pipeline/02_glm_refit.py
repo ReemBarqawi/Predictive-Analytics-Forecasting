@@ -45,14 +45,11 @@ import statsmodels.api as sm
 # =========================================================================
 # Config — everything you might want to tweak lives here
 # =========================================================================
-BASE = Path(__file__).resolve().parent.parent   # project root
-FACT_DIR = BASE / "SYNTHETIC_DSS_DATA" / "02_facts"
-MODELS_DIR = BASE / "models"
-OUTPUTS_DIR = BASE / "outputs"
-MODELS_DIR.mkdir(exist_ok=True)
-OUTPUTS_DIR.mkdir(exist_ok=True)
+from settings import S, is_motor  # folders + motor classes for the active data source
+FACT_DIR = S.facts_dir
+MODELS_DIR = S.models_dir
+OUTPUTS_DIR = S.reports_dir
 
-MOTOR_CLASSES = ["Motor Private", "Motor Commercial", "Motor Rent a Car"]
 
 # Features known at quote time (no target leakage)
 PRICING_FEATURES = [
@@ -81,7 +78,7 @@ def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     claims = pd.read_csv(FACT_DIR / "fact_claim.csv", low_memory=False)
 
     # Motor only for both sides
-    policies = policies[policies["CLASS_DESC"].isin(MOTOR_CLASSES)].copy()
+    policies = policies[is_motor(policies["CLASS_DESC"])].copy()
 
     # Only claims that were successfully reassigned to a policy
     claims = claims[claims["POLICY_MATCHED"] == True].copy()

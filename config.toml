@@ -1,0 +1,49 @@
+# Aman Prediction — pipeline configuration (committed; contains NO secrets)
+#
+# Personal / machine settings (Oracle address, username, a different output folder) go in
+# config.local.toml next to this file. That file is git-ignored and overrides anything here.
+# Copy config.local.example.toml to config.local.toml to start.
+#
+# Choose the data source per run:   python run_all.py --source oracle
+# or set it here once:               [run] source = "oracle"
+
+[run]
+source = "synthetic"          # "synthetic" (demo Excel files) or "oracle" (company warehouse)
+
+# Where each source writes its results. Power BI's DataFolder parameter must point at
+# <output_root>\ (the folder that contains 02_facts and 03_dims).
+[profiles.synthetic]
+output_root = "SYNTHETIC_DSS_DATA"
+models_dir  = "models"
+reports_dir = "outputs"
+
+[profiles.oracle]
+raw_dir     = "data/raw"            # warehouse extracts (git-ignored, never commit)
+output_root = "data/real"           # results for Power BI (git-ignored)
+models_dir  = "data/real/models"
+reports_dir = "data/real/reports"
+
+[data]
+# Classes treated as motor business. Empty list = keep every class the extract returns.
+motor_classes = ["Motor Private", "Motor Commercial", "Motor Rent a Car"]
+
+[oracle]
+# Connection details belong in config.local.toml, not here:
+#   dsn  = "host:port/service_name"
+#   user = "READONLY_USER"
+# The password is never stored in a file: it is read from the environment variable
+# AMAN_ORACLE_PASSWORD, or asked for when the extract runs.
+sql_dir = "sql"               # one .sql file per extract (policies.sql, claims.sql)
+fetch_batch_rows = 50000
+
+[prepare]
+# How to estimate each claim's final (ultimate) cost from warehouse data.
+#   "incurred" = paid + case reserve, no IBNR.  [ASSUMPTION — agree the method with the
+#   manager/actuary; a chain-ladder option is a planned improvement]
+ultimate_method = "incurred"
+as_of_date = ""               # valuation date "YYYY-MM-DD"; empty = date of the extract
+
+[business]
+# [ASSUMPTIONS — confirm with the manager; see docs/TASK_PLAN.md Task 1]
+admin_expense_rate = 0.10     # admin expense as share of premium
+risk_margin_rate   = 0.05     # prudence loading on expected claims (break-even)

@@ -53,10 +53,10 @@ import pandas as pd
 # CONFIGURATION
 # =============================================================================
 
-BASE_DIR = Path(__file__).resolve().parent.parent   # project root
+from settings import S, is_motor  # folders + motor classes for the active data source
 
-FACTS_DIR = BASE_DIR / "SYNTHETIC_DSS_DATA" / "02_facts"
-OUTPUT_DIR = BASE_DIR / "outputs"
+FACTS_DIR = S.facts_dir
+OUTPUT_DIR = S.reports_dir
 
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 

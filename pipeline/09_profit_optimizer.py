@@ -32,7 +32,8 @@ import numpy as np
 import pandas as pd
 
 # ------------------------------------------------------------------ CONFIG
-BASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "SYNTHETIC_DSS_DATA", "02_facts")
+from settings import S, is_motor  # folders + motor classes for the active data source
+BASE = str(S.facts_dir)
 if len(sys.argv) > 1:               # allows: python pipeline/09_profit_optimizer.py <folder>
     BASE = sys.argv[1]
 

@@ -1,8 +1,10 @@
-# Aman Prediction — Python pipeline (pipeline/01 ... 11)
+# Aman Prediction — Python pipeline (pipeline/00 ... 11)
 pandas>=2.2,<3     # code written for pandas 2.x
 numpy>=1.26,<3
 statsmodels>=0.14.2
-openpyxl>=3.1        # reads ORIGINAL_DATA/*.xlsx
+openpyxl>=3.1        # reads ORIGINAL_DATA/*.xlsx (synthetic source)
 matplotlib>=3.8      # 07_forecast_seasonal validation chart
+oracledb>=2.0        # warehouse extract (thin mode: no Oracle client needed)
+pyarrow>=15          # raw extracts stored as Parquet in data/raw/
 # Optional: 07_forecast_seasonal also tries Prophet and skips it if missing
 # prophet>=1.1.6
