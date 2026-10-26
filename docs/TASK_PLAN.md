@@ -18,7 +18,7 @@
 |---|---|---|---|---|
 | 0 | Repo housekeeping (commit the master .pbix, merge the branch) | Git | — | XS |
 | 1 | Business decisions meeting with the manager | Meeting (you) | — | S |
-| 2 | Semantic model cleanup | Power BI | 0 | M |
+| 2 | Semantic model cleanup ⏳ *deletions and folders done; save, fixes and publish open* | Power BI | 0 | M |
 | 3 | Make every visual Report-Server-safe | Power BI | 2 | M |
 | 4 | Central config and pipeline hardening | Python | 1 | M |
 | 5 | Oracle data connection and real-data run | Python + data | 1, 4 | L |
@@ -77,6 +77,13 @@ Also confirm with the manager: the motor classes in the real data, the expense l
 ---
 
 ## Task 2 — Semantic model cleanup
+
+> **Status (2026-10-26): ⏳ mostly done, not saved or published yet.** Steps 1–2 and the folder tidy are done in
+> `clean model.pbix` (Desktop copy of the master): 224 measures and 14 tables deleted, re-check shows zero unused,
+> and the 242 remaining measures are in 11 folders numbered `01`–`11`. Details and the open checklist are in `docs/MODEL_CLEANUP.md`.
+> - **Correction to step 4:** `Full Cred Standard` is **in use** (`Credibility Z` reads it). Keep it.
+> - **Still open:** save and copy back over the master `_RS` file, Auto date/time off, delete `Errors in fact_alerts`,
+>   `fact_alerts` 17 columns, `PTP Target CR` default, stale bookmarks, page names, measure descriptions, publish to the test server.
 
 **Goal:** a lean, understandable model, which makes it faster, easier to hand over, and less likely to break on Report Server.
 
