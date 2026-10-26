@@ -14,7 +14,7 @@ _As-of date: 2025-12-31._
 | Total gross premium (positive+negative) | SAR 53,502,613 |
 | Total motor gross premium | SAR 47,262,587 |
 | Total commission | SAR 4,254,035 |
-| Total earned premium | SAR 47,396,103 |
+| Total earned premium | SAR 47,262,587 |
 | Negative premium rows | 1301 |
 | Zero premium rows | 181 |
 | Open claim % | 27.3% |

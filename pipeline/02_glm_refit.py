@@ -318,6 +318,9 @@ def save_coefficients(bundle: dict, out_path: Path) -> pd.DataFrame:
 # =========================================================================
 def save_model(bundle: dict, path: Path) -> None:
     """Pickle everything needed to predict later (Phase 2)."""
+    # statsmodels keeps a copy of the training data (every row, residuals, weights) in the
+    # result; on a real book that is gigabytes. Coefficients and prediction do not need it.
+    bundle["result"].remove_data()
     to_save = {
         "result": bundle["result"],
         "encoder_meta": bundle["encoder_meta"],

@@ -51,7 +51,7 @@ Columns are labelled O = original (preserved), M = modified, S = synthetic (new)
 |---|---|---|
 | fact_policy | policy-year | One row per policy-year (all classes) |
 | fact_claim | claim | Adds ULTIMATE / CASE_RESERVE / INCURRED / IBNR |
-| fact_earned_premium | policy-month | Days-of-cover pro-rata allocation |
+| fact_earned_premium | segment x policy year x month | Days-of-cover pro-rata allocation |
 | fact_claims_development | AY × dev month | Cumulative paid + incurred + paid-to-ult ratio |
 | fact_triangle_paid | AY × dev month | Cumulative paid (Power BI matrix visual) |
 | fact_triangle_incurred | AY × dev month | Cumulative incurred |

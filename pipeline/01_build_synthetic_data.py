@@ -358,57 +358,77 @@ def develop_claims(claims_reassigned: pd.DataFrame) -> pd.DataFrame:
 
 
 # ==========================================================================
-# STEP 5 — Earned premium (policy-month grain)
+# STEP 5 — Earned premium (segment x policy year x month grain)
 # ==========================================================================
+EP_SEGMENT = ["ZONE", "CITY", "CLASS_DESC", "POLICY_TYPE_DESC", "POLICY_YEAR"]
+EP_BATCH_POLICIES = 200_000   # policies expanded to months at a time; keeps memory flat
+
+
+def _earned_by_month(batch: pd.DataFrame) -> pd.DataFrame:
+    """Split each policy's premium over the calendar months it is in force, pro rata to
+    days, then total by segment x month. Vectorised: one row per policy-month, in memory
+    only for this batch."""
+    eff = pd.to_datetime(batch["POLICY_EFFECTIVE_DATE"]).to_numpy("datetime64[D]")
+    exp = pd.to_datetime(batch["POLICY_EXPIRY_DATE"]).to_numpy("datetime64[D]")
+    total_days = (exp - eff).astype(np.int64)
+    per_day = batch["TOTAL_PREMIUM"].astype(float).to_numpy() / total_days
+
+    m0 = eff.astype("datetime64[M]")
+    n_months = (exp.astype("datetime64[M]") - m0).astype(np.int64) + 1
+    row = np.repeat(np.arange(len(batch)), n_months)
+    offset = np.arange(len(row)) - np.repeat(np.cumsum(n_months) - n_months, n_months)
+    month = m0[row] + offset
+    month_start = month.astype("datetime64[D]")
+    next_month_start = (month + 1).astype("datetime64[D]")
+    # Days in force = expiry - effective (the same count as EXPOSURE_DAYS), so a policy's
+    # months add up to exactly its total days and its premium. Counting both end dates
+    # gave one extra day per policy (~0.3% too much earned premium).
+    days = (np.minimum(next_month_start, exp[row])
+            - np.maximum(month_start, eff[row])).astype(np.int64)
+    keep = days > 0                     # an expiry on the 1st leaves that month with no days
+    row, month_start, days = row[keep], month_start[keep], days[keep]
+
+    pm = batch[EP_SEGMENT].iloc[row].reset_index(drop=True)
+    pm["MONTH_DATE"] = month_start
+    pm["DAYS_IN_MONTH_EXPOSED"] = days
+    pm["EARNED_PREMIUM"] = per_day[row] * days
+    return (pm.groupby(EP_SEGMENT + ["MONTH_DATE"], dropna=False, observed=True)
+              .agg(DAYS_IN_MONTH_EXPOSED=("DAYS_IN_MONTH_EXPOSED", "sum"),
+                   EARNED_PREMIUM=("EARNED_PREMIUM", "sum"),
+                   POLICIES_IN_FORCE=("EARNED_PREMIUM", "size"))
+              .reset_index())
+
+
 def build_earned_premium(policies_enriched: pd.DataFrame) -> pd.DataFrame:
     """
     For each motor policy, allocate premium into calendar months proportionally
     to the number of days the policy is in force in that month. Handles negative
     premiums (cancellations) by allocating them to their (short) exposure period.
+
+    Output grain is segment (zone, city, class, type) x policy year x month, not policy
+    x month: every reader only needs totals, and real books reach tens of millions of
+    policy-months. Policies are processed in batches so memory does not grow with the book.
     """
-    _log("Building earned-premium fact table (policy-month grain)")
+    _log("Building earned-premium fact table (segment x policy year x month grain)")
     motor = policies_enriched[
         policies_enriched["CLASS_DESC"].isin(ASSUMPTIONS["MOTOR_CLASSES"])
-    ].copy()
+    ]
+    eff = pd.to_datetime(motor["POLICY_EFFECTIVE_DATE"])
+    exp = pd.to_datetime(motor["POLICY_EXPIRY_DATE"])
+    motor = motor.loc[eff.notna() & exp.notna() & (exp > eff),
+                      EP_SEGMENT + ["POLICY_EFFECTIVE_DATE", "POLICY_EXPIRY_DATE", "TOTAL_PREMIUM"]]
 
-    rows = []
-    for _, r in motor.iterrows():
-        eff, exp = r["POLICY_EFFECTIVE_DATE"], r["POLICY_EXPIRY_DATE"]
-        if pd.isna(eff) or pd.isna(exp) or exp <= eff:
-            continue
-        total_days = (exp - eff).days
-        if total_days <= 0:
-            continue
-        premium_per_day = float(r["TOTAL_PREMIUM"]) / total_days if total_days > 0 else 0.0
-
-        # Iterate through calendar months touched by (eff, exp)
-        cur = eff.replace(day=1)
-        while cur <= exp:
-            month_end = (cur + pd.offsets.MonthEnd(0)).normalize()
-            span_start = max(cur, eff)
-            span_end = min(month_end, exp)
-            days = (span_end - span_start).days + 1
-            if days <= 0:
-                cur = cur + pd.offsets.MonthBegin(1)
-                continue
-            earned = premium_per_day * days
-            rows.append({
-                "POLICY_NO": r["POLICY_NO"],
-                "POLICY_YEAR": r["POLICY_YEAR"],
-                "MONTH": cur.strftime("%Y-%m"),
-                "MONTH_DATE": cur,
-                "DAYS_IN_MONTH_EXPOSED": days,
-                "EARNED_PREMIUM": earned,
-                "ZONE": r["ZONE"],
-                "CITY": r["CITY"],
-                "CLASS_DESC": r["CLASS_DESC"],
-                "POLICY_TYPE_DESC": r["POLICY_TYPE_DESC"],
-            })
-            cur = cur + pd.offsets.MonthBegin(1)
-
-    ep = pd.DataFrame(rows)
+    parts = [_earned_by_month(motor.iloc[i:i + EP_BATCH_POLICIES])
+             for i in range(0, len(motor), EP_BATCH_POLICIES)]
+    ep = (pd.concat(parts, ignore_index=True)
+            .groupby(EP_SEGMENT + ["MONTH_DATE"], dropna=False, observed=True)
+            [["DAYS_IN_MONTH_EXPOSED", "EARNED_PREMIUM", "POLICIES_IN_FORCE"]].sum()
+            .reset_index())
+    ep["MONTH"] = ep["MONTH_DATE"].dt.strftime("%Y-%m")
     ep["EARNED_PREMIUM"] = ep["EARNED_PREMIUM"].round(2)
-    _log(f"  earned-premium rows: {len(ep):,}")
+    ep = ep[["POLICY_YEAR", "MONTH", "MONTH_DATE", "ZONE", "CITY", "CLASS_DESC",
+             "POLICY_TYPE_DESC", "DAYS_IN_MONTH_EXPOSED", "EARNED_PREMIUM", "POLICIES_IN_FORCE"]]
+    _log(f"  policies: {len(motor):,}  ->  earned-premium rows: {len(ep):,}")
     _log(f"  total earned premium: SAR {ep['EARNED_PREMIUM'].sum():,.0f}")
     return ep
 
@@ -996,7 +1016,7 @@ def persist(policies_enriched, claims_developed, earned_premium, segments, trian
         f.write("| Table | Grain | Notes |\n|---|---|---|\n")
         f.write("| fact_policy | policy-year | One row per policy-year (all classes) |\n")
         f.write("| fact_claim | claim | Adds ULTIMATE / CASE_RESERVE / INCURRED / IBNR |\n")
-        f.write("| fact_earned_premium | policy-month | Days-of-cover pro-rata allocation |\n")
+        f.write("| fact_earned_premium | segment x policy year x month | Days-of-cover pro-rata allocation |\n")
         f.write("| fact_claims_development | AY × dev month | Cumulative paid + incurred + paid-to-ult ratio |\n")
         f.write("| fact_triangle_paid | AY × dev month | Cumulative paid (Power BI matrix visual) |\n")
         f.write("| fact_triangle_incurred | AY × dev month | Cumulative incurred |\n")

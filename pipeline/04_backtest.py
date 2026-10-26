@@ -32,6 +32,7 @@ Runtime: ~5-10 minutes on the synthetic dataset (19 cutoffs × 2 GLM fits each).
 
 from __future__ import annotations
 
+import gc
 import warnings
 from pathlib import Path
 
@@ -61,6 +62,15 @@ RARE_THRESHOLD = 30
 MIN_TRAIN_EXPOSURE_DAYS = 30       # skip policies with less than 30 days observed
 MIN_TRAIN_POLICIES = 500           # minimum policies to attempt a cutoff fit
 MIN_TRAIN_CLAIMS = 100             # minimum claims to attempt severity fit
+# Method constant: at each cut-off the GLMs train on at most this many policies, drawn at
+# random (fixed seed). ~18 coefficients are estimated precisely from far fewer rows; the cap
+# keeps memory flat on large books (2M+ policies per cut-off ran out of memory).
+MAX_TRAIN_POLICIES = 500_000
+SAMPLE_SEED = 20260826
+
+# Only these columns are read: the full fact tables are hundreds of MB on a real book.
+POLICY_COLS = ["POLICY_NO", "POLICY_YEAR", "POLICY_EFFECTIVE_DATE", "POLICY_EXPIRY_DATE"] + PRICING_FEATURES
+CLAIM_COLS = ["CLM_NO", "POLICY_NO", "POLICY_YEAR", "ACC_DATE", "ULTIMATE_CLAIM", "POLICY_MATCHED"]
 
 # Horizons for the backtest (in days)
 HORIZONS = [
@@ -122,8 +132,8 @@ def apply_encoder(df: pd.DataFrame, encoder_meta: dict) -> pd.DataFrame:
 # =========================================================================
 def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     _log("Loading fact_policy and fact_claim")
-    p = pd.read_csv(FACT_DIR / "fact_policy.csv", low_memory=False)
-    c = pd.read_csv(FACT_DIR / "fact_claim.csv", low_memory=False)
+    p = pd.read_csv(FACT_DIR / "fact_policy.csv", usecols=POLICY_COLS, low_memory=False)
+    c = pd.read_csv(FACT_DIR / "fact_claim.csv", usecols=CLAIM_COLS, low_memory=False)
 
     p["POLICY_EFFECTIVE_DATE"] = pd.to_datetime(p["POLICY_EFFECTIVE_DATE"])
     p["POLICY_EXPIRY_DATE"]    = pd.to_datetime(p["POLICY_EXPIRY_DATE"])
@@ -167,6 +177,8 @@ def train_at_cutoff(policies: pd.DataFrame, claims: pd.DataFrame, T: pd.Timestam
 
     if len(train_pol) < MIN_TRAIN_POLICIES:
         return None, None
+    if len(train_pol) > MAX_TRAIN_POLICIES:
+        train_pol = train_pol.sample(n=MAX_TRAIN_POLICIES, random_state=SAMPLE_SEED)
 
     # Aggregate observed claims
     train_claims = claims[claims["ACC_DATE"] <= T].copy()
@@ -193,6 +205,8 @@ def train_at_cutoff(policies: pd.DataFrame, claims: pd.DataFrame, T: pd.Timestam
     except Exception as e:
         _log(f"  cutoff {T.date()}: frequency fit failed ({e})")
         return None, None
+    freq_model.remove_data()            # drop the training copy; prediction needs only params
+    del freq_df, X_freq, X_freq_c
     freq_bundle = {"result": freq_model, "encoder_meta": enc_f}
 
     # Fit severity GLM
@@ -217,6 +231,7 @@ def train_at_cutoff(policies: pd.DataFrame, claims: pd.DataFrame, T: pd.Timestam
     except Exception as e:
         _log(f"  cutoff {T.date()}: severity fit failed ({e})")
         return freq_bundle, None
+    sev_model.remove_data()
 
     return freq_bundle, {"result": sev_model, "encoder_meta": enc_s}
 
@@ -382,6 +397,9 @@ def run_backtest(policies: pd.DataFrame, claims: pd.DataFrame,
                     tmp["squared_error"] = (tmp["predicted"] - tmp["actual"]) ** 2
                     rows.append(tmp)
 
+        del freq, sev                   # free this cut-off's models before fitting the next
+        gc.collect()
+
     if not rows:
         raise RuntimeError("Backtest produced no rows — check cutoffs and data span.")
 
@@ -421,7 +439,8 @@ def write_report(results: pd.DataFrame) -> None:
     # Segment-level summary — only Full-credibility segments
     # Determine which segments are Full credibility using the current portfolio
     seg_policy_counts = (
-        pd.read_csv(FACT_DIR / "fact_policy.csv", low_memory=False)
+        pd.read_csv(FACT_DIR / "fact_policy.csv", usecols=["ZONE", "CLASS_DESC", "POLICY_TYPE_DESC"],
+                    low_memory=False)
           .loc[lambda d: is_motor(d["CLASS_DESC"])]
           .assign(seg_id=lambda d: d["ZONE"].astype(str) + "|" + d["CLASS_DESC"].astype(str) + "|" + d["POLICY_TYPE_DESC"].astype(str))
           .groupby("seg_id").size()

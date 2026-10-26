@@ -34,8 +34,11 @@ def connect():
     except ImportError:
         sys.exit("Missing package: run  pip install -r requirements.txt")
     ora = S.config.get("oracle", {})
-    dsn, user = ora.get("dsn"), ora.get("user")
-    if not dsn or not user or "SERVICE_NAME" in dsn:
+    dsn, user = (ora.get("dsn") or "").strip(), (ora.get("user") or "").strip()
+    # Unfilled = still the example values. A full TCP descriptor legitimately contains
+    # "(SERVICE_NAME=...)", so only the short-form placeholder ".../SERVICE_NAME" counts.
+    placeholder = dsn.upper().endswith("/SERVICE_NAME") or user == "READONLY_USER"
+    if not dsn or not user or placeholder:
         sys.exit("Set [oracle] dsn and user in config.local.toml "
                  "(copy config.local.example.toml).")
     password = os.environ.get("AMAN_ORACLE_PASSWORD") or getpass.getpass(f"Oracle password for {user}: ")
