@@ -23,13 +23,13 @@
 | 4 | Central config and pipeline hardening | Python | 1 | M |
 | 5 | Oracle data connection and real-data run | Python + data | 1, 4 | L |
 | 6 | Rebuild Scenario Simulator and Safe Zone on the optimizer | Power BI + Python | 3, 5 | L |
-| 7 | Finish Path to Profitability (5th lever page, glide path, actionable alerts) | Power BI | 3 | M |
+| 7 | ~~Finish Path to Profitability~~ **Moved to Future** (Task 11): redesign after the core flow works on real data | — | — | — |
 | 8 | Forecast page on real data | Python + Power BI | 5 | M |
-| 9 | Split into Dashboard A (workbench) and B (executive) | Power BI | 6, 7, 8 | L |
+| 9 | Split into Dashboard A (workbench) and B (executive) | Power BI | 6, 8 | L |
 | 10 | Deploy to the company Report Server | IT + you | 9 | L |
 | 11 | Future: price elasticity model and embedded chatbot | R&D | 10 | XL |
 
-Tasks 1 and 2 can run in parallel. Task 1 blocks the Python work (4 and 5); task 2 blocks the Power BI work (3, 6 and 7).
+Tasks 1 and 2 can run in parallel. Task 1 blocks the Python work (4 and 5); task 2 blocks the Power BI work (3 and 6).
 
 ---
 
@@ -62,8 +62,8 @@ Tasks 1 and 2 can run in parallel. Task 1 blocks the Python work (4 and 5); task
 | # | Decision | Today in the code | Options |
 |---|---|---|---|
 | 1 | **Target combined ratio** | 0.85 (lever script), 0.95 (optimizer and Power BI), 0.70 loss-ratio target (alerts) | **Proposed:** a default suggested from the last 5 profitable mature years, which the manager may override, with every value checked against history. The manager approves the rule's parameters. See `docs/TARGET_CR.md` §8 |
-| 2 | **Credibility rule** | ≥30 claims, ≥300 policies, ≥30 policies, 1,082 claims (4 different rules) | One rule, e.g. classical 1,082 claims for full credibility, with partial credibility below |
-| 3 | **Lever baseline** | Levers use all years; Power BI shows by-year | All years, or latest mature year |
+| 2 | **Credibility rule** | ≥30 claims, ≥300 policies, ≥30 policies, 1,082 claims (4 different rules) | **Proposed:** one score Z (0–1) estimated from each company's own data (Bühlmann–Straub), with a classical fallback preset, results blended with the model, and High/Medium/Low bands. See `docs/CREDIBILITY.md` §10 |
+| 3 | **Baseline** | Levers use all years (2008–2024); the optimizer uses the latest year only; Power BI shows by-year | **Proposed:** one baseline for everything, the *projected no-action CR* for the plan year: the last 3 mature years, premium restated at today's rates, claims trended with the forecast. The optimizer adopts it in Tasks 4–5; the levers use it when Path to Profitability is picked up (Future) |
 | 4 | **Real data access** | — | Oracle host, service name, read-only account, schemas and tables for policies and claims, refresh frequency |
 
 Also confirm with the manager: the motor classes in the real data, the expense loadings (admin 10%, risk margin 5%), and whether the optimizer's retention assumptions are acceptable until real renewal history exists.
@@ -128,24 +128,28 @@ Also confirm with the manager: the motor classes in the real data, the expense l
 
 **Goal:** the Python pipeline is driven by one config file and contains no demo-only shortcuts, ready for real data (a handover requirement).
 
+**Product rule:** Aman Prediction must run on any insurer's data with no code change. Follow `docs/PRODUCT_RULES.md`: every value is derived from data, a company setting with a data-driven default, or a documented method constant. The full inventory of what to change is in its §4. Path to Profitability items (its §6) are out of scope.
+
 **Description**
 1. **Create `config.yaml`** (or `config.py`) holding:
    - data and output folders
    - target CR, credibility rule, expense loadings, retention assumptions
-     (target CR: build the design in `docs/TARGET_CR.md` §7 once real data is connected)
+     (target CR: build the design in `docs/TARGET_CR.md` §7 once real data is connected;
+     credibility: build `docs/CREDIBILITY.md` §9)
    - forecast windows, alert thresholds
 
    Use the values decided in Task 1. Make every script read it.
 2. **Remove hard-coded lists and dates:** the motor class list (in 5 scripts), the `SUM_INSURED` parameters, the `dim_date` range, and the seasonal forecast window. Derive them from the data.
 3. **Fix the bugs:**
    - two dead alert rules (`"12-24"` vs `"12->24"`, and `"12_months"` vs `"12m"`)
-   - the lever script reading a different baseline than Power BI
+   - the lever script reading a different baseline than Power BI (deferred with Path to Profitability)
 4. **Extract shared code** (the feature encoder copied in 4 scripts) into `pipeline/common.py`.
 5. **Add basic tests:** the pipeline runs end to end on the synthetic data, and output tables have the expected columns.
 
 **Done when:**
 - `python run_all.py` runs with all thresholds coming from config,
-- no script contains a hard-coded path, class list or business number,
+- no script contains a hard-coded path, class list or business number (`docs/PRODUCT_RULES.md` §5),
+- the pipeline runs on a second, differently shaped dataset with no code change,
 - the tests pass,
 - outputs still match, or the differences are explained by the new decisions.
 
@@ -206,22 +210,9 @@ Also confirm with the manager: the motor classes in the real data, the expense l
 
 ---
 
-## Task 7 — Finish Path to Profitability
+## Task 7 — Path to Profitability: moved to Future
 
-**Goal:** the lever story is complete and correct.
-
-**Description**
-- **Build the missing Distribution & Mix lever detail page.** The other 4 lever pages exist.
-- **Name the lever pages properly** (`Page 1` → Claims Management, `uw` → UW Controls).
-- **Verify the CR glide path** reacts correctly to each lever toggle and horizon.
-- **Make the realization percentages one source:** they're hard-coded in DAX, so move them to one table that the measures read.
-- **Write down each lever's formula and assumptions** for manager validation (the table is in `docs/HANDOVER.md` §5).
-
-**Done when:** all 5 lever pages exist and are named, the glide-path toggles are verified, and the lever assumptions are confirmed by the manager.
-
-**Recommendation:** move the lever formulas from Python into **config** (Task 4), so the manager's numbers change in one place.
-
-**Session prompt:** *"Read docs/TASK_PLAN.md Task 7 and docs/HANDOVER.md §5. Help me build the Distribution & Mix lever page, test the glide path toggles, and move the lever realization percentages into one table."*
+Not done now. The redesign notes are in **Task 11 → Path to Profitability redesign**. Until then, the existing page stays as it is: it is not fixed, extended, or split into Dashboard A/B.
 
 ---
 
@@ -268,6 +259,8 @@ They're connected by the **committed-scenario** data layer.
 
 **Goal:** the DSS runs on the company server, not on a laptop (a locked decision).
 
+**Deployment model:** Option A from `docs/DEPLOYMENT.md` §4: Python plus a Windows scheduled task. Users only open the dashboards; nobody runs Python by hand. The packaged engine (Option B) is for production and comes later (Task 11).
+
 **Description**
 1. **Get the server address and access from IT:** Publisher role on a project folder, and the matching *Desktop for Report Server* version.
 2. **Data location:** put the outputs where the server can read them (a shared folder or the warehouse), set `DataFolder` to it, and configure data-source credentials and **scheduled refresh** on the server.
@@ -289,6 +282,37 @@ They're connected by the **committed-scenario** data layer.
 ---
 
 ## Task 11 — Future (not started)
+
+### Path to Profitability redesign (next step after the core flow works on real data)
+
+**Where it fits in the flow:** forecast → find risky segments (alerts / Profitability page) → optimizer → explain (what-if, informative only) → safe zone → **commit** the scenario → *if the gap is not closed* → Path to Profitability → monitor actual vs plan.
+
+**Problems found in the current page (review of 2026-10-22):**
+1. **Repricing is counted twice.** The optimizer already reprices the segment, and the Repricing lever adds a cruder uplift (adequacy formula, +50% cap, no retention effect). It is 30% of today's lever total.
+2. **Different starting point.** The levers start from all years pooled (synthetic CR 113.7%). The optimizer starts from 2024 (112.4%) and ends at 101.6%. Path to Profitability should start at **101.6%**, the post-optimizer CR.
+3. **Wrong level for some levers.** Everything is allocated to zone × class × type. Claims management is a portfolio process; distribution and mix works by **channel** (`SOURCE_DESC`).
+4. **Flat or circular formulas.** Claims management = 5% of claims; distribution and mix = 10% of the gap (sized by the problem); "UW controls" actually models garage routing, which is claims management.
+5. **Overlap and scaling.** Claims-reducing levers are added instead of multiplied; proportional scaling hides whether the gap can really be closed.
+6. **Timing too fast.** Price levers show 25% / 90% / 100% by horizon. With annual policies renewing evenly, a rate change reaches about 3% of earned premium after 3 months, 50% after 12 and 100% after 24.
+
+**Redesign:**
+- **Repricing lever** = the committed optimizer result (no separate formula).
+- **Bonus-malus / no-claims discount** from claim history by years claim-free; close to revenue-neutral, with gains from retention and fewer small claims. Check the regulator's NCD rules.
+- **UW controls** = risk-selection rules scored with the GLM (expected claims removed minus premium lost).
+- **Claims management** from recoveries, repair-cost and settlement data, applied to the whole portfolio; anything not measurable stays a labelled company setting.
+- **Distribution and mix** by channel: commission to target, plus shifting volume to profitable channels and segments; also the "restrict / exit" option for segments the optimizer can't fix.
+- **Priority order** instead of proportional scaling, with the remaining gap shown honestly; claims levers multiply.
+- **Timing** of price levers from the earning pattern.
+- **Levels:** calculated at each lever's natural level, reported at portfolio level, with drill-down to segment and channel.
+- All lever values follow `docs/PRODUCT_RULES.md` (§6 lists today's hard-coded ones).
+
+**Prerequisites:** Tasks 5 (real data) and 6 (optimizer pages), the committed-scenario layer (Task 9), the baseline decision (Task 1, #3), and channel data in the extract.
+
+### Packaged engine for production (Option B)
+
+When selling to other insurers, replace Option A with the packaged engine in `docs/DEPLOYMENT.md` §5: one `aman` command-line tool (`check-connection`, `check-data`, `run`, `status`), Python bundled inside, an installer, safe failure that keeps the last good results, results in SQL Server, a refresh trigger, the engine kept apart from client settings for upgrades, versioned models, a licence key and a settings screen.
+
+### Other future items
 
 - **Price elasticity model** from historical repricing data. It replaces the optimizer's *assumed* retention curve (k = 3/5/8) with a fitted one. It needs real renewal history, so do it after Task 5.
 - **Claude chatbot embedded in Power BI.** Needs an approved API route from the company network, and a decision on what data it may see. Start with a design and security review.

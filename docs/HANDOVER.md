@@ -70,6 +70,8 @@ Only **two realistic roles** exist: **CEO/Executive** and **Repricing Manager/Te
 
 ## 5. Path to Profitability page (a major build)
 
+> **Status 2026-10-22: moved to Future.** The page stays as it is for now. The review findings and redesign notes are in `docs/TASK_PLAN.md` Task 11 (Path to Profitability redesign). The lever formulas below are the current, to-be-replaced version.
+
 Portfolio-level page (no zone/class filters, **not** per-segment). Key pieces:
 
 - **5 business levers (confirmed):** Risk-Based Repricing, Bonus-Malus, UW Controls, Claims Management, Distribution & Mix.
@@ -252,8 +254,10 @@ Still open (owner / manager decision needed):
 - [ ] Requirements file (to be uploaded): align this handover to it.
 - [ ] Oracle connection details + warehouse schema for the real-data phase.
 - [ ] **One target CR.** The lever script uses 0.85. The optimizer and Power BI default use 0.95. Alerts use an LR target of 0.70. **Design ready** (not built): `docs/TARGET_CR.md`. A data-suggested default with a manager override, a history check, and all target comparisons in DAX.
-- [ ] **One credibility rule.** Today: ≥30 claims (segments), ≥300 policies (pure premium/backtest), ≥30 policies (optimizer), 1082 claims (Power BI what-if).
-- [ ] **Lever baseline.** Should levers use all years (as now) or the by-year table that Power BI's `fact_segment_performance` uses?
+- [ ] **One credibility rule.** Today: ≥30 claims (segments), ≥300 policies (pure premium/backtest), ≥30 policies (optimizer), 1082 claims (Power BI what-if). **Design ready** (not built): `docs/CREDIBILITY.md`. One data-driven score Z, blended with the model, and the same bands on every page.
+- [ ] **Baseline.** Should levers use all years (as now) or the by-year table that Power BI's `fact_segment_performance` uses? **Proposed:** one projected no-action CR for the plan year, used by the optimizer now and by the levers later (`docs/TASK_PLAN.md` Task 1, #3).
+- [ ] **Product rule: no hard-coded assumptions** (agreed 2026-10-22). The code is the same for every insurer; only data and company settings change. Rule and inventory: `docs/PRODUCT_RULES.md` (built in Task 4).
+- [x] **Deployment model** (agreed 2026-10-25): the pipeline runs as a scheduled engine on the client's server; users only open the dashboards. **Option A** (Python + scheduled task) now, in Task 10; **Option B** (packaged engine) in production. See `docs/DEPLOYMENT.md`.
 - [ ] **Repoint Power BI sources** from `C:\predicting insurance\` to this repo (work laptop: `C:\Users\rbarqawi\Projects\Predictive-Analytics-Forecasting`), ideally through one `DataFolder` parameter. The scripts are already fixed (relative paths).
 - [ ] Bugs to fix at the start of Phase 2 (details in `REPO_AUDIT.md` §5):
   - the builder's path bug

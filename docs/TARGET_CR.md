@@ -41,7 +41,7 @@ level per policy year:
 1. **Mature years only.** Use years with `CLAIMS_BASIS = "Actual developed"`. Recent years whose
    claims are still model estimates are left out.
 2. **Look-back window.** The last **5** mature years.
-3. **Credible years only.** A year needs at least **30 claims**.
+3. **Credible years only.** A year needs credibility Z ≥ 0.30 (`docs/CREDIBILITY.md`; until that is built, at least **30 claims**).
 4. **Profitable years only.** CR **below 100%**.
 5. **Suggested target** = premium-weighted CR of the years that pass 1–4:
    `Σ(claims + commission + admin) / Σ earned premium`.
