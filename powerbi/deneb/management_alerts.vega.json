@@ -1,0 +1,267 @@
+{
+  "$schema": "https://vega.github.io/schema/vega/v5.json",
+  "description": "Management alerts panel (Forecast page). Provider: Vega. Method: docs/ALERTS_METHOD.md. Fields: dim_zone_summary ZONE, dim_business_class CLASS_DESC, dim_product POLICY_TYPE_DESC (drill-through keys), then measures Alert Severity, Alert Headline, Alert Issue, Alert Evidence, Alert Action, Alert Period, Alert Sort. Right-click an alert > Drill through.",
+  "width": {"signal": "max(240, boxW - 24)"},
+  "height": {"signal": "boxH"},
+  "padding": {"left": 2, "right": 2, "top": 2, "bottom": 8},
+  "autosize": {"type": "pad", "resize": false},
+  "background": "transparent",
+  "config": {
+    "text": {"font": "Segoe UI", "baseline": "top"}
+  },
+  "signals": [
+    {"name": "boxW", "init": "containerSize()[0] || 450", "on": [{"events": "window:resize", "update": "containerSize()[0] || boxW"}]},
+    {"name": "boxH", "init": "containerSize()[1] || 700", "on": [{"events": "window:resize", "update": "containerSize()[1] || boxH"}]},
+    {"name": "nRows", "update": "length(data('dataset'))"},
+    {"name": "nCards", "update": "length(data('cards'))"},
+    {"name": "nCritical", "update": "length(data('critical'))"},
+    {"name": "hasFields", "update": "nRows > 0 && isDefined(data('dataset')[0]['Alert Severity']) && isDefined(data('dataset')[0]['Alert Sort'])"},
+    {"name": "period", "update": "nRows > 0 ? (data('dataset')[0]['Alert Period'] || '') : ''"},
+    {"name": "problem", "update": "nRows == 0 ? 'No rows reached this visual. Check that the fields are ZONE, CLASS_DESC, POLICY_TYPE_DESC (from the dim tables) and the Alert measures, and that no visual-level filter removes them.' : !hasFields ? 'Rows arrived, but not the fields Alert Severity and Alert Sort. Remove the old fact_alerts fields and add the measures from 12 Management Alerts.' : nCards == 0 ? 'No Critical or Warning alerts in what this visual received: ' + nRows + ' rows, first row ' + data('dataset')[0].ZONE + ' / ' + data('dataset')[0].CLASS_DESC + ' / ' + data('dataset')[0].POLICY_TYPE_DESC + ', Alert Severity = ' + (data('dataset')[0]['Alert Severity'] || '(blank)') + '. If you expected alerts: keep only the 3 dim fields and the 7 Alert measures, and check the page slicers and visual filters.' : ''"},
+    {"name": "gap", "value": 10},
+    {"name": "textX", "value": 38},
+    {"name": "titleChars", "update": "max(20, floor((width - textX - 16) / 7.6))"},
+    {"name": "bodyChars", "update": "max(24, floor((width - textX - 16) / 6.6))"},
+    {"name": "smallChars", "update": "max(28, floor((width - textX - 16) / 5.9))"},
+    {"name": "periodLines", "update": "period ? slice(split(replace(period, regexp('(.{1,' + smallChars + '})( +|$)', 'g'), '$1\\n'), '\\n'), 0, -1) : []"},
+    {"name": "headerH", "update": "44 + length(periodLines) * 14 + 12"}
+  ],
+  "data": [
+    {"name": "dataset"},
+    {
+      "name": "cards",
+      "source": "dataset",
+      "transform": [
+        {"type": "filter", "expr": "datum['Alert Severity']"},
+        {"type": "formula", "as": "critical", "expr": "datum['Alert Severity'] == 'Critical'"},
+        {"type": "formula", "as": "accent", "expr": "datum.critical ? '#DB0032' : '#F2A900'"},
+        {"type": "window", "sort": {"field": "Alert Sort", "order": "descending"}, "ops": ["row_number"], "as": ["rn"]},
+        {"type": "formula", "as": "titleText", "expr": "(datum.rn < 10 ? '0' : '') + datum.rn + ' · ' + datum['Alert Headline']"},
+        {"type": "formula", "as": "segment", "expr": "datum.ZONE + ' · ' + datum.CLASS_DESC + ' · ' + datum.POLICY_TYPE_DESC"},
+        {"type": "formula", "as": "actionText", "expr": "datum['Alert Action']"},
+        {"type": "formula", "as": "outlookText", "expr": "split(datum['Alert Evidence'], ' || ')[0]"},
+        {"type": "formula", "as": "reliability", "expr": "split(datum['Alert Evidence'], ' || ')[1] || ''"},
+        {"type": "formula", "as": "tLines", "expr": "split(replace(datum.titleText, regexp('(.{1,' + titleChars + '})( +|$)', 'g'), '$1\\n'), '\\n')"},
+        {"type": "formula", "as": "tLines", "expr": "peek(datum.tLines) == '' ? slice(datum.tLines, 0, -1) : datum.tLines"},
+        {"type": "formula", "as": "sLines", "expr": "split(replace(datum.segment, regexp('(.{1,' + bodyChars + '})( +|$)', 'g'), '$1\\n'), '\\n')"},
+        {"type": "formula", "as": "sLines", "expr": "peek(datum.sLines) == '' ? slice(datum.sLines, 0, -1) : datum.sLines"},
+        {"type": "formula", "as": "bLines", "expr": "split(replace(datum['Alert Issue'], regexp('(.{1,' + bodyChars + '})( +|$)', 'g'), '$1\\n'), '\\n')"},
+        {"type": "formula", "as": "bLines", "expr": "peek(datum.bLines) == '' ? slice(datum.bLines, 0, -1) : datum.bLines"},
+        {"type": "formula", "as": "eLines", "expr": "split(replace(datum.outlookText, regexp('(.{1,' + bodyChars + '})( +|$)', 'g'), '$1\\n'), '\\n')"},
+        {"type": "formula", "as": "eLines", "expr": "peek(datum.eLines) == '' ? slice(datum.eLines, 0, -1) : datum.eLines"},
+        {"type": "formula", "as": "aLines", "expr": "split(replace(datum.actionText, regexp('(.{1,' + bodyChars + '})( +|$)', 'g'), '$1\\n'), '\\n')"},
+        {"type": "formula", "as": "aLines", "expr": "peek(datum.aLines) == '' ? slice(datum.aLines, 0, -1) : datum.aLines"},
+        {"type": "formula", "as": "segY", "expr": "12 + length(datum.tLines) * 18 + 2"},
+        {"type": "formula", "as": "bodyY", "expr": "datum.segY + length(datum.sLines) * 15 + 6"},
+        {"type": "formula", "as": "evidY", "expr": "datum.bodyY + length(datum.bLines) * 16 + 6"},
+        {"type": "formula", "as": "relY", "expr": "datum.evidY + length(datum.eLines) * 16 + 4"},
+        {"type": "formula", "as": "labelY", "expr": "datum.relY + (datum.reliability ? 14 : 0) + 8"},
+        {"type": "formula", "as": "actionY", "expr": "datum.labelY + 18"},
+        {"type": "formula", "as": "h", "expr": "datum.actionY + length(datum.aLines) * 16 + 12"},
+        {"type": "formula", "as": "op", "expr": "datum.__selected__ == 'off' ? 0.4 : 1"},
+        {"type": "window", "sort": {"field": "rn"}, "ops": ["sum"], "fields": ["h"], "as": ["cum"]},
+        {"type": "formula", "as": "y", "expr": "headerH + datum.cum - datum.h + (datum.rn - 1) * gap"}
+      ]
+    },
+    {
+      "name": "critical",
+      "source": "cards",
+      "transform": [{"type": "filter", "expr": "datum.critical"}]
+    }
+  ],
+  "marks": [
+    {
+      "type": "text",
+      "interactive": false,
+      "encode": {
+        "enter": {
+          "x": {"value": 0}, "y": {"value": 2},
+          "text": {"value": "Management alerts"},
+          "font": {"value": "Segoe UI Semibold"}, "fontSize": {"value": 16},
+          "fill": {"value": "#1A1A1A"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"value": 0}, "y": {"value": 26},
+          "text": {"signal": "nCards + ' open · ' + nCritical + ' critical · ' + (nCards - nCritical) + ' warning'"},
+          "fontSize": {"value": 11}, "fill": {"value": "#5C5C5C"},
+          "opacity": {"signal": "nCards > 0 ? 1 : 0"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"value": 0}, "y": {"value": 42},
+          "text": {"signal": "periodLines"}, "lineHeight": {"value": 14},
+          "fontSize": {"value": 10.5}, "fill": {"value": "#8C8C8C"},
+          "opacity": {"signal": "nCards > 0 ? 1 : 0"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"value": 0}, "y": {"value": 30},
+          "text": {"signal": "split(replace(problem, regexp('(.{1,' + bodyChars + '})( +|$)', 'g'), '$1\\n'), '\\n')"},
+          "lineHeight": {"value": 16}, "fontSize": {"value": 12},
+          "fill": {"signal": "nRows == 0 || !hasFields ? '#DB0032' : '#5C5C5C'"},
+          "opacity": {"signal": "problem ? 1 : 0"}
+        }
+      }
+    },
+    {
+      "name": "card",
+      "type": "rect",
+      "from": {"data": "cards"},
+      "encode": {
+        "update": {
+          "x": {"value": 0}, "x2": {"signal": "width"},
+          "y": {"field": "y"}, "height": {"field": "h"},
+          "fill": {"value": "#FFFFFF"},
+          "stroke": {"value": "#E6E6E6"}, "strokeWidth": {"value": 1},
+          "cornerRadius": {"value": 6},
+          "opacity": {"field": "op"},
+          "cursor": {"value": "pointer"},
+          "tooltip": {"signal": "{'title': datum['Alert Severity'] + ': ' + datum['Alert Headline'], 'Segment': datum.segment, 'Result': datum['Alert Issue'], 'Outlook': datum.outlookText, 'Reliability': datum.reliability, 'Action': datum['Alert Action'], 'Period': datum['Alert Period']}"}
+        },
+        "hover": {"stroke": {"value": "#8C8C8C"}}
+      }
+    },
+    {
+      "type": "rect",
+      "from": {"data": "cards"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"value": 0}, "width": {"value": 4},
+          "y": {"field": "y"}, "height": {"field": "h"},
+          "fill": {"field": "accent"}, "cornerRadius": {"value": 2},
+          "opacity": {"field": "op"}
+        }
+      }
+    },
+    {
+      "type": "symbol",
+      "from": {"data": "cards"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "shape": {"value": "triangle-up"}, "size": {"value": 170},
+          "x": {"value": 21}, "y": {"signal": "datum.y + 20"},
+          "fill": {"signal": "datum.critical ? datum.accent : '#FFFFFF'"},
+          "stroke": {"field": "accent"}, "strokeWidth": {"value": 1.5},
+          "opacity": {"field": "op"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "cards"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"value": 21}, "y": {"signal": "datum.y + 16"},
+          "text": {"value": "!"}, "align": {"value": "center"},
+          "font": {"value": "Segoe UI Semibold"}, "fontSize": {"value": 9},
+          "fill": {"signal": "datum.critical ? '#FFFFFF' : datum.accent"}, "opacity": {"field": "op"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "cards"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "textX"}, "y": {"signal": "datum.y + 12"},
+          "text": {"field": "tLines"}, "lineHeight": {"value": 18},
+          "font": {"value": "Segoe UI Semibold"}, "fontSize": {"value": 13.5},
+          "fill": {"value": "#1A1A1A"}, "opacity": {"field": "op"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "cards"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "textX"}, "y": {"signal": "datum.y + datum.segY"},
+          "text": {"field": "sLines"}, "lineHeight": {"value": 15},
+          "fontSize": {"value": 11.5}, "fill": {"value": "#5C5C5C"}, "opacity": {"field": "op"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "cards"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "textX"}, "y": {"signal": "datum.y + datum.bodyY"},
+          "text": {"field": "bLines"}, "lineHeight": {"value": 16},
+          "fontSize": {"value": 12}, "fill": {"value": "#1A1A1A"}, "opacity": {"field": "op"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "cards"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "textX"}, "y": {"signal": "datum.y + datum.evidY"},
+          "text": {"field": "eLines"}, "lineHeight": {"value": 16},
+          "fontSize": {"value": 12}, "fill": {"value": "#1A1A1A"}, "opacity": {"field": "op"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "cards"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "textX"}, "y": {"signal": "datum.y + datum.relY"},
+          "text": {"field": "reliability"},
+          "fontSize": {"value": 10.5}, "fill": {"value": "#8C8C8C"}, "opacity": {"field": "op"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "cards"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "textX"}, "y": {"signal": "datum.y + datum.labelY"},
+          "text": {"value": "Recommended action"},
+          "font": {"value": "Segoe UI Semibold"}, "fontSize": {"value": 12},
+          "fill": {"value": "#DB0032"}, "opacity": {"field": "op"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "cards"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "textX"}, "y": {"signal": "datum.y + datum.actionY"},
+          "text": {"field": "aLines"}, "lineHeight": {"value": 16},
+          "fontSize": {"value": 12}, "fill": {"value": "#1A1A1A"}, "opacity": {"field": "op"}
+        }
+      }
+    }
+  ]
+}

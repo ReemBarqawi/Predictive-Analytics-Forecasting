@@ -14,6 +14,7 @@ from __future__ import annotations
 import os
 import tomllib
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -82,6 +83,18 @@ def get_settings() -> Settings:
 
 
 S = get_settings()
+
+
+def valuation_date() -> date:
+    """The run's as-of date: [prepare] as_of_date if set, else the date of the warehouse claims
+    extract, else today (synthetic data has no extract)."""
+    cfg = S.config.get("prepare", {}).get("as_of_date") or ""
+    if cfg:
+        return date.fromisoformat(cfg)
+    extract = S.raw_dir / "claims.parquet" if S.raw_dir else None
+    if extract is not None and extract.exists():
+        return date.fromtimestamp(extract.stat().st_mtime)
+    return date.today()
 
 
 def is_motor(series):

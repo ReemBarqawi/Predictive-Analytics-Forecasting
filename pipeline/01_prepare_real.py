@@ -22,14 +22,13 @@ from __future__ import annotations
 
 import importlib.util
 import sys
-from datetime import date
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from contract import CLAIMS, POLICIES
-from settings import ROOT, S, is_motor
+from settings import ROOT, S, is_motor, valuation_date
 from zone_mapping import map_office_to_zone
 
 TEMPLATE_DIR = ROOT / "SYNTHETIC_DSS_DATA"      # column layout Power BI expects
@@ -254,9 +253,7 @@ def main() -> None:
         if not f.exists():
             sys.exit(f"Missing {f}. Run the extract first: python pipeline/00_extract_oracle.py")
 
-    as_of_cfg = S.config.get("prepare", {}).get("as_of_date") or ""
-    as_of = pd.Timestamp(as_of_cfg) if as_of_cfg else pd.Timestamp(
-        date.fromtimestamp(raw_clm.stat().st_mtime))
+    as_of = pd.Timestamp(valuation_date())
     log(f"source=oracle  as_of={as_of.date()}  output={S.output_root}")
 
     B = load_builder()

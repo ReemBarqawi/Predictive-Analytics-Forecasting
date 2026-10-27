@@ -1,52 +1,51 @@
 """
-11_build_alerts.py - Dynamic Management Alert Generator
-=======================================================
+11_build_alerts.py - Management alert inputs
+============================================
 
-Reads existing fact CSVs from the Saudi Motor Insurance DSS and evaluates
-a registry of configurable alert rules.
+Method: docs/ALERTS_METHOD.md.
 
 Outputs:
-    fact_alerts.csv
-
-Designed for Power BI multi-card / table / matrix visuals.
-
-Each alert is stored as separate business-friendly fields:
-    TITLE, ISSUE, IMPACT, ACTION
+    fact_alert_basis.csv  one row per segment (zone x class x policy type) with the facts the
+                          segment alerts need: actual results over the latest and prior 12 complete
+                          months by accident date, the model's expected cost on the same premium,
+                          credibility Z and the trend noise band. No target and no severity:
+                          Power BI decides the alerts in DAX from [Target CR].
+    fact_alerts.csv       portfolio-level checks that do not depend on the target
+                          (claims settlement speed, forecast model bias).
 
 Usage:
     python pipeline/11_build_alerts.py
     python pipeline/11_build_alerts.py --facts-dir ./02_facts
-    python pipeline/11_build_alerts.py --out ./02_facts/fact_alerts.csv
 """
 
 import argparse
-import os
 from datetime import date
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
-from settings import S, is_motor  # folders + motor classes for the active data source
+from settings import S
 
 
 # ---------------------------------------------------------------------
 # CONFIGURATION
 # ---------------------------------------------------------------------
 
+SEG = ["ZONE", "CLASS_DESC", "POLICY_TYPE_DESC"]
+CLASS = ["CLASS_DESC", "POLICY_TYPE_DESC"]
+
+# Approved window length (docs/ALERTS_METHOD.md §9).
+WINDOW_MONTHS = 12
+
+# Method constant: a trailing month whose claim frequency (claims per SAR of earned premium) is more
+# than this far below the average of the 12 months before it is treated as not fully reported.
+LATE_REPORTING_TOLERANCE = 0.30
+
 CONFIG = {
-    "severity_consecutive_periods": 3,
-    "severity_min_pct_change": 0.03,
-
-    "loss_ratio_target": 0.70,
-    "loss_ratio_warning_band": 0.05,
-    "loss_ratio_critical_threshold": 0.80,
-
+    # Portfolio checks
     "settlement_dev_month_check": "12-24",
     "settlement_deviation_threshold": 0.01,
-
-    "pricing_severely_underpriced": 0.80,
-    "pricing_underpriced": 0.95,
-
     "model_bias_threshold": 0.15,
     "model_bias_horizon": "12_months",
 
@@ -56,7 +55,175 @@ CONFIG = {
 
 
 # ---------------------------------------------------------------------
-# TEXT HELPERS
+# SEGMENT ALERT BASIS
+# ---------------------------------------------------------------------
+
+def last_reported_month(claims: pd.DataFrame, ep_month: pd.Series) -> pd.Period:
+    """Last month of claims data that is complete and fully reported (method §3)."""
+    cutoff = claims["ACC_DATE"].max()
+    last = cutoff.to_period("M")
+    if cutoff < last.to_timestamp(how="end").normalize():
+        last -= 1  # the cut-off month is only partly in the data
+
+    counts = claims.groupby(claims["ACC_DATE"].dt.to_period("M")).size()
+    freq = (counts / ep_month.reindex(counts.index)).dropna()
+    while last in freq.index:
+        prior = freq[(freq.index < last) & (freq.index >= last - 12)]
+        if prior.empty or freq[last] >= (1 - LATE_REPORTING_TOLERANCE) * prior.mean():
+            break
+        print(f"  {last}: claim frequency {freq[last] / prior.mean():.0%} of the prior 12 months, "
+              f"treated as not fully reported")
+        last -= 1
+    return last
+
+
+def window_totals(ep: pd.DataFrame, claims: pd.DataFrame, first: pd.Period, last: pd.Period) -> pd.DataFrame:
+    """Earned premium and accident-date claims per segment over [first, last] months."""
+    in_ep = (ep["MONTH"] >= first) & (ep["MONTH"] <= last)
+    in_clm = (claims["ACC_MONTH"] >= first) & (claims["ACC_MONTH"] <= last)
+    e = ep[in_ep].groupby(SEG).EARNED_PREMIUM.sum().rename("EP")
+    c = claims[in_clm].assign(SQ=lambda d: d.ULTIMATE_CLAIM ** 2).groupby(SEG).agg(
+        CLAIMS=("ULTIMATE_CLAIM", "sum"), CLAIM_COUNT=("CLM_NO", "size"), SUMSQ=("SQ", "sum"))
+    return pd.concat([e, c], axis=1).fillna(0)
+
+
+def earned_share(ep: pd.DataFrame, pp: pd.DataFrame, first: pd.Period, last: pd.Period) -> pd.DataFrame:
+    """Model expected cost and commission earned over the window. Both are written per policy for the
+    whole term, so each segment x policy year contributes in proportion to the premium it earned
+    inside the window."""
+    full = ep.groupby(SEG + ["POLICY_YEAR"]).EARNED_PREMIUM.sum()
+    win = ep[(ep["MONTH"] >= first) & (ep["MONTH"] <= last)].groupby(SEG + ["POLICY_YEAR"]).EARNED_PREMIUM.sum()
+    term = pp.groupby(SEG + ["POLICY_YEAR"])[["pure_premium_period", "COMMISSION"]].sum()
+    share = (win / full.replace(0, np.nan)).rename("share")
+    out = term.join(share, how="inner").fillna({"share": 0})
+    out = out[["pure_premium_period", "COMMISSION"]].mul(out["share"], axis=0)
+    return out.groupby(SEG).sum().rename(columns={"pure_premium_period": "MODEL_CLAIMS",
+                                                  "COMMISSION": "COMMISSION"})
+
+
+def model_claims(ep, pp, claims, history_first, l_first, last) -> pd.DataFrame:
+    """The GLM's expected cost over the window, re-based to each class's actual level.
+    The GLM is not calibrated by class (on 2022-23 policy years it gives 3.6-5.1x actual for Motor
+    Commercial Comprehensive and 0.3-0.6x for Motor Commercial Third Party), so it is scaled per
+    class by actual / model over the history before the window. What remains is the model's view of
+    how each segment differs from its class."""
+    hist_last = l_first - 1
+    hist_model = earned_share(ep, pp, history_first, hist_last).MODEL_CLAIMS
+    hist_actual = window_totals(ep, claims, history_first, hist_last).CLAIMS
+    h = pd.concat([hist_model.rename("model"), hist_actual.rename("actual")], axis=1).fillna(0)
+    h = h.groupby(CLASS).sum()
+    factor = (h.actual / h.model.replace(0, np.nan)).rename("CLASS_MODEL_FACTOR")
+
+    win = earned_share(ep, pp, l_first, last).reset_index()
+    win = win.merge(factor.reset_index(), on=CLASS, how="left")
+    win["MODEL_CLAIMS_L12"] = win.MODEL_CLAIMS * win.CLASS_MODEL_FACTOR
+    return win.set_index(SEG)[["MODEL_CLAIMS_L12", "COMMISSION", "CLASS_MODEL_FACTOR"]].rename(
+        columns={"COMMISSION": "COMMISSION_L12"})
+
+
+def credibility_z(ep: pd.DataFrame, claims: pd.DataFrame, last: pd.Period, weight_l12: pd.Series) -> tuple[pd.Series, float]:
+    """Bühlmann-Straub credibility of each segment's loss ratio against its class (zone blend).
+    Observations: the segment's loss ratio relative to its class in the same 12-month block, for
+    consecutive blocks ending at the window end, weighted by earned premium. Taking it relative to
+    the class removes swings that hit the whole class (claims inflation, market cycle), which
+    would otherwise count as segment noise. K = within-segment variance / between-segment variance."""
+    blocks = []
+    first_month = ep["MONTH"].min()
+    end = last
+    while end - (WINDOW_MONTHS - 1) >= first_month:
+        t = window_totals(ep, claims, end - (WINDOW_MONTHS - 1), end)
+        blocks.append(t.assign(BLOCK=str(end)))
+        end -= WINDOW_MONTHS
+    b = pd.concat(blocks).reset_index()
+    b = b[b.EP > 0]
+    cls = b.groupby(CLASS + ["BLOCK"])[["CLAIMS", "EP"]].transform("sum")
+    b["X"] = (b.CLAIMS / b.EP) / (cls.CLAIMS / cls.EP)
+    b = b[np.isfinite(b.X)]
+
+    seg = b.groupby(SEG).apply(lambda g: pd.Series({
+        "m": g.EP.sum(), "n": len(g), "xbar": np.average(g.X, weights=g.EP),
+        "ss": (g.EP * (g.X - np.average(g.X, weights=g.EP)) ** 2).sum()}), include_groups=False).reset_index()
+    multi = seg[seg.n >= 2]
+    s2 = multi.ss.sum() / (multi.n - 1).sum()
+
+    a_num, a_den, n_seg = 0.0, 0.0, 0
+    for _, g in seg.groupby(CLASS):
+        m_c = g.m.sum()
+        xc = np.average(g.xbar, weights=g.m)
+        a_num += (g.m * (g.xbar - xc) ** 2).sum()
+        a_den += m_c - (g.m ** 2).sum() / m_c
+        n_seg += len(g) - 1
+    a = (a_num - n_seg * s2) / a_den if a_den > 0 else 0.0
+    if a <= 0:
+        print("  credibility: segments do not differ beyond noise inside their class; Z = 0")
+        return pd.Series(0.0, index=weight_l12.index), float("inf")
+    k = s2 / a
+    print(f"  credibility: K = SAR {k:,.0f} of earned premium "
+          f"({len(blocks)} blocks of {WINDOW_MONTHS} months, {len(seg)} segments)")
+    return weight_l12 / (weight_l12 + k), k
+
+
+def build_alert_basis(facts: Path) -> pd.DataFrame:
+    ep = pd.read_csv(facts / "fact_earned_premium.csv",
+                     usecols=SEG + ["POLICY_YEAR", "MONTH_DATE", "EARNED_PREMIUM"], parse_dates=["MONTH_DATE"])
+    ep["MONTH"] = ep["MONTH_DATE"].dt.to_period("M")
+    pp = pd.read_csv(facts / "fact_policy_pricing.csv",
+                     usecols=SEG + ["POLICY_NO", "POLICY_YEAR", "COMMISSION", "pure_premium_period"])
+    fc = pd.read_csv(facts / "fact_claim.csv",
+                     usecols=["POLICY_NO", "POLICY_YEAR", "CLM_NO", "ACC_DATE", "ULTIMATE_CLAIM", "POLICY_MATCHED"],
+                     parse_dates=["ACC_DATE"])
+
+    matched = fc[fc["POLICY_MATCHED"].astype(str).str.lower() == "true"]
+    keys = pp[["POLICY_NO", "POLICY_YEAR"] + SEG].drop_duplicates(["POLICY_NO", "POLICY_YEAR"])
+    claims = matched.merge(keys, on=["POLICY_NO", "POLICY_YEAR"], how="inner").dropna(subset=["ACC_DATE"])
+    claims["ACC_MONTH"] = claims["ACC_DATE"].dt.to_period("M")
+
+    last = last_reported_month(claims, ep.groupby("MONTH").EARNED_PREMIUM.sum())
+    l_first, p_last = last - (WINDOW_MONTHS - 1), last - WINDOW_MONTHS
+    p_first = p_last - (WINDOW_MONTHS - 1)
+    print(f"  claims to {claims['ACC_DATE'].max().date()}; latest {WINDOW_MONTHS} months {l_first}..{last}, "
+          f"prior {p_first}..{p_last}")
+
+    cur = window_totals(ep, claims, l_first, last).add_suffix("_L12")
+    pri = window_totals(ep, claims, p_first, p_last).add_suffix("_P12")
+    model = model_claims(ep, pp, claims, ep["MONTH"].min(), l_first, last)
+    df = cur.join(pri, how="left").join(model, how="left").fillna(0)
+    df = df[df.EP_L12 > 0]
+
+    admin_rate = S.config["business"]["admin_expense_rate"]
+    df["ADMIN_L12"] = df.EP_L12 * admin_rate
+
+    cls = df.groupby(CLASS)[["CLAIMS_L12", "EP_L12", "CLAIM_COUNT_L12"]].transform("sum")
+    df["CLASS_LR_L12"] = cls.CLAIMS_L12 / cls.EP_L12
+    df["AVG_SEVERITY_L12"] = (df.CLAIMS_L12 / df.CLAIM_COUNT_L12.replace(0, np.nan))
+    df["CLASS_AVG_SEVERITY_L12"] = cls.CLAIMS_L12 / cls.CLAIM_COUNT_L12.replace(0, np.nan)
+
+    df["CRED_Z"], k = credibility_z(ep, claims, last, df.EP_L12)
+
+    # Noise band for the trend: standard error of each window's loss ratio under a compound
+    # Poisson model, Var(total claims) = sum of squared claim amounts.
+    se_l = np.sqrt(df.SUMSQ_L12) / df.EP_L12
+    se_p = np.sqrt(df.SUMSQ_P12) / df.EP_P12.replace(0, np.nan)
+    df["TREND_SE_PTS"] = 100 * np.sqrt(se_l ** 2 + se_p ** 2)
+
+    cutoff = claims["ACC_DATE"].max().date()
+    df["WINDOW_START"] = l_first.to_timestamp().date().isoformat()
+    df["WINDOW_END"] = last.to_timestamp(how="end").date().isoformat()
+    df["DATA_CUTOFF"] = cutoff.isoformat()
+    df["WINDOW_LABEL"] = (f"{l_first.strftime('%b %Y')}–{last.strftime('%b %Y')}"
+                          f" · data to {cutoff.strftime('%d %b %Y')}")
+    df["CRED_K"] = k if np.isfinite(k) else np.nan
+
+    cols = ["WINDOW_START", "WINDOW_END", "DATA_CUTOFF", "WINDOW_LABEL",
+            "EP_L12", "CLAIMS_L12", "CLAIM_COUNT_L12", "EP_P12", "CLAIMS_P12", "CLAIM_COUNT_P12",
+            "COMMISSION_L12", "ADMIN_L12", "MODEL_CLAIMS_L12", "CLASS_MODEL_FACTOR",
+            "CLASS_LR_L12", "CRED_Z", "CRED_K",
+            "TREND_SE_PTS", "AVG_SEVERITY_L12", "CLASS_AVG_SEVERITY_L12"]
+    return df.reset_index()[SEG + cols].sort_values(SEG)
+
+
+# ---------------------------------------------------------------------
+# PORTFOLIO CHECKS
 # ---------------------------------------------------------------------
 
 def clean_text(text: str) -> str:
@@ -67,77 +234,19 @@ def clean_text(text: str) -> str:
     return text
 
 
-def build_title(segment: str, message: str) -> str:
-    """
-    Standard business-friendly title.
-
-    Examples:
-        Riyadh · Private Cars — Claim costs above average
-        Portfolio — Claims settling slower than expected
-    """
-    segment = " ".join(str(segment).split()).strip()
-    message = " ".join(str(message).split()).strip()
-
-    if segment in ("", "Portfolio", "All"):
-        return message
-
-    return f"{segment} — {message}"
-
-
-def _join_segment(zone, class_desc, policy_type) -> str:
-    parts = []
-    for value in (zone, class_desc, policy_type):
-        v = str(value).strip()
-        if v not in ("", "Portfolio", "All", "nan"):
-            parts.append(v)
-    return " · ".join(parts) if parts else "Portfolio"
-
-
-def segment_name(row) -> str:
-    """Segment name for a row that uses UPPERCASE keys (source data)."""
-    return _join_segment(
-        row.get("ZONE", ""),
-        row.get("CLASS_DESC", ""),
-        row.get("POLICY_TYPE_DESC", ""),
-    )
-
-
-def segment_label_from_alert(row) -> str:
-    """Segment name for an alert row that uses lowercase keys."""
-    return _join_segment(
-        row.get("zone", ""),
-        row.get("class_desc", ""),
-        row.get("policy_type_desc", ""),
-    )
-
-
-def make_alert(
-    rule_id: str,
-    severity: str,
-    title: str,
-    issue: str,
-    impact: str,
-    action: str,
-    row,
-    category: str,
-    metric_name: str,
-    metric_value: float,
-    requires_action: bool,
-) -> dict:
-    """Creates the standard alert structure used by every rule."""
+def make_alert(rule_id: str, severity: str, title: str, issue: str, impact: str, action: str,
+               category: str, metric_name: str, metric_value: float, requires_action: bool) -> dict:
+    """Creates the standard portfolio alert structure."""
     return {
         "alert_rule_id": rule_id,
         "severity": severity,
-
         "title": clean_text(title),
         "issue": clean_text(issue),
         "impact": clean_text(impact),
         "action": clean_text(action),
-
-        "zone": row.get("ZONE", "Portfolio"),
-        "class_desc": row.get("CLASS_DESC", "All"),
-        "policy_type_desc": row.get("POLICY_TYPE_DESC", "All"),
-
+        "zone": "Portfolio",
+        "class_desc": "All",
+        "policy_type_desc": "All",
         "category": category,
         "metric_name": metric_name,
         "metric_value": round(metric_value, 4),
@@ -145,535 +254,93 @@ def make_alert(
     }
 
 
-# ---------------------------------------------------------------------
-# ALERT RULES
-# ---------------------------------------------------------------------
-
-def rule_severity_trend(seg: pd.DataFrame, cfg: dict) -> list:
-    """Rule 1: Claim severity above portfolio average."""
-    alerts = []
-
-    seg = seg[seg["CLAIM_COUNT"] > 0].copy()
-    if seg.empty:
-        return alerts
-
-    seg["AVG_SEVERITY"] = seg["ULTIMATE_CLAIMS"] / seg["CLAIM_COUNT"]
-
-    portfolio_severity = seg["ULTIMATE_CLAIMS"].sum() / seg["CLAIM_COUNT"].sum()
-
-    for _, row in seg.iterrows():
-        pct_above = (row["AVG_SEVERITY"] - portfolio_severity) / portfolio_severity
-
-        if pct_above >= cfg["severity_min_pct_change"]:
-            severity = "critical" if pct_above >= 0.20 else "warning"
-
-            sar_diff = row["AVG_SEVERITY"] - portfolio_severity
-            claim_count = int(row["CLAIM_COUNT"])
-            extra_cost = sar_diff * claim_count
-            segment = segment_name(row)
-
-            issue = (
-                f"Average claim cost is SAR {row['AVG_SEVERITY']:,.0f}, "
-                f"{pct_above:.0%} above the portfolio average of "
-                f"SAR {portfolio_severity:,.0f}"
-            )
-            impact = (
-                f"Across {claim_count:,} claims, this represents "
-                f"approximately SAR {extra_cost:,.0f} in additional cost"
-            )
-
-            if severity == "critical":
-                title_message = "Claim costs significantly above average"
-                action = "Review repair channels and route claims to preferred garages"
-            else:
-                title_message = "Claim costs above average"
-                action = "Monitor this segment at the next review"
-
-            alerts.append(
-                make_alert(
-                    rule_id="severity_trend",
-                    severity=severity,
-                    title=build_title(segment, title_message),
-                    issue=issue,
-                    impact=impact,
-                    action=action,
-                    row=row,
-                    category="claims",
-                    metric_name="severity_vs_portfolio_pct",
-                    metric_value=pct_above,
-                    requires_action=(severity == "critical"),
-                )
-            )
-
-    return alerts
-
-
-def rule_loss_ratio_target(seg: pd.DataFrame, cfg: dict) -> list:
-    """Rule 2: Loss ratio exceeding underwriting target."""
-    alerts = []
-
-    seg = seg[seg["EARNED_PREMIUM"] > 0].copy()
-    if seg.empty:
-        return alerts
-
-    target = cfg["loss_ratio_target"]
-    band = cfg["loss_ratio_warning_band"]
-    critical = cfg["loss_ratio_critical_threshold"]
-
-    for _, row in seg.iterrows():
-        lr = row["LOSS_RATIO"]
-        premium = row["EARNED_PREMIUM"]
-        claims = row["ULTIMATE_CLAIMS"]
-        remaining = max(1 - lr, 0)
-        segment = segment_name(row)
-
-        if lr >= critical:
-            title_message = "Loss ratio materially above target"
-            issue = (
-                f"Claims consume {lr:.0%} of earned premium, "
-                f"with SAR {claims:,.0f} of claims against "
-                f"SAR {premium:,.0f} of earned premium, "
-                f"versus the {target:.0%} target"
-            )
-            impact = (
-                f"Only SAR {remaining:.2f} of every SAR 1.00 earned "
-                f"remains for expenses and profit"
-            )
-            action = "Reprice urgently or consider stopping new business in this segment"
-
-            alerts.append(
-                make_alert(
-                    rule_id="loss_ratio_target",
-                    severity="critical",
-                    title=build_title(segment, title_message),
-                    issue=issue,
-                    impact=impact,
-                    action=action,
-                    row=row,
-                    category="profitability",
-                    metric_name="loss_ratio",
-                    metric_value=lr,
-                    requires_action=True,
-                )
-            )
-
-        elif lr >= (target - band):
-            title_message = "Loss ratio approaching target"
-            gap_pts = abs(target - lr) * 100
-
-            if lr >= target:
-                margin_txt = (
-                    f"{gap_pts:.1f} percentage points above the {target:.0%} target"
-                )
-            else:
-                margin_txt = (
-                    f"only {gap_pts:.1f} percentage points below the {target:.0%} target"
-                )
-
-            issue = f"Claims consume {lr:.0%} of premium, {margin_txt}"
-            impact = "A small increase in claims could push this segment past target"
-            action = "Monitor closely and review pricing at the next renewal"
-
-            alerts.append(
-                make_alert(
-                    rule_id="loss_ratio_target",
-                    severity="warning",
-                    title=build_title(segment, title_message),
-                    issue=issue,
-                    impact=impact,
-                    action=action,
-                    row=row,
-                    category="profitability",
-                    metric_name="loss_ratio",
-                    metric_value=lr,
-                    requires_action=False,
-                )
-            )
-
-    return alerts
-
-
-def rule_safe_zone_breach(seg: pd.DataFrame, cfg: dict) -> list:
-    """Rule 3: Segments in Loss or Red zone."""
-    alerts = []
-
-    for _, row in seg.iterrows():
-        status = str(row.get("SAFE_ZONE_STATUS", "")).strip()
-
-        cr = row["COMBINED_RATIO"]
-        premium = row["EARNED_PREMIUM"]
-        breakeven = row["BREAK_EVEN_TOTAL"]
-        segment = segment_name(row)
-
-        if status == "Loss":
-            shortfall = premium - breakeven
-
-            issue = (
-                f"Premium is SAR {premium:,.0f}, below the "
-                f"SAR {breakeven:,.0f} needed to break even"
-            )
-            impact = (
-                f"The segment has a SAR {abs(shortfall):,.0f} shortfall, "
-                f"and additional business increases the loss"
-            )
-            action = "Reprice immediately or stop writing new business in this segment"
-
-            alerts.append(
-                make_alert(
-                    rule_id="safe_zone_breach",
-                    severity="critical",
-                    title=build_title(segment, "Segment is losing money"),
-                    issue=issue,
-                    impact=impact,
-                    action=action,
-                    row=row,
-                    category="pricing",
-                    metric_name="combined_ratio",
-                    metric_value=cr,
-                    requires_action=True,
-                )
-            )
-
-        elif status == "Red":
-            buffer = max(premium - breakeven, 0)
-
-            issue = (
-                f"Premium of SAR {premium:,.0f} is only "
-                f"SAR {buffer:,.0f} above the SAR {breakeven:,.0f} "
-                f"break-even level"
-            )
-            impact = "Any discount or small claims increase could push the segment into a loss"
-            action = "Require senior approval before reducing rates"
-
-            alerts.append(
-                make_alert(
-                    rule_id="safe_zone_breach",
-                    severity="warning",
-                    title=build_title(segment, "Pricing room is very limited"),
-                    issue=issue,
-                    impact=impact,
-                    action=action,
-                    row=row,
-                    category="pricing",
-                    metric_name="combined_ratio",
-                    metric_value=cr,
-                    requires_action=False,
-                )
-            )
-
-    return alerts
-
-
 def rule_settlement_speed(dev_factors: pd.DataFrame, cfg: dict) -> list:
-    """Rule 4: Claims taking longer to settle than expected."""
-    alerts = []
-
-    target_transition = cfg["settlement_dev_month_check"]
-
-    row = dev_factors[dev_factors["transition"] == target_transition]
+    """Claims taking longer to settle than expected."""
+    row = dev_factors[dev_factors["transition"] == cfg["settlement_dev_month_check"]]
     if row.empty:
-        return alerts
+        return []
 
-    factor = row.iloc[0]["factor"]
-    threshold = cfg["settlement_deviation_threshold"]
-    deviation = factor - 1.0
+    deviation = row.iloc[0]["factor"] - 1.0
+    if deviation <= cfg["settlement_deviation_threshold"]:
+        return []
 
-    if deviation > threshold:
-        issue = (
-            f"Claims at the {target_transition} month mark "
-            f"are settling {deviation:.1%} slower than the "
-            f"historical pattern"
-        )
-        impact = "Slower closure increases uncertainty in claims reserves"
-        action = "Review the open claims pipeline with the claims team"
-
-        alerts.append(
-            make_alert(
-                rule_id="settlement_speed",
-                severity="info",
-                title="Portfolio — Claims settling slower than expected",
-                issue=issue,
-                impact=impact,
-                action=action,
-                row={
-                    "ZONE": "Portfolio",
-                    "CLASS_DESC": "All",
-                    "POLICY_TYPE_DESC": "All",
-                },
-                category="reserving",
-                metric_name="dev_factor_deviation",
-                metric_value=deviation,
-                requires_action=False,
-            )
-        )
-
-    return alerts
-
-
-def rule_pricing_adequacy(pricing: pd.DataFrame, cfg: dict) -> list:
-    """Rule 5: Segments where we charge less than the modelled risk cost."""
-    alerts = []
-
-    p = pricing[
-        (pricing["IS_CANCELLED"] == False)  # noqa: E712
-        & (pricing["charged_premium"] > 0)
-        & (pricing["pure_premium_period"] > 0)
-    ].copy()
-
-    if p.empty:
-        return alerts
-
-    seg_agg = (
-        p.groupby(["ZONE", "CLASS_DESC", "POLICY_TYPE_DESC"])
-        .agg(
-            total_charged=("charged_premium", "sum"),
-            total_pure=("pure_premium_period", "sum"),
-            policy_count=("POLICY_NO", "count"),
-        )
-        .reset_index()
-    )
-
-    seg_agg["adequacy_ratio"] = seg_agg["total_charged"] / seg_agg["total_pure"]
-
-    severe = cfg["pricing_severely_underpriced"]
-    warn = cfg["pricing_underpriced"]
-
-    for _, row in seg_agg.iterrows():
-        ar = row["adequacy_ratio"]
-        gap_sar = row["total_pure"] - row["total_charged"]
-        policies = int(row["policy_count"])
-        segment = segment_name(row)
-
-        if ar < severe:
-            issue = (
-                f"Across {policies:,} policies, premium of "
-                f"SAR {row['total_charged']:,.0f} covers only "
-                f"{ar:.0%} of the modelled risk cost of "
-                f"SAR {row['total_pure']:,.0f}"
-            )
-            impact = (
-                f"There is an estimated SAR {gap_sar:,.0f} "
-                f"shortfall between price and risk cost"
-            )
-            action = "Raise rates at renewal or tighten underwriting criteria"
-
-            alerts.append(
-                make_alert(
-                    rule_id="pricing_adequacy",
-                    severity="critical",
-                    title=build_title(segment, "Pricing is materially below risk cost"),
-                    issue=issue,
-                    impact=impact,
-                    action=action,
-                    row=row,
-                    category="pricing",
-                    metric_name="pricing_adequacy_ratio",
-                    metric_value=ar,
-                    requires_action=True,
-                )
-            )
-
-        elif ar < warn:
-            issue = (
-                f"Across {policies:,} policies, premium of "
-                f"SAR {row['total_charged']:,.0f} covers "
-                f"{ar:.0%} of the modelled risk cost of "
-                f"SAR {row['total_pure']:,.0f}"
-            )
-            impact = (
-                f"There is an estimated SAR {gap_sar:,.0f} "
-                f"shortfall between price and risk cost"
-            )
-            action = "Consider a rate adjustment at renewal"
-
-            alerts.append(
-                make_alert(
-                    rule_id="pricing_adequacy",
-                    severity="warning",
-                    title=build_title(segment, "Pricing is slightly below risk cost"),
-                    issue=issue,
-                    impact=impact,
-                    action=action,
-                    row=row,
-                    category="pricing",
-                    metric_name="pricing_adequacy_ratio",
-                    metric_value=ar,
-                    requires_action=False,
-                )
-            )
-
-    return alerts
+    transition = cfg["settlement_dev_month_check"]
+    return [make_alert(
+        rule_id="settlement_speed",
+        severity="info",
+        title="Portfolio — Claims settling slower than expected",
+        issue=(f"Claims at the {transition} month mark are settling {deviation:.1%} "
+               f"slower than the historical pattern"),
+        impact="Slower closure increases uncertainty in claims reserves",
+        action="Review the open claims pipeline with the claims team",
+        category="reserving",
+        metric_name="dev_factor_deviation",
+        metric_value=deviation,
+        requires_action=False,
+    )]
 
 
 def rule_model_bias(perf: pd.DataFrame, cfg: dict) -> list:
-    """Rule 6: Forecast model consistently over- or under-predicting."""
-    alerts = []
+    """Forecast model consistently over- or under-predicting."""
+    glm = perf[(perf["model"] == "glm") & (perf["horizon_label"] == cfg["model_bias_horizon"])]
+    if glm.empty or glm["actual"].sum() == 0:
+        return []
 
-    horizon = cfg["model_bias_horizon"]
-    threshold = cfg["model_bias_threshold"]
+    bias = glm["signed_error"].sum() / glm["actual"].sum()
+    if abs(bias) <= cfg["model_bias_threshold"]:
+        return []
 
-    glm = perf[
-        (perf["model"] == "glm") & (perf["horizon_label"] == horizon)
-    ].copy()
+    if bias < 0:
+        issue = f"The forecast model has under-estimated claim costs by {abs(bias):.0%} over the past year"
+        impact = "Actual claims may exceed the forecast used in pricing and planning"
+        action = "Build an appropriate buffer into pricing decisions"
+    else:
+        issue = f"The forecast model has over-estimated claim costs by {abs(bias):.0%} over the past year"
+        impact = "Pricing decisions may be based on higher expected claims than observed"
+        action = "Validate model results before using them to reduce rates"
 
-    if glm.empty:
-        return alerts
+    return [make_alert(
+        rule_id="model_bias",
+        severity="warning",
+        title="Forecast model shows material bias",
+        issue=issue, impact=impact, action=action,
+        category="model",
+        metric_name="forecast_bias",
+        metric_value=bias,
+        requires_action=False,
+    )]
 
-    total_actual = glm["actual"].sum()
-    total_signed_error = glm["signed_error"].sum()
-
-    if total_actual == 0:
-        return alerts
-
-    bias = total_signed_error / total_actual
-
-    if abs(bias) > threshold:
-        if bias < 0:
-            issue = (
-                f"The forecast model has under-estimated claim costs "
-                f"by {abs(bias):.0%} over the past year"
-            )
-            impact = "Actual claims may exceed the forecast used in pricing and planning"
-            action = "Build an appropriate buffer into pricing decisions"
-        else:
-            issue = (
-                f"The forecast model has over-estimated claim costs "
-                f"by {abs(bias):.0%} over the past year"
-            )
-            impact = (
-                "Pricing decisions may be based on higher expected "
-                "claims than observed"
-            )
-            action = "Validate model results before using them to reduce rates"
-
-        alerts.append(
-            make_alert(
-                rule_id="model_bias",
-                severity="warning",
-                title=build_title("Portfolio", "Forecast model shows material bias"),
-                issue=issue,
-                impact=impact,
-                action=action,
-                row={
-                    "ZONE": "Portfolio",
-                    "CLASS_DESC": "All",
-                    "POLICY_TYPE_DESC": "All",
-                },
-                category="model",
-                metric_name="forecast_bias",
-                metric_value=bias,
-                requires_action=False,
-            )
-        )
-
-    return alerts
-
-
-# ---------------------------------------------------------------------
-# ALERT RULE REGISTRY
-# ---------------------------------------------------------------------
 
 ALERT_RULES = [
-    {"id": "severity_trend", "fn": rule_severity_trend, "needs": ["segment"]},
-    {"id": "loss_ratio_target", "fn": rule_loss_ratio_target, "needs": ["segment"]},
-    {"id": "safe_zone_breach", "fn": rule_safe_zone_breach, "needs": ["segment"]},
-    {"id": "settlement_speed", "fn": rule_settlement_speed, "needs": ["dev_factors"]},
-    {"id": "pricing_adequacy", "fn": rule_pricing_adequacy, "needs": ["pricing"]},
-    {"id": "model_bias", "fn": rule_model_bias, "needs": ["model_perf"]},
+    {"id": "settlement_speed", "fn": rule_settlement_speed, "needs": "fact_dev_factors_paid.csv"},
+    {"id": "model_bias", "fn": rule_model_bias, "needs": "fact_model_performance.csv"},
 ]
-
-
-# ---------------------------------------------------------------------
-# SEVERITY RANKING & SORTING
-# ---------------------------------------------------------------------
 
 SEVERITY_RANK = {"critical": 1, "warning": 2, "info": 3}
 
-
-def assign_ranks(alerts: list) -> pd.DataFrame:
-    if not alerts:
-        return pd.DataFrame()
-
-    df = pd.DataFrame(alerts)
-
-    df["severity_rank"] = df["severity"].map(SEVERITY_RANK).fillna(9)
-    df["abs_metric"] = df["metric_value"].abs()
-
-    df = df.sort_values(
-        ["severity_rank", "abs_metric"],
-        ascending=[True, False],
-    ).reset_index(drop=True)
-
-    df["ALERT_ID"] = range(1, len(df) + 1)
-
-    # FIX: alert rows use lowercase keys (zone, class_desc, policy_type_desc)
-    df["SEGMENT_LABEL"] = df.apply(segment_label_from_alert, axis=1)
-
-    return df
-
-
-# ---------------------------------------------------------------------
-# OUTPUT
-# ---------------------------------------------------------------------
-
 OUTPUT_COLUMNS = [
-    "ALERT_ID",
-    "SEVERITY",
-    "SEVERITY_RANK",
-    "TITLE",
-    "ISSUE",
-    "IMPACT",
-    "ACTION",
-    "ZONE",
-    "CLASS_DESC",
-    "POLICY_TYPE_DESC",
-    "SEGMENT_LABEL",
-    "CATEGORY",
-    "METRIC_NAME",
-    "METRIC_VALUE",
-    "REQUIRES_ACTION",
-    "DETECTED_DATE",
-    "ALERT_RULE_ID",
+    "ALERT_ID", "SEVERITY", "SEVERITY_RANK", "TITLE", "ISSUE", "IMPACT", "ACTION",
+    "ZONE", "CLASS_DESC", "POLICY_TYPE_DESC", "SEGMENT_LABEL", "CATEGORY",
+    "METRIC_NAME", "METRIC_VALUE", "REQUIRES_ACTION", "DETECTED_DATE", "ALERT_RULE_ID",
 ]
 
 
-def write_alerts(df: pd.DataFrame, out_path: str, cfg: dict):
-    if df.empty:
-        pd.DataFrame(columns=OUTPUT_COLUMNS).to_csv(
-            out_path, index=False, encoding="utf-8"
-        )
-        print(f"  0 alerts written to {out_path}")
+def write_alerts(alerts: list, out_path: Path, cfg: dict) -> None:
+    if not alerts:
+        pd.DataFrame(columns=OUTPUT_COLUMNS).to_csv(out_path, index=False, encoding="utf-8")
+        print(f"  0 portfolio alerts written to {out_path}")
         return
 
-    rename_map = {
-        "severity": "SEVERITY",
-        "severity_rank": "SEVERITY_RANK",
-        "title": "TITLE",
-        "issue": "ISSUE",
-        "impact": "IMPACT",
-        "action": "ACTION",
-        "zone": "ZONE",
-        "class_desc": "CLASS_DESC",
-        "policy_type_desc": "POLICY_TYPE_DESC",
-        "category": "CATEGORY",
-        "metric_name": "METRIC_NAME",
-        "metric_value": "METRIC_VALUE",
-        "requires_action": "REQUIRES_ACTION",
-        "alert_rule_id": "ALERT_RULE_ID",
-    }
-
-    df = df.rename(columns=rename_map)
-    df["DETECTED_DATE"] = cfg["detected_date"]
-
-    # Keep only the requested number of alerts, then re-number.
-    df = df.head(cfg["max_alerts"]).copy()
+    df = pd.DataFrame(alerts)
+    df["severity_rank"] = df["severity"].map(SEVERITY_RANK).fillna(9)
+    df["abs_metric"] = df["metric_value"].abs()
+    df = df.sort_values(["severity_rank", "abs_metric"], ascending=[True, False]).head(cfg["max_alerts"])
+    df.columns = [c.upper() for c in df.columns]
     df["ALERT_ID"] = range(1, len(df) + 1)
-
-    df = df[OUTPUT_COLUMNS]
-    df.to_csv(out_path, index=False, encoding="utf-8")
-
-    print(f"  {len(df)} alerts written to {out_path}")
-    return df
+    df["SEGMENT_LABEL"] = "Portfolio"
+    df["DETECTED_DATE"] = cfg["detected_date"]
+    df[OUTPUT_COLUMNS].to_csv(out_path, index=False, encoding="utf-8")
+    print(f"  {len(df)} portfolio alerts written to {out_path}")
 
 
 # ---------------------------------------------------------------------
@@ -681,91 +348,30 @@ def write_alerts(df: pd.DataFrame, out_path: str, cfg: dict):
 # ---------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description="Build management alerts")
-    parser.add_argument(
-        "--facts-dir",
-        default=str(S.facts_dir),
-        help="Path to the 02_facts directory",
-    )
-    parser.add_argument(
-        "--out",
-        default=None,
-        help="Output path for fact_alerts.csv",
-    )
+    parser = argparse.ArgumentParser(description="Build management alert inputs")
+    parser.add_argument("--facts-dir", default=str(S.facts_dir), help="Path to the 02_facts directory")
     args = parser.parse_args()
-
     facts = Path(args.facts_dir)
-    out_path = args.out or str(facts / "fact_alerts.csv")
 
     print("=" * 60)
-    print("Management Alert Generator")
+    print("Management alert inputs")
     print("=" * 60)
 
-    data = {}
+    basis = build_alert_basis(facts)
+    out = facts / "fact_alert_basis.csv"
+    basis.to_csv(out, index=False, encoding="utf-8")
+    print(f"  {len(basis)} segments written to {out}")
 
-    load_map = {
-        "segment": "fact_segment_performance.csv",
-        "dev_factors": "fact_dev_factors_paid.csv",
-        "pricing": "fact_policy_pricing.csv",
-        "model_perf": "fact_model_performance.csv",
-    }
-
-    for key, filename in load_map.items():
-        path = facts / filename
-        if path.exists():
-            data[key] = pd.read_csv(path, encoding="utf-8")
-            print(f"  Loaded {filename}: {len(data[key])} rows")
-        else:
-            print(f"  WARNING: {filename} not found - rules needing it will be skipped")
-            data[key] = pd.DataFrame()
-
-    # -----------------------------------------------------------------
-    # RUN RULES
-    # -----------------------------------------------------------------
-
-    all_alerts = []
-
+    alerts = []
     for rule in ALERT_RULES:
-        missing = [
-            n for n in rule["needs"]
-            if data.get(n) is None or data[n].empty
-        ]
-
-        if missing:
-            print(f"  SKIP rule '{rule['id']}': missing data {missing}")
+        path = facts / rule["needs"]
+        if not path.exists():
+            print(f"  SKIP rule '{rule['id']}': {rule['needs']} not found")
             continue
-
-        try:
-            # Every rule takes (its single dataframe, CONFIG)
-            result = rule["fn"](data[rule["needs"][0]], CONFIG)
-            print(f"  Rule '{rule['id']}': {len(result)} alerts")
-            all_alerts.extend(result)
-        except Exception as e:
-            print(f"  ERROR in rule '{rule['id']}': {e}")
-
-    # -----------------------------------------------------------------
-    # RANK & WRITE
-    # -----------------------------------------------------------------
-
-    print(f"\n  Total raw alerts: {len(all_alerts)}")
-
-    df = assign_ranks(all_alerts)
-    final = write_alerts(df, out_path, CONFIG)
-
-    # -----------------------------------------------------------------
-    # SUMMARY (based on what was actually written)
-    # -----------------------------------------------------------------
-
-    if final is not None and not final.empty:
-        n_critical = (final["SEVERITY"] == "critical").sum()
-        n_warning = (final["SEVERITY"] == "warning").sum()
-        n_info = (final["SEVERITY"] == "info").sum()
-        n_action = final["REQUIRES_ACTION"].sum()
-
-        print(
-            f"\n  Summary: {n_critical} critical, {n_warning} warning, "
-            f"{n_info} info - {n_action} require action"
-        )
+        result = rule["fn"](pd.read_csv(path, encoding="utf-8"), CONFIG)
+        print(f"  Rule '{rule['id']}': {len(result)} alerts")
+        alerts.extend(result)
+    write_alerts(alerts, facts / "fact_alerts.csv", CONFIG)
 
     print("\n" + "=" * 60)
     print("Done.")

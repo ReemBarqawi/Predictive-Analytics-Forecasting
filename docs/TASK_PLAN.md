@@ -55,7 +55,8 @@ Tasks 1 and 2 can run in parallel. Task 1 blocks the Python work (4 and 5); task
 
 ## Task 1 — Business decisions meeting (you + manager)
 
-**Goal:** get the four business decisions that currently block real-data work, so the code stops carrying contradictory numbers.
+**Goal:** get the business decisions that currently block real-data work, so the code stops carrying contradictory numbers.
+Decision #5 is parked until the prototype is finished, then reviewed with the manager together with its design file.
 
 **Decisions to take** (background in `docs/HANDOVER.md` §12 and `docs/REPO_AUDIT.md` §5):
 
@@ -65,6 +66,7 @@ Tasks 1 and 2 can run in parallel. Task 1 blocks the Python work (4 and 5); task
 | 2 | **Credibility rule** | ≥30 claims, ≥300 policies, ≥30 policies, 1,082 claims (4 different rules) | **Proposed:** one score Z (0–1) estimated from each company's own data (Bühlmann–Straub), with a classical fallback preset, results blended with the model, and High/Medium/Low bands. See `docs/CREDIBILITY.md` §10 |
 | 3 | **Baseline** | Levers use all years (2008–2024); the optimizer uses the latest year only; Power BI shows by-year | **Proposed:** one baseline for everything, the *projected no-action CR* for the plan year: the last 3 mature years, premium restated at today's rates, claims trended with the forecast. The optimizer adopts it in Tasks 4–5; the levers use it when Path to Profitability is picked up (Future) |
 | 4 | **Real data access** | — | Oracle host, service name, read-only account, schemas and tables for policies and claims, refresh frequency |
+| 5 | **Data cut-off, maturity and freshness** ⚠ *review when the prototype is finished* | Typed dates in steps 04, 05, 07; valuation date = extract file date | **Proposed defaults:** cut-off from the data (accident date / policy start), complete-month tests, maturity = 99% earned and 98% paid (actuary to confirm), stale warning after one refresh cycle + 1 month, missing periods never filled with actuals. Also the DBA questions (views stop in early 2025; report and transaction dates). See `docs/DATA_CUTOFF.md` |
 
 Also confirm with the manager: the motor classes in the real data, the expense loadings (admin 10%, risk margin 5%), and whether the optimizer's retention assumptions are acceptable until real renewal history exists.
 
@@ -120,6 +122,8 @@ Also confirm with the manager: the motor classes in the real data, the expense l
 - **Check the HTML Content visuals in a normal browser.** They looked blank in the built-in test browser, which blocked the custom-visual loader.
 - **Fix the Profitability page:** the segment matrix and the side panel were blank on the server, and the slicer panel overlaps the header.
 - **Add the alert ACTION column** to the Management Alert panel. This directly answers CEO feedback #4.
+  The panel is being rebuilt in Deneb (`powerbi/deneb/management_alerts.vega.json`), and the alert method itself
+  is being redesigned: alerts on actual rolling-12-month results, with the model shown alongside. See `docs/ALERTS_METHOD.md`.
 
 **Done when:** a page-by-page check in a normal browser on the test server shows no blank or broken visuals, and the checklist is recorded in the guide.
 
@@ -169,6 +173,10 @@ Also confirm with the manager: the motor classes in the real data, the expense l
 ---
 
 ## Task 5 — Oracle data connection and first real-data run
+
+> **2026-10-27:** the real extract ends in early 2025 (policies 6 Mar 2025, claims 18 Jan 2025), has no report or
+> transaction dates, and gives invalid development factors. Cut-off, maturity and freshness design with defaults,
+> plus the open questions for the actuary and the DBA: `docs/DATA_CUTOFF.md`.
 
 **Goal:** the pipeline runs on **real company data** from Oracle instead of the synthetic Excel files. This is the core of Phase 2.
 

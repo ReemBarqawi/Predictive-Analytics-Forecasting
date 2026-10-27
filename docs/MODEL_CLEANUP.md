@@ -61,7 +61,10 @@ New measures go in the folder of the page they serve. A new report area gets the
 - [ ] **Save** the file in Desktop, click through every page, then copy it back over the master `predicting_insurance_DSS4_RS.pbix`.
 - [ ] **Turn off Auto date/time** (File → Options → Current file → Data load). Removes the remaining 10 hidden `LocalDateTable_…` tables.
 - [ ] **Delete the `Errors in fact_alerts` query.**
-- [ ] **`fact_alerts` loads only 15 of its 17 columns** (set `Columns=17`). The `ACTION` column is not shown anywhere; CEO feedback #4 was "alerts not actionable".
+- [x] **`fact_alerts` loads all its columns** (2026-10-26: `Columns=18`, `QuoteStyle.Csv`, new `POLICY_YEAR`, `DETECTED_DATE`, `ALERT_RULE_ID`).
+  Segment alerts now come from the new table `fact_alert_basis` (rolling 12 months of actual results, decided in DAX,
+  `docs/ALERTS_METHOD.md`); `fact_alerts` keeps only the portfolio checks (17 columns). The Forecast page alert panel
+  is a Deneb visual (`powerbi/deneb/management_alerts.vega.json`) and shows the action (CEO feedback #4).
 - [ ] **`PTP Target CR` has no default value.**
 - [ ] **Bookmarks** still reference 5 measures that no longer exist (`AR Current CR`, `AR Gap to Target`, `AR Projected CR`, `AR Total SAR Recovery`, `Management Alerts HTML`). Harmless, but those bookmarks may be stale.
 - [ ] **Page names:** `Page 1`–`Page 4` and `uw` need proper names (renamed in Desktop).
