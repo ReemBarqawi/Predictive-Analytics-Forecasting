@@ -8,3 +8,5 @@ oracledb>=2.0        # warehouse extract (thin mode: no Oracle client needed)
 pyarrow>=15          # raw extracts stored as Parquet in data/raw/
 # Optional: 07_forecast_seasonal also tries Prophet and skips it if missing
 # prophet>=1.1.6
+# Optional: 04_backtest scores Google's TimesFM as a challenger and skips it if missing
+# timesfm[torch]>=3.0.2

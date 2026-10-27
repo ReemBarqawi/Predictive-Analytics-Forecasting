@@ -147,7 +147,7 @@ On 2026-10-20 the scripts were renamed to match their content, numbered in run o
 | Run order | File (new name) | Old name | Produces |
 |---|---|---|---|
 | 1 | `pipeline/01_build_synthetic_data.py` (+ `zone_mapping.py`) | `SYNTHETIC_DSS_DATA/build_synthetic_dss.py` | fact_policy, fact_claim, fact_earned_premium, fact_segment_performance, safe zone, triangles, dev factors, old scenario grid + surface, dims |
-| 2 | `pipeline/02_glm_refit.py` | `notebooks/05_glm_refit.py` | `models/frequency_glm.pkl` (NegBin, log-exposure offset), `models/severity_glm.pkl` (Gamma, target ULTIMATE_CLAIM); features: POLICY_TYPE_DESC, CLASS_DESC, SOURCE_DESC, ZONE, SUM_INSURED_BAND |
+| 2 | `pipeline/02_glm_refit.py` | `notebooks/05_glm_refit.py` | `models/frequency_glm.pkl` (Poisson, log-exposure offset), `models/severity_glm.pkl` (Gamma, target ULTIMATE_CLAIM); features: POLICY_TYPE_DESC, CLASS_DESC, SOURCE_DESC, ZONE, SUM_INSURED_BAND |
 | 3 | `pipeline/03_pure_premium.py` | `notebooks/06_pure_premium.py` | fact_policy_pricing (per-policy E[N]×E[S], adequacy ratio) |
 | 4 | `pipeline/04_backtest.py` | `notebooks/07_backtest.py` | fact_model_performance (rolling-origin, 19 cutoffs, GLM vs seasonal naive) |
 | 5 | `pipeline/05_segment_performance_by_year.py` | `notebooks/14_segment performance by year.py` | fact_segment_performance_by_year (**this is what Power BI's `fact_segment_performance` loads**) |

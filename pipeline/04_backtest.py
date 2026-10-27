@@ -15,6 +15,8 @@ At each historical cutoff T:
   3. Compare against ACTUALS (claims that actually occurred in the window)
   4. Compare against a SEASONAL NAIVE benchmark
      (prediction = actuals from the same window one year earlier)
+  5. Optionally compare against TIMESFM (Google's pretrained time-series model),
+     forecasting the daily portfolio claim count and cost from their history up to T
 
 This is what turns "in-sample bias +2.5%" (from Phase 1) into a defensible
 out-of-time accuracy claim.
@@ -82,6 +84,14 @@ HORIZONS = [
 
 # Segments reported at segment level (only those meeting credibility threshold)
 FULL_CREDIBILITY_MIN_POLICIES = 300
+
+# Optional challenger: Google's pretrained TimesFM forecasts the daily portfolio claim count
+# and cost from their own history up to each cut-off (portfolio level only: it has no rating
+# factors). Skipped with a log line when the package is missing (pip install "timesfm[torch]").
+TIMESFM_CHECKPOINT = "google/timesfm-3.0-pytorch"
+
+# Report labels, in column order
+MODEL_LABELS = {"glm": "GLM", "seasonal_naive": "Naive", "timesfm": "TimesFM"}
 
 
 def _log(msg: str) -> None:
@@ -199,7 +209,7 @@ def train_at_cutoff(policies: pd.DataFrame, claims: pd.DataFrame, T: pd.Timestam
         freq_model = sm.GLM(
             freq_df["TOTAL_CLAIMS"],
             X_freq_c,
-            family=sm.families.NegativeBinomial(alpha=1.0),
+            family=sm.families.Poisson(),   # balanced; see 02_glm_refit.fit_frequency_model
             offset=np.log(freq_df["EXPOSURE_AT_T_YEARS"]),
         ).fit()
     except Exception as e:
@@ -342,12 +352,44 @@ def sum_predictions(preds: pd.DataFrame) -> pd.DataFrame:
 
 
 # =========================================================================
+# TimesFM challenger
+# =========================================================================
+def timesfm_forecasts(claims: pd.DataFrame, cutoffs: list[pd.Timestamp]) -> dict | None:
+    """
+    Forecast daily portfolio claim count and cost after each cut-off with TimesFM.
+    Returns {(T, "count"|"cost"): array of daily forecasts for days T+1 ... T+max horizon},
+    or None when TimesFM is not installed.
+    """
+    try:
+        from timesfm3 import ModelConfig, TimesFM3Evaluator
+    except ImportError:
+        _log("TimesFM not installed — skipping the TimesFM challenger")
+        return None
+
+    day = claims["ACC_DATE"].dt.normalize()
+    days = pd.date_range(day.min(), day.max(), freq="D")
+    series = {
+        "count": claims.groupby(day).size().reindex(days, fill_value=0),
+        "cost":  claims.groupby(day)["ULTIMATE_CLAIM"].sum().reindex(days, fill_value=0),
+    }
+    keys = [(T, s) for T in cutoffs for s in series]
+    contexts = [series[s][series[s].index <= T].to_numpy(dtype=np.float32) for T, s in keys]
+
+    _log(f"TimesFM: forecasting {len(keys)} series with {TIMESFM_CHECKPOINT}")
+    model = TimesFM3Evaluator(ModelConfig(checkpoint_path=TIMESFM_CHECKPOINT))
+    horizon = max(d for _, d in HORIZONS)
+    outputs = model.predict_batch(contexts, horizon=horizon, return_quantiles=False)
+    return {k: np.asarray(o.forecast, dtype=float) for k, o in zip(keys, outputs)}
+
+
+# =========================================================================
 # Backtest driver
 # =========================================================================
 def run_backtest(policies: pd.DataFrame, claims: pd.DataFrame,
                  cutoffs: list[pd.Timestamp]) -> pd.DataFrame:
     """Run the full rolling backtest and return a long-format results DataFrame."""
     max_data_date = claims["ACC_DATE"].max()
+    tfm = timesfm_forecasts(claims, cutoffs)
     rows = []
 
     for T in cutoffs:
@@ -375,9 +417,19 @@ def run_backtest(policies: pd.DataFrame, claims: pd.DataFrame,
                 .rename(columns={"actual_count": "predicted_count",
                                  "actual_cost":  "predicted_cost"})
 
+            models = [("glm", glm_pred_df), ("seasonal_naive", naive_df)]
+            if tfm is not None:
+                models.append(("timesfm", pd.DataFrame([{
+                    "segment_level": "PORTFOLIO", "segment_id": "PORTFOLIO",
+                    "predicted_count": tfm[(T, "count")][:horizon_days].sum(),
+                    "predicted_cost":  tfm[(T, "cost")][:horizon_days].sum(),
+                }])))
+
             # Merge each model against actuals and emit rows
-            for model_name, pred_df in [("glm", glm_pred_df), ("seasonal_naive", naive_df)]:
-                joined = actual_df.merge(pred_df, on=["segment_level", "segment_id"], how="left")
+            for model_name, pred_df in models:
+                # TimesFM has portfolio rows only; inner join keeps segments out of its scores
+                how = "inner" if model_name == "timesfm" else "left"
+                joined = actual_df.merge(pred_df, on=["segment_level", "segment_id"], how=how)
                 joined["predicted_count"] = joined["predicted_count"].fillna(0)
                 joined["predicted_cost"]  = joined["predicted_cost"].fillna(0)
 
@@ -457,7 +509,11 @@ def write_report(results: pd.DataFrame) -> None:
         f.write("# Backtest Report — v3 (Phase 3)\n\n")
         f.write("_Rolling-origin (expanding window) backtest of the frequency and severity GLMs._\n")
         f.write("_Predictions are compared against actual claim volumes in the forward window._\n")
-        f.write("_Benchmark: **seasonal naive** — prediction for window (T, T+h] = actuals in (T-1yr, T-1yr+h]._\n\n")
+        f.write("_Benchmark: **seasonal naive** — prediction for window (T, T+h] = actuals in (T-1yr, T-1yr+h]._\n")
+        if "timesfm" in set(results["model"]):
+            f.write("_Challenger: **TimesFM** — Google's pretrained time-series model, forecasting daily "
+                    "portfolio claims from their history up to T (portfolio level only)._\n")
+        f.write("\n")
 
         f.write(f"Cutoffs evaluated: {results['cutoff_date'].nunique()}\n")
         f.write(f"Cutoff range: {results['cutoff_date'].min().date()} → {results['cutoff_date'].max().date()}\n\n")
@@ -471,24 +527,18 @@ def write_report(results: pd.DataFrame) -> None:
             # Order horizons naturally
             horizon_order = [h[0] for h in HORIZONS if h[0] in sub.index]
             sub = sub.reindex(horizon_order)
+            models = [m for m in MODEL_LABELS if m in sub["WAPE"].columns]
+            fmt_mae = (lambda x: f"SAR {x:,.0f}") if target == "claim_cost" else (lambda x: f"{x:,.1f}")
 
-            f.write("| horizon | GLM MAE | Naive MAE | GLM WAPE | Naive WAPE | GLM Bias | Naive Bias | Winner (WAPE) |\n")
-            f.write("|---|---|---|---|---|---|---|---|\n")
+            f.write("| horizon | " + " | ".join(f"{MODEL_LABELS[m]} {k}" for k in ("MAE", "WAPE", "Bias")
+                                                 for m in models) + " | Winner (WAPE) |\n")
+            f.write("|---|" + "---|" * (3 * len(models) + 1) + "\n")
             for h in sub.index:
-                glm_mae   = sub.loc[h, ("MAE",  "glm")]
-                naive_mae = sub.loc[h, ("MAE",  "seasonal_naive")]
-                glm_wape  = sub.loc[h, ("WAPE", "glm")]
-                naive_wape= sub.loc[h, ("WAPE", "seasonal_naive")]
-                glm_bias  = sub.loc[h, ("BIAS", "glm")]
-                naive_bias= sub.loc[h, ("BIAS", "seasonal_naive")]
-                winner = "GLM" if glm_wape < naive_wape else "Naive"
-                if target == "claim_cost":
-                    fmt_mae = lambda x: f"SAR {x:,.0f}"
-                else:
-                    fmt_mae = lambda x: f"{x:,.1f}"
-                f.write(f"| {h} | {fmt_mae(glm_mae)} | {fmt_mae(naive_mae)} | "
-                        f"{glm_wape:.1%} | {naive_wape:.1%} | "
-                        f"{glm_bias:+.1%} | {naive_bias:+.1%} | **{winner}** |\n")
+                cells = ([fmt_mae(sub.loc[h, ("MAE", m)]) for m in models] +
+                         [f"{sub.loc[h, ('WAPE', m)]:.1%}" for m in models] +
+                         [f"{sub.loc[h, ('BIAS', m)]:+.1%}" for m in models])
+                winner = MODEL_LABELS[sub.loc[h, "WAPE"][models].idxmin()]
+                f.write(f"| {h} | " + " | ".join(cells) + f" | **{winner}** |\n")
             f.write("\n")
 
         f.write("## Segment-level performance (Full credibility segments only)\n\n")
@@ -516,7 +566,8 @@ def write_report(results: pd.DataFrame) -> None:
         f.write("| Check | Target | Result |\n|---|---|---|\n")
         n_cut = results["cutoff_date"].nunique()
         f.write(f"| Cutoffs evaluated | ≥ 15 | **{'PASS' if n_cut >= 15 else 'FAIL'}** ({n_cut}) |\n")
-        f.write(f"| Both models scored | GLM + seasonal naive | **PASS** |\n")
+        scored = [MODEL_LABELS[m] for m in MODEL_LABELS if m in set(results["model"])]
+        f.write(f"| Models scored | GLM + seasonal naive | **PASS** ({', '.join(scored)}) |\n")
         f.write(f"| Portfolio + per-segment output | required | **PASS** |\n")
 
         f.write("\n## How to read this report\n\n")
@@ -531,6 +582,7 @@ def write_report(results: pd.DataFrame) -> None:
         f.write("2. **Short horizons are noisy** — 2-week and 1-month portfolio windows contain small numbers of claims. Point-estimate WAPE on those horizons will be volatile even if the model is sound. The 3-month and 12-month numbers are the ones to lead with.\n")
         f.write("3. **Segments with fewer than 300 policies are excluded from the segment table** — they lack the credibility to give a meaningful WAPE.\n")
         f.write("4. **Seasonal naive on this dataset is a strong benchmark** — the synthetic build has stable year-over-year patterns, so beating naive by a large margin is a high bar. Beating it at all is worth stating.\n")
+        f.write("5. **The GLM sees the future book, the time-series models do not** — the GLM is applied to the policies actually in force in the window, so book growth after T is known to it. Seasonal naive and TimesFM see only claims up to T.\n")
 
 
 # =========================================================================

@@ -30,7 +30,7 @@ Predictive-Analytics-Forecasting/
 │   ├── 03_dims/                       dim_business_class, dim_date, dim_product, dim_zone
 │   ├── 04_validation/                 validation_report.md, open_pct_by_year.csv
 │   └── 05_docs/                       assumption_register.md, data_dictionary.md, before_after.*
-├── models/                            frequency_glm.pkl (NegBin), severity_glm.pkl (Gamma)
+├── models/                            frequency_glm.pkl (Poisson), severity_glm.pkl (Gamma)
 ├── notebooks/                         all pipeline scripts (plain .py, not notebooks)
 ├── outputs/                           markdown reports + forecast_validation.png
 └── plots/                             EDA / v2-model PNGs (legacy)

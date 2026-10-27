@@ -23,7 +23,7 @@ Key changes vs the v2 models in 03_glm_models.py
 
 Outputs
 -------
-  models/frequency_glm.pkl              — fitted NB GLM + encoder metadata
+  models/frequency_glm.pkl              — fitted Poisson GLM + encoder metadata
   models/severity_glm.pkl               — fitted Gamma GLM + encoder metadata
   outputs/frequency_coefficients_v3.csv
   outputs/severity_coefficients_v3.csv
@@ -187,8 +187,15 @@ def prepare_frequency_dataset(policies: pd.DataFrame, claims: pd.DataFrame) -> p
 
 
 def fit_frequency_model(freq: pd.DataFrame) -> dict:
-    """Fit Negative Binomial GLM with log-exposure offset."""
-    _log("Fitting frequency model (Negative Binomial GLM with log-exposure offset)")
+    """Fit Poisson GLM with log-exposure offset.
+
+    Poisson with a log link is balanced: fitted claim totals equal observed totals,
+    overall and for every rating-factor level. A Negative Binomial with a fixed
+    alpha is not, and over-predicted 2-3x on thin training histories (backtest
+    cut-offs 2019Q4-2021Q1). Over-dispersion does not bias Poisson point
+    estimates; it only widens their standard errors.
+    """
+    _log("Fitting frequency model (Poisson GLM with log-exposure offset)")
 
     X, encoder_meta = encode_features(freq, PRICING_FEATURES)
     X_const = sm.add_constant(X)
@@ -198,7 +205,7 @@ def fit_frequency_model(freq: pd.DataFrame) -> dict:
     model = sm.GLM(
         y,
         X_const,
-        family=sm.families.NegativeBinomial(alpha=1.0),
+        family=sm.families.Poisson(),
         offset=offset,
     )
     result = model.fit()
@@ -215,7 +222,7 @@ def fit_frequency_model(freq: pd.DataFrame) -> dict:
         "result": result,
         "encoder_meta": encoder_meta,
         "feature_cols": PRICING_FEATURES,
-        "family": "NegativeBinomial",
+        "family": "Poisson",
         "link": "log",
         "offset": "log(EXPOSURE_YEARS)",
         "target": "TOTAL_CLAIMS",
