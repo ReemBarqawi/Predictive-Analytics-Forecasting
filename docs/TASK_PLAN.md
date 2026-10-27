@@ -62,7 +62,7 @@ Decision #5 is parked until the prototype is finished, then reviewed with the ma
 
 | # | Decision | Today in the code | Options |
 |---|---|---|---|
-| 1 | **Target combined ratio** | 0.85 (lever script), 0.95 (optimizer and Power BI), 0.70 loss-ratio target (alerts) | **Proposed:** a default suggested from the last 5 profitable mature years, which the manager may override, with every value checked against history. The manager approves the rule's parameters. See `docs/TARGET_CR.md` §8 |
+| 1 | **Target combined ratio** | 0.85 (lever script), 0.95 (optimizer and Power BI), 0.70 loss-ratio target (alerts) | **Proposed:** a default suggested from the last 5 profitable mature years, which the manager may override, with every value checked against history. The manager approves the rule's parameters and that the target is a **CR, not a loss ratio** (the loss-ratio line in reports = target CR − expense ratio). See `docs/TARGET_CR.md` §8–9 |
 | 2 | **Credibility rule** | ≥30 claims, ≥300 policies, ≥30 policies, 1,082 claims (4 different rules) | **Proposed:** one score Z (0–1) estimated from each company's own data (Bühlmann–Straub), with a classical fallback preset, results blended with the model, and High/Medium/Low bands. See `docs/CREDIBILITY.md` §10 |
 | 3 | **Baseline** | Levers use all years (2008–2024); the optimizer uses the latest year only; Power BI shows by-year | **Proposed:** one baseline for everything, the *projected no-action CR* for the plan year: the last 3 mature years, premium restated at today's rates, claims trended with the forecast. The optimizer adopts it in Tasks 4–5; the levers use it when Path to Profitability is picked up (Future) |
 | 4 | **Real data access** | — | Oracle host, service name, read-only account, schemas and tables for policies and claims, refresh frequency |
@@ -121,6 +121,7 @@ Also confirm with the manager: the motor classes in the real data, the expense l
 - **Check the button slicers (15).**
 - **Check the HTML Content visuals in a normal browser.** They looked blank in the built-in test browser, which blocked the custom-visual loader.
 - **Fix the Profitability page:** the segment matrix and the side panel were blank on the server, and the slicer panel overlaps the header.
+- **Portfolio Outlook (page 1):** the "Loss Ratio Target" slider was bound to an unused `Forecast Target` table, so it didn't move the chart. Rebind it to the `Target Combined Ratio` what-if and label it "Target combined ratio". The chart's loss-ratio line is that CR minus the expense ratio (why CR: `docs/TARGET_CR.md` §9). The Premium-view target now grows with the Annual Growth Rate, like the forecast.
 - **Add the alert ACTION column** to the Management Alert panel. This directly answers CEO feedback #4.
   The panel is being rebuilt in Deneb (`powerbi/deneb/management_alerts.vega.json`), and the alert method itself
   is being redesigned: alerts on actual rolling-12-month results, with the model shown alongside. See `docs/ALERTS_METHOD.md`.

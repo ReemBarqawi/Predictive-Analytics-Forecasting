@@ -210,3 +210,35 @@ The manager approves the **rule**, not only a number:
 
 With the rule approved, the suggestion updates itself each year as new data matures, and the
 official number only changes when the manager decides to.
+8. Target type: the target is a **combined ratio**, not a loss ratio (see §9).
+
+## 9. Why the target is a combined ratio, not a loss ratio
+
+**Proposal (for the manager to confirm, 2026-10-27):** the company sets **one** target, a combined
+ratio. Every loss-ratio target shown in the reports comes from it and is never entered separately.
+
+**Why CR:**
+
+1. **CR decides profit; the loss ratio doesn't.** CR = loss ratio + expense ratio (commission, admin).
+   A segment with high commission can meet a loss-ratio target and still lose money. Example: a
+   65% loss ratio looks fine against a 70% target, but with 38% expenses the CR is 103%: an
+   underwriting loss.
+2. **It's the number management already uses.** "95% combined" is how the result is judged and
+   reported, so the target is in the same language as the result.
+3. **One target, one answer.** The alerts, the Profitability page, Path to Profitability and the
+   optimizer all compare against CR. A separate loss-ratio target could disagree with them (today the
+   alerts still carry a 0.70 loss-ratio target, see Task 1 decision #1).
+4. **Expenses are a lever too.** With a CR target, cutting commission or admin counts toward the goal.
+   A loss-ratio target only rewards pricing and claims.
+
+**How the loss ratio is still shown:** where a page needs a loss-ratio line (Portfolio Outlook, Loss
+Ratio view), it shows the loss ratio the business can afford under the CR target:
+
+`Loss ratio needed = Target CR − Expense ratio` (e.g. 95% − 25% = 70%)
+
+and labels it that way, e.g. **"Loss ratio needed for 95% CR"**. In the Premium view, the target is
+the premium needed to keep forecast claims at that loss ratio. The slider on the page is the
+**Target combined ratio** what-if (§5), not a separate loss-ratio input.
+
+**What the manager confirms:** that the company target is a CR, and which expense ratio is used to
+turn it into a loss ratio. Today the reports use the actual expense ratio (commission + admin ÷ earned premium) of whatever is filtered: the whole book, or the selected segments.
