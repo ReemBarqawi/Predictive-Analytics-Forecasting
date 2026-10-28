@@ -45,20 +45,14 @@ import statsmodels.api as sm
 # =========================================================================
 # Config — everything you might want to tweak lives here
 # =========================================================================
-from settings import S, is_motor  # folders + motor classes for the active data source
+from settings import S, pricing_features, is_motor  # folders + motor classes for the active data source
 FACT_DIR = S.facts_dir
 MODELS_DIR = S.models_dir
 OUTPUTS_DIR = S.reports_dir
 
 
-# Features known at quote time (no target leakage)
-PRICING_FEATURES = [
-    "POLICY_TYPE_DESC",
-    "CLASS_DESC",
-    "SOURCE_DESC",
-    "ZONE",
-    "SUM_INSURED_BAND",
-]
+# Features known at quote time (no target leakage); protected ones only when config allows
+PRICING_FEATURES = pricing_features()
 
 # Group any categorical level with fewer than this many rows into 'Other'
 RARE_THRESHOLD = 30
@@ -76,6 +70,10 @@ def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     _log("Loading fact_policy and fact_claim")
     policies = pd.read_csv(FACT_DIR / "fact_policy.csv", low_memory=False)
     claims = pd.read_csv(FACT_DIR / "fact_claim.csv", low_memory=False)
+    missing = [c for c in PRICING_FEATURES if c not in policies.columns]
+    if missing:
+        raise SystemExit(f"Rating factors switched on in config.toml [pricing] but not in fact_policy: "
+                         f"{missing}. Add them to the policy extract, or switch them off.")
 
     # Motor only for both sides
     policies = policies[is_motor(policies["CLASS_DESC"])].copy()

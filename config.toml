@@ -47,6 +47,14 @@ fetch_batch_rows = 50000
 ultimate_method = "incurred"
 as_of_date = ""               # valuation date "YYYY-MM-DD"; empty = date of the extract
 
+[pricing]
+# Protected rating factors. [MANAGER DECISION — docs/TASK_PLAN.md decision 7] Whether gender and
+# nationality may be used in pricing (regulation and fairness). Until decided, pricing uses the
+# general rating factors only. Switching one on needs a GENDER / NATIONALITY column in the
+# policy extract; the GLM refit stops with a message if it is missing.
+use_gender      = false
+use_nationality = false
+
 [business]
 # [ASSUMPTIONS — confirm with the manager; see docs/TASK_PLAN.md Task 1]
 admin_expense_rate = 0.10     # admin expense as share of premium

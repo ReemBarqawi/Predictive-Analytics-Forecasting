@@ -100,3 +100,15 @@ def valuation_date() -> date:
 def is_motor(series):
     """Boolean mask for motor business; keeps every row when no class list is configured."""
     return series.isin(S.motor_classes) if S.motor_classes else series.notna() | series.isna()
+
+
+# Rating factors known at quote time (no target leakage), used by every pricing GLM.
+GENERAL_RATING_FACTORS = ["POLICY_TYPE_DESC", "CLASS_DESC", "SOURCE_DESC", "ZONE", "SUM_INSURED_BAND"]
+# Protected factors: in pricing only when [pricing] in config.toml switches them on.
+PROTECTED_RATING_FACTORS = {"use_gender": "GENDER", "use_nationality": "NATIONALITY"}
+
+
+def pricing_features() -> list[str]:
+    """General rating factors, plus each protected factor the manager has allowed."""
+    cfg = S.config.get("pricing", {})
+    return GENERAL_RATING_FACTORS + [col for key, col in PROTECTED_RATING_FACTORS.items() if cfg.get(key)]

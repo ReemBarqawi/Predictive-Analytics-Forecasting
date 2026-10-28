@@ -47,19 +47,13 @@ warnings.filterwarnings("ignore")
 # =========================================================================
 # Config
 # =========================================================================
-from settings import S, is_motor  # folders + motor classes for the active data source
+from settings import S, is_motor, pricing_features  # folders + motor classes for the active data source
 import timesfm_model  # optional challenger: daily portfolio claims from their own history
 FACT_DIR = S.facts_dir
 OUTPUTS_DIR = S.reports_dir
 
 
-PRICING_FEATURES = [
-    "POLICY_TYPE_DESC",
-    "CLASS_DESC",
-    "SOURCE_DESC",
-    "ZONE",
-    "SUM_INSURED_BAND",
-]
+PRICING_FEATURES = pricing_features()   # same rating factors as 02_glm_refit
 
 RARE_THRESHOLD = 30
 MIN_TRAIN_EXPOSURE_DAYS = 30       # skip policies with less than 30 days observed

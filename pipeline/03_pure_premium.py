@@ -40,7 +40,7 @@ import statsmodels.api as sm
 # =========================================================================
 # Config
 # =========================================================================
-from settings import S, is_motor  # folders + motor classes for the active data source
+from settings import S, is_motor, PROTECTED_RATING_FACTORS  # folders + motor classes for the active data source
 FACT_DIR = S.facts_dir
 MODELS_DIR = S.models_dir
 OUTPUTS_DIR = S.reports_dir
@@ -162,7 +162,7 @@ def score_policies(policies: pd.DataFrame, freq_bundle: dict, sev_bundle: dict) 
         "EXPOSURE_YEARS", "TOTAL_PREMIUM", "COMMISSION",
         "ZONE", "CLASS_DESC", "POLICY_TYPE_DESC", "SUM_INSURED", "SUM_INSURED_BAND",
         "IS_CANCELLED",
-    ]].copy()
+    ] + [c for c in freq_bundle["feature_cols"] if c in PROTECTED_RATING_FACTORS.values()]].copy()
 
     out["expected_frequency_per_year"] = freq_per_year.values
     out["expected_frequency_period"]   = freq_period.values
