@@ -48,6 +48,7 @@ warnings.filterwarnings("ignore")
 # Config
 # =========================================================================
 from settings import S, is_motor  # folders + motor classes for the active data source
+import timesfm_model  # optional challenger: daily portfolio claims from their own history
 FACT_DIR = S.facts_dir
 OUTPUTS_DIR = S.reports_dir
 
@@ -85,10 +86,6 @@ HORIZONS = [
 # Segments reported at segment level (only those meeting credibility threshold)
 FULL_CREDIBILITY_MIN_POLICIES = 300
 
-# Optional challenger: Google's pretrained TimesFM forecasts the daily portfolio claim count
-# and cost from their own history up to each cut-off (portfolio level only: it has no rating
-# factors). Skipped with a log line when the package is missing (pip install "timesfm[torch]").
-TIMESFM_CHECKPOINT = "google/timesfm-3.0-pytorch"
 
 # Report labels, in column order
 MODEL_LABELS = {"glm": "GLM", "seasonal_naive": "Naive", "timesfm": "TimesFM"}
@@ -360,9 +357,7 @@ def timesfm_forecasts(claims: pd.DataFrame, cutoffs: list[pd.Timestamp]) -> dict
     Returns {(T, "count"|"cost"): array of daily forecasts for days T+1 ... T+max horizon},
     or None when TimesFM is not installed.
     """
-    try:
-        from timesfm3 import ModelConfig, TimesFM3Evaluator
-    except ImportError:
+    if not timesfm_model.available():
         _log("TimesFM not installed — skipping the TimesFM challenger")
         return None
 
@@ -373,13 +368,11 @@ def timesfm_forecasts(claims: pd.DataFrame, cutoffs: list[pd.Timestamp]) -> dict
         "cost":  claims.groupby(day)["ULTIMATE_CLAIM"].sum().reindex(days, fill_value=0),
     }
     keys = [(T, s) for T in cutoffs for s in series]
-    contexts = [series[s][series[s].index <= T].to_numpy(dtype=np.float32) for T, s in keys]
+    contexts = [series[s][series[s].index <= T].to_numpy() for T, s in keys]
 
-    _log(f"TimesFM: forecasting {len(keys)} series with {TIMESFM_CHECKPOINT}")
-    model = TimesFM3Evaluator(ModelConfig(checkpoint_path=TIMESFM_CHECKPOINT))
-    horizon = max(d for _, d in HORIZONS)
-    outputs = model.predict_batch(contexts, horizon=horizon, return_quantiles=False)
-    return {k: np.asarray(o.forecast, dtype=float) for k, o in zip(keys, outputs)}
+    _log(f"TimesFM: forecasting {len(keys)} series with {timesfm_model.CHECKPOINT}")
+    forecasts = timesfm_model.predict(contexts, horizon=max(d for _, d in HORIZONS))
+    return dict(zip(keys, forecasts))
 
 
 # =========================================================================

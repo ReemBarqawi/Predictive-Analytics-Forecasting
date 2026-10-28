@@ -1,1142 +1,652 @@
 """
-07_forecast_seasonal.py
-=======================
+pipeline/07_forecast_seasonal.py
+================================
+Portfolio forecast behind the Power BI Forecast page (fact_forecast_seasonal).
 
-Portfolio-level seasonal forecast for Saudi Motor Insurance DSS.
+Monthly earned premium, claim count and claims cost are forecast 12 months ahead with
+TimesFM, Google's pretrained time-series model, from their own history. Seasonal naive
+(the same month one year earlier) is the fallback and the benchmark.
 
-DEMO-SAFE VERSION
------------------
-This version is designed for the current synthetic/demo dataset.
+Earned premium is not forecast directly: most of next year's is already written. It is the
+run-off of the policies in the data (exact, from their dates) plus new business, where only
+the written premium is forecast and it is earned with the policy terms of the latest year.
+Claim count and cost are forecast as rates per unit of earned premium and multiplied back,
+so they follow the book's known run-off instead of extending the past trend.
 
-Important:
-- Does NOT modify source data.
-- Uses 2020-01 through 2023-09 as the mature modelling window.
-- Treats 2023-10 through 2023-12 as an immature/transition period.
-- Does not use the immature transition period as model validation.
-- Compares Prophet, SARIMA, Holt-Winters and Seasonal Naive.
-- Uses robust model selection (bias range 0.65–1.35).
-- Does not force seasonality when diagnostics do not support it.
-- Keeps premium forecast separate from claims forecast.
-- Derives loss ratio from Claims / Premium (no artificial cap).
-- Uses conservative LR confidence intervals.
-- Produces 3M / 6M / 12M forecast rows + actual history rows.
-- Produces validation chart and markdown report.
+  1. Window from the data
+     - starts one policy year after the first earned premium (the book is still being
+       written before that, so premium and claims ramp up mechanically)
+     - ends with the last complete month of claims data
+  2. Developed history
+     - recent accident months are incomplete: claims are still being reported and reserves
+       still move. Each accident quarter is grossed up by its chain-ladder ultimate over what
+       the warehouse triangles (sql/claims_dev_*.sql) have recorded to the data end:
+       incurred for cost, reported for counts.
+     - without triangles (synthetic data: ULTIMATE_CLAIM already includes IBNR) the claims
+       are used as they are
+  3. Rolling validation: both models forecast from every quarter-end with two years of
+     history, exactly as the live forecast is made; the lower mean WAPE over premium, count
+     and cost at 3 / 6 / 12 months picks the model. Its monthly errors set the 90% band, and
+     the band's coverage is tested out of sample (each origin against the others' errors).
+  4. Checks with pass rules: accuracy vs seasonal naive, bias, band coverage, development
+     look-back (factors from a year ago vs what then happened), and input reconciliations
+     (premium rebuilt from policies, triangle vs claims extract)
+  5. Forecast: the chosen model, from the full history
 
-Output:
-    SYNTHETIC_DSS_DATA/02_facts/fact_forecast_seasonal.csv
-    outputs/seasonal_forecast_report.md
-    outputs/forecast_validation.png
-
-This is a DEMO forecast. With real claims data, development/
-triangulation should replace the demo maturity handling.
-
-EDITS APPLIED (v2):
-  1. Premium business check: compare monthly avg to monthly avg (was annual vs monthly)
-  2. LR cap removed: claims and LR stay internally consistent; no 300% ceiling
-  3. Bias range widened to 0.65–1.35: SARIMA (33.5% WAPE, 100% coverage) can now win
-     over Naive (43% WAPE, last-year replay with no statistical value)
-  4. Actual months added to output CSV with FORECAST_HORIZON="ACTUAL"
-  5. PERIOD_TYPE column added ("actual" or "forecast") for cleaner DAX filtering
+Outputs
+-------
+  <facts>/fact_forecast_seasonal.csv   actual + forecast months (3M / 6M / 12M horizons)
+  <facts>/fact_forecast_validation.csv every check: value, rule, PASS / REVIEW
+  <reports>/seasonal_forecast_report.md
+  <reports>/forecast_validation.png
 """
 
+from __future__ import annotations
+
 import warnings
-warnings.filterwarnings("ignore")
+from statistics import NormalDist
 
-from pathlib import Path
-from datetime import datetime
-
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from settings import S
+import timesfm_model
 
-# =============================================================================
-# CONFIGURATION
-# =============================================================================
-
-from settings import S, is_motor  # folders + motor classes for the active data source
+warnings.filterwarnings("ignore")
 
 FACTS_DIR = S.facts_dir
 OUTPUT_DIR = S.reports_dir
 
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-FORECAST_HORIZONS = [3, 6, 12]
-
-CI_WIDTH = 0.90
-SEED = 20260829
-
-# -------------------------------------------------------------------------
-# DEMO DATA WINDOW
-# -------------------------------------------------------------------------
-DATA_START = "2020-01-01"
-MATURE_DATA_END = "2023-09-30"
-
-TRANSITION_START = "2023-10-01"
-TRANSITION_END = "2023-12-31"
-
-VALIDATION_MONTHS = 6
-
-# -------------------------------------------------------------------------
-# Validation thresholds
-# -------------------------------------------------------------------------
-MAX_WAPE = 0.35
-BIAS_LOW = 0.85
-BIAS_HIGH = 1.15
-MIN_COVERAGE = 0.80
-
-# -------------------------------------------------------------------------
-# Business guardrails
-# -------------------------------------------------------------------------
-MIN_FORECAST_LR = 0.90
-# EDIT 2: LR cap removed. No MAX_FORECAST_LR — the data is what it is.
-# A 224% trailing LR means individual months above 300% are real.
-
-# Premium stability guardrail.
-MAX_PREMIUM_DEVIATION = 0.20
-
-np.random.seed(SEED)
-
-
-# =============================================================================
-# UTILITY FUNCTIONS
-# =============================================================================
-
-def safe_float(value, default=np.nan):
-    try:
-        return float(value)
-    except Exception:
-        return default
-
-
-def clip_nonnegative(df, columns):
-    for col in columns:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce").clip(lower=0)
-    return df
-
-
-def format_pct(value):
-    if pd.isna(value):
-        return "N/A"
-    return f"{value:.1%}"
-
-
-def format_number(value):
-    if pd.isna(value):
-        return "N/A"
-    return f"{value:,.0f}"
-
-
-# =============================================================================
-# STEP 1 — LOAD DATA
-# =============================================================================
-
-print("=" * 78)
-print("STEP 1: Loading and aggregating monthly portfolio data")
-print("=" * 78)
-
-premium_path = FACTS_DIR / "fact_earned_premium.csv"
-claim_path = FACTS_DIR / "fact_claim.csv"
-
-if not premium_path.exists():
-    raise FileNotFoundError(f"Missing file: {premium_path}")
-if not claim_path.exists():
-    raise FileNotFoundError(f"Missing file: {claim_path}")
-
-# Earned premium
-ep = pd.read_csv(premium_path, parse_dates=["MONTH_DATE"])
-monthly_premium = (
-    ep.groupby(pd.Grouper(key="MONTH_DATE", freq="MS"))
-    .agg(EARNED_PREMIUM=("EARNED_PREMIUM", "sum"))
-    .reset_index()
-    .rename(columns={"MONTH_DATE": "ds"})
-)
-
-# Claims
-cl = pd.read_csv(claim_path, parse_dates=["ACC_DATE"])
-required_claim_columns = {"ACC_DATE", "CLM_NO", "ULTIMATE_CLAIM"}
-missing_claim_columns = required_claim_columns - set(cl.columns)
-if missing_claim_columns:
-    raise ValueError(f"fact_claim.csv is missing columns: {sorted(missing_claim_columns)}")
-
-cl["ACC_MONTH"] = cl["ACC_DATE"].dt.to_period("M").dt.to_timestamp()
-monthly_claims = (
-    cl.groupby("ACC_MONTH")
-    .agg(
-        CLAIM_COUNT=("CLM_NO", "nunique"),
-        TOTAL_ULTIMATE=("ULTIMATE_CLAIM", "sum"),
-    )
-    .reset_index()
-    .rename(columns={"ACC_MONTH": "ds"})
-)
-
-
-# =============================================================================
-# STEP 2 — MERGE MONTHLY SERIES
-# =============================================================================
-
-print()
-print("=" * 78)
-print("STEP 2: Building monthly portfolio series")
-print("=" * 78)
-
-monthly = (
-    monthly_premium
-    .merge(monthly_claims, on="ds", how="left")
-    .sort_values("ds")
-    .reset_index(drop=True)
-)
-
-monthly["CLAIM_COUNT"] = monthly["CLAIM_COUNT"].fillna(0)
-monthly["TOTAL_ULTIMATE"] = monthly["TOTAL_ULTIMATE"].fillna(0)
-
-positive_severity = (
-    monthly.loc[monthly["CLAIM_COUNT"] > 0, "TOTAL_ULTIMATE"]
-    / monthly.loc[monthly["CLAIM_COUNT"] > 0, "CLAIM_COUNT"]
-)
-portfolio_avg_severity = positive_severity.replace([np.inf, -np.inf], np.nan).dropna().mean()
-if pd.isna(portfolio_avg_severity) or portfolio_avg_severity <= 0:
-    portfolio_avg_severity = 1.0
-
-monthly["AVG_SEVERITY"] = np.where(
-    monthly["CLAIM_COUNT"] > 0,
-    monthly["TOTAL_ULTIMATE"] / monthly["CLAIM_COUNT"],
-    portfolio_avg_severity,
-)
-
-monthly["LOSS_RATIO"] = np.where(
-    monthly["EARNED_PREMIUM"] > 0,
-    monthly["TOTAL_ULTIMATE"] / monthly["EARNED_PREMIUM"],
-    np.nan,
-)
-
-# EDIT 4: keep a copy of RAW_ULTIMATE for diagnostics
-monthly["RAW_ULTIMATE"] = monthly["TOTAL_ULTIMATE"].copy()
-
-print(f"Raw monthly data: {monthly['ds'].min():%Y-%m} to {monthly['ds'].max():%Y-%m}")
-
-
-# =============================================================================
-# STEP 3 — APPLY DEMO MATURE DATA WINDOW
-# =============================================================================
-
-print()
-print("=" * 78)
-print("STEP 3: Applying mature-data window")
-print("=" * 78)
-
-monthly = monthly[
-    (monthly["ds"] >= pd.Timestamp(DATA_START))
-    & (monthly["ds"] <= pd.Timestamp(MATURE_DATA_END))
-].copy().sort_values("ds").reset_index(drop=True)
-
-if len(monthly) < 18:
-    raise ValueError(f"Only {len(monthly)} usable months remain. At least 18 required.")
-
-print(f"Demo modelling window: {DATA_START[:7]} to {MATURE_DATA_END[:7]}")
-print(f"Transition excluded: {TRANSITION_START[:7]} to {TRANSITION_END[:7]}")
-print(f"Usable monthly series: {len(monthly)} months ({monthly['ds'].min():%Y-%m} to {monthly['ds'].max():%Y-%m})")
-print(f"Total claims: {monthly['CLAIM_COUNT'].sum():,.0f}")
-print(f"Average monthly claims: {monthly['CLAIM_COUNT'].mean():.1f}")
-print(f"Average monthly ultimate: {monthly['TOTAL_ULTIMATE'].mean():,.0f}")
-print(f"Average severity: {monthly['AVG_SEVERITY'].mean():,.0f}")
-print(f"Average earned premium: {monthly['EARNED_PREMIUM'].mean():,.0f}")
-
-
-# =============================================================================
-# STEP 4 — SHOW DATA TAIL
-# =============================================================================
-
-print()
-print("Last 8 usable months:")
-print(f"{'Month':>10} {'Claims SAR':>15} {'Count':>8} {'Premium':>15} {'LR':>8}")
-for _, row in monthly.tail(8).iterrows():
-    lr = row["TOTAL_ULTIMATE"] / row["EARNED_PREMIUM"] if row["EARNED_PREMIUM"] > 0 else 0
-    print(f"{row['ds']:%Y-%m} {row['TOTAL_ULTIMATE']:>15,.0f} {row['CLAIM_COUNT']:>8.0f} {row['EARNED_PREMIUM']:>15,.0f} {lr:>7.1%}")
-
-
-# =============================================================================
-# STEP 5 — HIJRI HOLIDAY CALENDAR
-# =============================================================================
-
-print()
-print("=" * 78)
-print("STEP 5: Building Hijri holiday calendar")
-print("=" * 78)
-
-
-def build_hijri_holidays():
-    try:
-        from hijri_converter import Hijri
-        holidays = []
-        for hy in range(1441, 1450):
-            try:
-                ram = Hijri(hy, 9, 1).to_gregorian()
-                for d in range(30):
-                    holidays.append({"holiday": "ramadan", "ds": pd.Timestamp(ram) + pd.Timedelta(days=d), "lower_window": 0, "upper_window": 0})
-            except Exception:
-                pass
-            try:
-                ef = Hijri(hy, 10, 1).to_gregorian()
-                for d in range(3):
-                    holidays.append({"holiday": "eid_al_fitr", "ds": pd.Timestamp(ef) + pd.Timedelta(days=d), "lower_window": 0, "upper_window": 0})
-            except Exception:
-                pass
-            try:
-                ea = Hijri(hy, 12, 10).to_gregorian()
-                for d in range(4):
-                    holidays.append({"holiday": "eid_al_adha", "ds": pd.Timestamp(ea) + pd.Timedelta(days=d), "lower_window": 0, "upper_window": 0})
-            except Exception:
-                pass
-            try:
-                hj = Hijri(hy, 12, 8).to_gregorian()
-                for d in range(5):
-                    holidays.append({"holiday": "hajj_season", "ds": pd.Timestamp(hj) + pd.Timedelta(days=d), "lower_window": 0, "upper_window": 0})
-            except Exception:
-                pass
-        hdf = pd.DataFrame(holidays)
-        print(f"Built {len(hdf)} Hijri holiday dates.")
-        return hdf
-    except ImportError:
-        print("WARNING: hijri-converter not installed. Running without Hijri holidays.")
-        return None
-
-
-holidays_df = build_hijri_holidays()
-
-
-# =============================================================================
-# STEP 6 — TRAIN / VALIDATION SPLIT
-# =============================================================================
-
-print()
-print("=" * 78)
-print("STEP 6: Train / validation split")
-print("=" * 78)
-
-if len(monthly) <= VALIDATION_MONTHS + 12:
-    raise ValueError("Not enough observations for validation.")
-
-validation_cutoff = monthly["ds"].max() - pd.DateOffset(months=VALIDATION_MONTHS)
-train = monthly[monthly["ds"] <= validation_cutoff].copy()
-holdout = monthly[monthly["ds"] > validation_cutoff].copy()
-
-print(f"Train:   {len(train)} months ({train['ds'].min():%Y-%m} to {train['ds'].max():%Y-%m})")
-print(f"Holdout: {len(holdout)} months ({holdout['ds'].min():%Y-%m} to {holdout['ds'].max():%Y-%m})")
-print()
-print("IMPORTANT: validation uses only mature months.")
-
-
-# =============================================================================
-# STEP 7 — IMPORT MODELS
-# =============================================================================
-
-print()
-print("=" * 78)
-print("STEP 7: Preparing forecasting models")
-print("=" * 78)
-
-from statsmodels.tsa.statespace.sarimax import SARIMAX
-
-try:
-    from prophet import Prophet
-    PROPHET_AVAILABLE = True
-except ImportError:
-    Prophet = None
-    PROPHET_AVAILABLE = False
-    print("Prophet is not installed — skipping Prophet.")
-
-try:
-    from statsmodels.tsa.holtwinters import ExponentialSmoothing
-    HW_AVAILABLE = True
-except ImportError:
-    ExponentialSmoothing = None
-    HW_AVAILABLE = False
-
-
-# =============================================================================
-# STEP 8 — MODEL HELPERS
-# =============================================================================
-
-def fit_prophet(train_df, col, holidays=None, name=""):
-    if not PROPHET_AVAILABLE:
-        return None
-    df = train_df[["ds", col]].rename(columns={col: "y"}).copy()
-    df["y"] = pd.to_numeric(df["y"], errors="coerce").fillna(0).clip(lower=0)
-    if (df["y"] <= 0).all():
-        return None
-    positive = df.loc[df["y"] > 0, "y"]
-    if len(positive) > 0:
-        df.loc[df["y"] <= 0, "y"] = positive.min() * 0.05
-    model = Prophet(
-        seasonality_mode="additive",
-        yearly_seasonality=False,
-        weekly_seasonality=False,
-        daily_seasonality=False,
-        changepoint_prior_scale=0.03,
-        seasonality_prior_scale=1.0,
-        interval_width=CI_WIDTH,
-    )
-    if len(df) >= 24:
-        model.add_seasonality(name="yearly_weak", period=365.25, fourier_order=3, prior_scale=1.0)
-    if holidays is not None and len(holidays) > 0:
-        model.holidays = holidays
-    try:
-        model.fit(df)
-        print(f"  Prophet ({name}): {len(df)} observations")
-        return model
-    except Exception as exc:
-        print(f"  Prophet ({name}): FAILED — {exc}")
-        return None
-
-
-def fit_sarima(train_series, name=""):
-    series = pd.Series(train_series).astype(float).replace([np.inf, -np.inf], np.nan).fillna(0)
-    configs = [
-        ((0, 1, 1), (0, 1, 1, 12)),
-        ((1, 1, 0), (0, 1, 1, 12)),
-        ((0, 1, 1), (1, 1, 0, 12)),
-        ((1, 1, 1), (0, 1, 1, 12)),
-    ]
-    best_result, best_aic, best_config = None, np.inf, None
-    for order, seasonal_order in configs:
-        try:
-            model = SARIMAX(series.values, order=order, seasonal_order=seasonal_order,
-                            enforce_stationarity=False, enforce_invertibility=False)
-            result = model.fit(disp=False, maxiter=500)
-            if result.aic < best_aic:
-                best_aic, best_result, best_config = result.aic, result, (order, seasonal_order)
-        except Exception:
-            continue
-    if best_result is not None:
-        print(f"  SARIMA ({name}): AIC={best_aic:.1f}, config={best_config}")
+FORECAST_HORIZONS = [3, 6, 12]          # months; one set of rows per horizon for the page slicer
+# Rolling validation (method constants): forecast from every quarter-end with at least two
+# years of history (two seasonal cycles) and score each horizon where the actuals exist.
+MIN_CONTEXT_MONTHS = 24
+VALIDATION_STEP_MONTHS = 3
+# Validation pass rules (method constants, shown with every result in the report and table)
+BIAS_TOLERANCE = 0.10                   # |bias| above this over all origins -> REVIEW
+COVERAGE_RANGE = (0.80, 0.97)           # share of months inside the 90% band
+DEV_LOOKBACK_QUARTERS = 4               # development check: factors from one year ago ...
+DEV_LOOKBACK_AQS = 8                    # ... applied to the 8 accident quarters then most recent
+DEV_NEWEST_TESTS = 8                    # newest-quarter check: valuations 4 ... 11 quarters ago
+DEV_TOLERANCE = 0.05                    # |actual / expected development - 1| above this -> REVIEW
+INPUT_TOLERANCE = 0.01                  # input reconciliations must agree within 1%
+# Method constant: the book needs one policy year after the first policy is written before
+# earned premium (and the claims on it) stop ramping up mechanically.
+BOOK_RAMP_MONTHS = 12
+# Method constant: chain-ladder factors are volume-weighted over the latest 20 quarterly
+# diagonals (5 years), so the current claims process and mix drive them, not 2008 behaviour.
+DEV_DIAGONALS = 20
+CI_LEVEL = 0.90                         # band width written to CI_LOWER_90 / CI_UPPER_90
+
+SERIES = ["EARNED_PREMIUM", "CLAIM_COUNT", "CLAIMS_COST"]    # shown on the page and scored
+MODELLED = ["WRITTEN_PREMIUM", "CLAIM_RATE", "COST_RATE"]     # what the models forecast
+
+
+def _log(msg: str) -> None:
+    print(f"[forecast] {msg}", flush=True)
+
+
+# =========================================================================
+# Monthly history
+# =========================================================================
+def load_monthly() -> tuple[pd.DataFrame, pd.Timestamp, pd.Timestamp]:
+    """Monthly premium, claim count and claims cost; plus the claims data end."""
+    ep = pd.read_csv(FACTS_DIR / "fact_earned_premium.csv",
+                     usecols=["MONTH_DATE", "EARNED_PREMIUM"], parse_dates=["MONTH_DATE"])
+    cl = pd.read_csv(FACTS_DIR / "fact_claim.csv",
+                     usecols=["CLM_NO", "ACC_DATE", "ULTIMATE_CLAIM"], parse_dates=["ACC_DATE"])
+    cl = cl.dropna(subset=["ACC_DATE"])
+
+    premium = ep.groupby(ep["MONTH_DATE"].dt.to_period("M"))["EARNED_PREMIUM"].sum()
+    month = cl["ACC_DATE"].dt.to_period("M")
+    claims = cl.groupby(month).agg(CLAIM_COUNT=("CLM_NO", "nunique"),
+                                   CLAIMS_COST=("ULTIMATE_CLAIM", "sum"))
+    monthly = premium.to_frame().join(claims, how="left").fillna(0.0)
+    return monthly, premium.index.min(), cl["ACC_DATE"].max()
+
+
+def history_window(first_premium: pd.Period, data_end: pd.Timestamp) -> tuple[pd.Period, pd.Period]:
+    """First and last month of the modelling window: the source's forecast_window setting
+    when it has one (config.toml), otherwise derived from the data."""
+    configured = S.config["profiles"][S.source].get("forecast_window")
+    if configured:
+        _log(f"history window from config.toml [profiles.{S.source}] forecast_window")
+        return pd.Period(configured[0], freq="M"), pd.Period(configured[1], freq="M")
+    end = data_end.to_period("M")
+    if data_end.normalize() < end.end_time.normalize():
+        end -= 1                                   # the data stops part-way through this month
+    return first_premium + BOOK_RAMP_MONTHS, end
+
+
+# =========================================================================
+# Development to ultimate
+# =========================================================================
+def _cumulative(tri: pd.DataFrame, value_col: str, last_q: pd.Period):
+    """Cumulative triangle (accident quarter x age) as known at the end of `last_q`."""
+    aq = pd.to_datetime(tri["ACC_QUARTER"]).dt.to_period("Q")
+    cq = pd.Series([a + int(d) for a, d in zip(aq, tri["DEV_QUARTER"])], index=tri.index)
+    t = tri.assign(AQ=aq, CQ=cq)
+    first_eval = t["CQ"].min()                     # history starts here: earlier accident
+    t = t[(t["CQ"] <= last_q) & (t["AQ"] >= first_eval)]  # quarters lack their early development
+    aqs = pd.period_range(first_eval, last_q, freq="Q")
+    n = len(aqs)
+    inc = (t.groupby(["AQ", "DEV_QUARTER"])[value_col].sum().unstack(fill_value=0)
+             .reindex(index=aqs, columns=range(n), fill_value=0))
+    age = np.array([(last_q - a).n for a in aqs])
+    return aqs, inc.cumsum(axis=1).to_numpy(dtype=float), age
+
+
+def _cdf(cum: np.ndarray, age: np.ndarray) -> np.ndarray:
+    """Volume-weighted chain-ladder: cumulative factor to ultimate by age (index 0 = latest)."""
+    n = len(age)
+    factors = np.ones(n - 1)
+    for k in range(n - 1):
+        rows = np.where(age >= k + 1)[0][-DEV_DIAGONALS:]
+        den = cum[rows, k].sum()
+        if den > 0:
+            factors[k] = cum[rows, k + 1].sum() / den
+    return np.append(np.cumprod(factors[::-1])[::-1], 1.0)
+
+
+def development(tri: pd.DataFrame, value_col: str, last_q: pd.Period) -> tuple[np.ndarray, pd.Series]:
+    """
+    Chain-ladder on a triangle of increments by accident x development quarter.
+    Returns the cumulative factor to ultimate by age in quarters (index 0 = the latest
+    complete quarter), and per accident quarter the ratio ultimate / everything recorded so
+    far. The ratio is what the claims extract needs: it was taken at the data end, part-way
+    into the next quarter, so it is further developed than the last complete diagonal.
+    """
+    recorded = tri.groupby(pd.to_datetime(tri["ACC_QUARTER"]).dt.to_period("Q"))[value_col].sum()
+    aqs, cum, age = _cumulative(tri, value_col, last_q)
+    cdf = _cdf(cum, age)
+    ultimate = pd.Series(cum[np.arange(len(aqs)), age] * cdf[age], index=aqs)
+    ratio = (ultimate / recorded.reindex(aqs)).where(lambda r: np.isfinite(r) & (r > 0), 1.0)
+    return cdf, ratio
+
+
+def development_lookback(tri: pd.DataFrame, value_col: str, last_q: pd.Period) -> pd.DataFrame:
+    """
+    Actual vs expected development: factors estimated as at DEV_LOOKBACK_QUARTERS ago predict
+    how much each accident quarter would grow since then; compare with what it actually did.
+    """
+    then = last_q - DEV_LOOKBACK_QUARTERS
+    aqs_then, cum_then, age_then = _cumulative(tri, value_col, then)
+    aqs_now, cum_now, age_now = _cumulative(tri, value_col, last_q)
+    cdf_then = _cdf(cum_then, age_then)
+    rows = []
+    for i, a in enumerate(aqs_then[-DEV_LOOKBACK_AQS:], start=len(aqs_then) - DEV_LOOKBACK_AQS):
+        known = cum_then[i, age_then[i]]
+        j = aqs_now.get_loc(a)
+        grow = cdf_then[age_then[i]] / cdf_then[min(age_then[i] + DEV_LOOKBACK_QUARTERS, len(cdf_then) - 1)]
+        rows.append({"ACC_QUARTER": str(a), "KNOWN_THEN": known, "EXPECTED_NOW": known * grow,
+                     "ACTUAL_NOW": cum_now[j, age_now[j]]})
+    out = pd.DataFrame(rows)
+    out["ACTUAL_VS_EXPECTED"] = out["ACTUAL_NOW"] / out["EXPECTED_NOW"]
+    return out
+
+
+def development_newest(tri: pd.DataFrame, value_col: str, last_q: pd.Period) -> pd.DataFrame:
+    """
+    The newest accident quarter carries the largest factor and drives the forecast, so it is
+    tested on its own: at each of DEV_NEWEST_TESTS past valuations, the factors then predict
+    how far that quarter would grow by now; compare with what it actually reached.
+    """
+    aqs_now, cum_now, age_now = _cumulative(tri, value_col, last_q)
+    rows = []
+    for lag in range(DEV_LOOKBACK_QUARTERS, DEV_LOOKBACK_QUARTERS + DEV_NEWEST_TESTS):
+        aqs, cum, age = _cumulative(tri, value_col, last_q - lag)
+        cdf = _cdf(cum, age)
+        j = aqs_now.get_loc(aqs[-1])
+        expected = cum[-1, 0] * cdf[0] / cdf[min(lag, len(cdf) - 1)]
+        rows.append({"VALUED_AT": str(last_q - lag), "ACTUAL_VS_EXPECTED": cum_now[j, age_now[j]] / expected})
+    return pd.DataFrame(rows)
+
+
+def develop(monthly: pd.DataFrame, data_end: pd.Timestamp) -> tuple[pd.DataFrame, dict]:
+    """Gross claim count and cost up to ultimate. Returns the frame and a log of what was done."""
+    out = monthly.copy()
+    out["REPORTED_COST"] = out["CLAIMS_COST"]
+    out["REPORTED_COUNT"] = out["CLAIM_COUNT"]
+
+    files = {"CLAIMS_COST": ("claims_dev_incurred", "INCURRED_CHANGE"),
+             "CLAIM_COUNT": ("claims_dev_reported", "CLAIMS_REPORTED")}
+    paths = {k: S.raw_dir / f"{name}.parquet" for k, (name, _) in files.items()} if S.raw_dir else {}
+    if not paths or not all(p.exists() for p in paths.values()):
+        if S.source == "oracle":
+            _log("WARNING: claim triangles missing from the raw folder — recent months are NOT "
+                 "developed (run 00_extract_oracle.py to pull sql/claims_dev_*.sql)")
+        else:
+            _log("no claim triangles for this source — ULTIMATE_CLAIM used as already developed")
+        return out, {"developed": False}
+
+    q_end = data_end.to_period("Q")
+    last_q = q_end if data_end.normalize() >= q_end.end_time.normalize() else q_end - 1
+    info = {"developed": True, "valuation_quarter": str(last_q), "cdf": {}, "latest_ratio": {},
+            "lookback": {}, "newest": {}, "tri_vs_extract": {}}
+    for col, (name, value_col) in files.items():
+        tri = pd.read_parquet(paths[col])
+        cdf, ratio = development(tri, value_col, last_q)
+        # Accident quarters outside the triangle (before its history, or the partial quarter
+        # after last_q, which the forecast window never uses) stay as recorded.
+        out[col] = out[col] * ratio.reindex(out.index.asfreq("Q")).fillna(1.0).to_numpy()
+        info["cdf"][col] = cdf[:8]
+        info["latest_ratio"][col] = float(ratio.iloc[-1])
+        info["lookback"][col] = development_lookback(tri, value_col, last_q)
+        info["newest"][col] = development_newest(tri, value_col, last_q)
+        # Same claims, two extracts: the triangle and fact_claim must agree on recent quarters
+        quarters = pd.period_range(last_q - 7, last_q, freq="Q")
+        in_tri = tri.groupby(pd.to_datetime(tri["ACC_QUARTER"]).dt.to_period("Q"))[value_col].sum()
+        reported = "REPORTED_COST" if col == "CLAIMS_COST" else "REPORTED_COUNT"
+        in_extract = out[reported].groupby(out.index.asfreq("Q")).sum()
+        info["tri_vs_extract"][col] = float(in_tri.reindex(quarters).sum() / in_extract.reindex(quarters).sum())
+        _log(f"{name}: factor to ultimate {cdf[0]:.3f} at quarter-end; the latest quarter as "
+             f"extracted x{ratio.iloc[-1]:.3f}, one year back x{ratio.iloc[-5]:.3f}")
+    return out, info
+
+
+# =========================================================================
+# Premium: run-off of written policies + new business
+# =========================================================================
+def premium_cohorts() -> pd.DataFrame:
+    """
+    Earned premium by written month (rows) x earned month (columns): each policy's premium
+    split over the months it is in force, pro rata to days, as in fact_earned_premium.
+    """
+    p = pd.read_csv(FACTS_DIR / "fact_policy.csv",
+                    usecols=["CLASS_DESC", "POLICY_EFFECTIVE_DATE", "POLICY_EXPIRY_DATE", "TOTAL_PREMIUM"],
+                    parse_dates=["POLICY_EFFECTIVE_DATE", "POLICY_EXPIRY_DATE"], low_memory=False)
+    # Same classes as fact_earned_premium (its builder may use another class list than this run)
+    classes = pd.read_csv(FACTS_DIR / "fact_earned_premium.csv", usecols=["CLASS_DESC"])["CLASS_DESC"].unique()
+    p = p[p["CLASS_DESC"].isin(classes) & (p["POLICY_EXPIRY_DATE"] > p["POLICY_EFFECTIVE_DATE"])]
+    # Policies sharing both dates earn identically: total them first (millions -> thousands)
+    g = p.groupby(["POLICY_EFFECTIVE_DATE", "POLICY_EXPIRY_DATE"])["TOTAL_PREMIUM"].sum().reset_index()
+
+    eff = g["POLICY_EFFECTIVE_DATE"].to_numpy("datetime64[D]")
+    exp = g["POLICY_EXPIRY_DATE"].to_numpy("datetime64[D]")
+    per_day = g["TOTAL_PREMIUM"].to_numpy(dtype=float) / (exp - eff).astype(np.int64)
+    m0 = eff.astype("datetime64[M]")
+    n_months = (exp.astype("datetime64[M]") - m0).astype(np.int64) + 1
+    row = np.repeat(np.arange(len(g)), n_months)
+    month = m0[row] + (np.arange(len(row)) - np.repeat(np.cumsum(n_months) - n_months, n_months))
+    days = (np.minimum((month + 1).astype("datetime64[D]"), exp[row])
+            - np.maximum(month.astype("datetime64[D]"), eff[row])).astype(np.int64)
+    keep = days > 0
+    pm = pd.DataFrame({"W": pd.PeriodIndex(m0[row][keep], freq="M"),
+                       "E": pd.PeriodIndex(month[keep], freq="M"),
+                       "EP": per_day[row][keep] * days[keep]})
+    return pm.groupby(["W", "E"])["EP"].sum().unstack(fill_value=0.0)
+
+
+def earned_premium(cohorts: pd.DataFrame, origin: pd.Period,
+                   written: pd.Series) -> tuple[pd.Series, pd.Series]:
+    """
+    Earned premium in the months of `written` (new written premium per month after `origin`):
+    the run-off of everything written up to `origin`, plus the new business earned with the
+    earning pattern of the policies written in the 12 months to `origin`.
+    Returns (earned, run-off part).
+    """
+    months = written.index
+    runoff = cohorts.loc[:origin].sum().reindex(months, fill_value=0.0)
+
+    recent = cohorts.loc[origin - 11:origin].stack()
+    offset = [(e - w).n for w, e in recent.index]
+    pattern = recent.groupby(offset).sum() / recent.sum()       # share earned k months after writing
+
+    new = pd.Series(0.0, index=months)
+    for w, amount in written.items():
+        for e in months[months >= w]:
+            new[e] += amount * pattern.get((e - w).n, 0.0)
+    return runoff + new, runoff
+
+
+# =========================================================================
+# Models
+# =========================================================================
+def seasonal_naive(history: pd.Series, horizon: int) -> np.ndarray:
+    return history.iloc[-12:].to_numpy()[np.arange(horizon) % 12]
+
+
+def forecast(model: str, history: pd.DataFrame, cohorts: pd.DataFrame, horizon: int) -> pd.DataFrame:
+    """
+    Written premium and claims per unit of earned premium are forecast; earned premium comes
+    from the run-off plus new business, and claims = rate x earned premium, so the claims
+    follow the book's known growth or shrinkage instead of extending the past trend.
+    """
+    h = history.assign(CLAIM_RATE=history["CLAIM_COUNT"] / history["EARNED_PREMIUM"],
+                       COST_RATE=history["CLAIMS_COST"] / history["EARNED_PREMIUM"])
+    if model == "timesfm":
+        preds = timesfm_model.predict([h[s].to_numpy() for s in MODELLED], horizon)
     else:
-        print(f"  SARIMA ({name}): ALL configs FAILED")
-    return best_result
-
-
-def fit_hw(train_series, name=""):
-    if not HW_AVAILABLE:
-        return None
-    series = pd.Series(train_series).astype(float).replace([np.inf, -np.inf], np.nan).fillna(0)
-    try:
-        if len(series) >= 24:
-            model = ExponentialSmoothing(series.values, trend="add", seasonal="add",
-                                        seasonal_periods=12, initialization_method="estimated")
-        else:
-            model = ExponentialSmoothing(series.values, trend="add", initialization_method="estimated")
-        result = model.fit(optimized=True)
-        print(f"  Holt-Winters ({name}): AICc={result.aicc:.1f}")
-        return result
-    except Exception as exc:
-        print(f"  Holt-Winters ({name}): FAILED — {exc}")
-        return None
-
-
-# =============================================================================
-# STEP 9 — FIT CANDIDATE MODELS
-# =============================================================================
-
-print()
-print("=" * 78)
-print("STEP 9: Fitting candidate models")
-print("=" * 78)
-
-n_forward = VALIDATION_MONTHS + max(FORECAST_HORIZONS)
-
-# Prophet
-print("\n--- Prophet ---")
-prophet_claims = fit_prophet(train, "TOTAL_ULTIMATE", holidays_df, "Claims")
-prophet_premium = fit_prophet(train, "EARNED_PREMIUM", holidays_df, "Premium")
-if prophet_claims is not None:
-    future_prophet = prophet_claims.make_future_dataframe(periods=n_forward, freq="MS")
-    fc_prophet_claims = prophet_claims.predict(future_prophet)
-else:
-    fc_prophet_claims = None
-if prophet_premium is not None:
-    future_prophet_premium = prophet_premium.make_future_dataframe(periods=n_forward, freq="MS")
-    fc_prophet_premium = prophet_premium.predict(future_prophet_premium)
-else:
-    fc_prophet_premium = None
-
-# SARIMA
-print("\n--- SARIMA ---")
-sarima_claims = fit_sarima(train.set_index("ds")["TOTAL_ULTIMATE"], "Claims")
-sarima_premium = fit_sarima(train.set_index("ds")["EARNED_PREMIUM"], "Premium")
-
-# Holt-Winters
-print("\n--- Holt-Winters ---")
-hw_claims = fit_hw(train.set_index("ds")["TOTAL_ULTIMATE"], "Claims")
-hw_premium = fit_hw(train.set_index("ds")["EARNED_PREMIUM"], "Premium")
-
-
-# =============================================================================
-# STEP 10 — VALIDATION METRICS
-# =============================================================================
-
-print()
-print("=" * 78)
-print("STEP 10: Holdout validation")
-print("=" * 78)
-
-
-def calc_metrics(actual, predicted, lower=None, upper=None):
-    actual = np.asarray(actual, dtype=float)
-    predicted = np.asarray(predicted, dtype=float)
-    valid = np.isfinite(actual) & np.isfinite(predicted)
-    actual, predicted = actual[valid], predicted[valid]
-    if len(actual) == 0:
-        return {"wape": np.inf, "bias": np.nan, "coverage": np.nan, "mae": np.inf}
-    denom = np.sum(np.abs(actual))
-    wape = np.sum(np.abs(actual - predicted)) / denom if denom > 0 else np.inf
-    bias = np.mean(predicted) / np.mean(actual) if np.mean(actual) != 0 else np.nan
-    mae = np.mean(np.abs(actual - predicted))
-    coverage = np.nan
-    if lower is not None and upper is not None:
-        lo = np.asarray(lower, dtype=float)[valid]
-        hi = np.asarray(upper, dtype=float)[valid]
-        coverage = np.mean((actual >= lo) & (actual <= hi))
-    return {"wape": wape, "bias": bias, "coverage": coverage, "mae": mae}
-
-
-holdout_actual = holdout["TOTAL_ULTIMATE"].values
-validation_results = {}
-
-# Prophet
-if fc_prophet_claims is not None:
-    ph = fc_prophet_claims[fc_prophet_claims["ds"].isin(holdout["ds"])].sort_values("ds")
-    if len(ph) == len(holdout):
-        m = calc_metrics(holdout_actual, ph["yhat"].values, ph["yhat_lower"].values, ph["yhat_upper"].values)
-        validation_results["Prophet"] = m
-        print(f"\n  Prophet\n    WAPE: {m['wape']:.1%}  Bias: {m['bias']:.3f}  Coverage: {m['coverage']:.0%}  MAE: {m['mae']:,.0f}")
-
-# SARIMA
-sarima_validation_pred = sarima_validation_lo = sarima_validation_hi = None
-if sarima_claims is not None:
-    try:
-        pred = sarima_claims.get_forecast(steps=n_forward)
-        ci = np.asarray(pred.conf_int(alpha=1 - CI_WIDTH))
-        sarima_validation_pred = np.asarray(pred.predicted_mean)[:VALIDATION_MONTHS]
-        sarima_validation_lo = ci[:VALIDATION_MONTHS, 0]
-        sarima_validation_hi = ci[:VALIDATION_MONTHS, 1]
-        m = calc_metrics(holdout_actual, sarima_validation_pred, sarima_validation_lo, sarima_validation_hi)
-        validation_results["SARIMA"] = m
-        print(f"\n  SARIMA\n    WAPE: {m['wape']:.1%}  Bias: {m['bias']:.3f}  Coverage: {m['coverage']:.0%}  MAE: {m['mae']:,.0f}")
-    except Exception as exc:
-        print(f"  SARIMA validation failed: {exc}")
-
-# Holt-Winters
-hw_validation_pred = hw_validation_lo = hw_validation_hi = None
-if hw_claims is not None:
-    try:
-        hw_fc = hw_claims.forecast(n_forward)
-        hw_validation_pred = np.asarray(hw_fc)[:VALIDATION_MONTHS]
-        resid_std = np.nanstd(hw_claims.resid)
-        if not np.isfinite(resid_std) or resid_std <= 0:
-            resid_std = np.nanstd(train["TOTAL_ULTIMATE"]) * 0.20
-        hw_validation_lo = hw_validation_pred - 1.645 * resid_std
-        hw_validation_hi = hw_validation_pred + 1.645 * resid_std
-        m = calc_metrics(holdout_actual, hw_validation_pred, hw_validation_lo, hw_validation_hi)
-        validation_results["HoltWinters"] = m
-        print(f"\n  Holt-Winters\n    WAPE: {m['wape']:.1%}  Bias: {m['bias']:.3f}  Coverage: {m['coverage']:.0%}  MAE: {m['mae']:,.0f}")
-    except Exception as exc:
-        print(f"  Holt-Winters validation failed: {exc}")
-
-# Seasonal Naive
-print("\n--- Seasonal Naive ---")
-naive_predictions = []
-for date in holdout["ds"]:
-    prev = date - pd.DateOffset(years=1)
-    match = monthly[monthly["ds"] == prev]
-    naive_predictions.append(match["TOTAL_ULTIMATE"].iloc[0] if len(match) > 0 else np.nan)
-naive_predictions = np.asarray(naive_predictions, dtype=float)
-naive_valid = np.isfinite(naive_predictions)
-if naive_valid.sum() > 0:
-    nm = calc_metrics(holdout_actual[naive_valid], naive_predictions[naive_valid])
-    validation_results["Naive"] = nm
-    print(f"  WAPE: {nm['wape']:.1%}  Bias: {nm['bias']:.3f}  MAE: {nm['mae']:,.0f}")
-
-
-# =============================================================================
-# STEP 11 — MODEL SELECTION
-# =============================================================================
-# EDIT 3: Bias range widened from [0.70, 1.30] to [0.65, 1.35].
-# SARIMA had bias 1.335 and 33.5% WAPE with 100% coverage — it should
-# beat Naive (43% WAPE, 0% coverage, pure last-year replay).
-
-print()
-print("=" * 78)
-print("STEP 11: Model selection")
-print("=" * 78)
-
-print("\nModel comparison:")
-for name, m in validation_results.items():
-    print(f"  {name:<15} WAPE={m['wape']:.1%}  Bias={m['bias']:.3f}  Coverage={m['coverage']:.0%}" if pd.notna(m['coverage']) else f"  {name:<15} WAPE={m['wape']:.1%}  Bias={m['bias']:.3f}")
-
-valid_candidates = {n: m for n, m in validation_results.items() if np.isfinite(m["wape"])}
-
-# EDIT 3: widened range
-reasonable_bias_candidates = {
-    n: m for n, m in valid_candidates.items()
-    if pd.notna(m["bias"]) and 0.65 <= m["bias"] <= 1.35
-}
-
-if reasonable_bias_candidates:
-    winner = min(reasonable_bias_candidates, key=lambda n: reasonable_bias_candidates[n]["wape"])
-    selection_reason = "Lowest WAPE among candidates with reasonable validation bias (0.65–1.35)."
-elif valid_candidates:
-    winner = min(valid_candidates, key=lambda n: valid_candidates[n]["wape"])
-    selection_reason = "Lowest WAPE (no candidate passed the bias screen)."
-else:
-    winner = "SARIMA"
-    selection_reason = "Fallback to SARIMA (no valid metrics)."
-
-winner_metrics = validation_results.get(winner, {"wape": np.inf, "bias": np.nan, "coverage": np.nan, "mae": np.inf})
-winner_wape = winner_metrics["wape"]
-winner_bias = winner_metrics["bias"]
-winner_coverage = winner_metrics["coverage"]
-
-print(f"\n>>> Selected model: {winner}")
-print(f"Reason: {selection_reason}")
-
-
-# =============================================================================
-# STEP 12 — SEASONALITY DIAGNOSTICS
-# =============================================================================
-
-print()
-print("=" * 78)
-print("STEP 12: Seasonality diagnostics")
-print("=" * 78)
-
-_sm = monthly.copy()
-_sm["month_num"] = _sm["ds"].dt.month
-by_month = _sm.groupby("month_num").agg(
-    avg_claims=("TOTAL_ULTIMATE", "mean"),
-    avg_premium=("EARNED_PREMIUM", "mean"),
-    count=("TOTAL_ULTIMATE", "count"),
-).reset_index()
-by_month["avg_lr"] = by_month["avg_claims"] / by_month["avg_premium"]
-overall_mean = by_month["avg_claims"].mean()
-by_month["seasonal_index"] = by_month["avg_claims"] / overall_mean if overall_mean > 0 else 1.0
-
-print("\nMonth  Avg Claims     Avg Premium    Avg LR   Seasonal")
-for _, r in by_month.iterrows():
-    print(f"{int(r['month_num']):>5} {r['avg_claims']:>14,.0f} {r['avg_premium']:>14,.0f} {r['avg_lr']:>8.1%} {r['seasonal_index']:>8.2f}")
-
-seasonality_p = seasonality_f = np.nan
-try:
-    from scipy import stats
-    groups = [g["TOTAL_ULTIMATE"].values for _, g in monthly.groupby(monthly["ds"].dt.month) if len(g) > 1]
-    if len(groups) >= 2:
-        f_stat, p_val = stats.f_oneway(*groups)
-        seasonality_f, seasonality_p = f_stat, p_val
-        print(f"\nANOVA F={f_stat:.2f}, p={p_val:.4f}")
-        print(f"Seasonality {'IS' if p_val < 0.05 else 'is NOT'} statistically significant at 5%")
-except Exception as exc:
-    print(f"Seasonality ANOVA unavailable: {exc}")
-
-
-# =============================================================================
-# STEP 13 — REFIT WINNING MODEL ON ALL MATURE DATA
-# =============================================================================
-
-print()
-print("=" * 78)
-print("STEP 13: Refit winning model on full mature data")
-print("=" * 78)
-
-n_final = max(FORECAST_HORIZONS)
-last_actual = monthly["ds"].max()
-future_dates = pd.date_range(start=last_actual + pd.DateOffset(months=1), periods=n_final, freq="MS")
-
-if winner == "Prophet":
-    final_claims = fit_prophet(monthly, "TOTAL_ULTIMATE", holidays_df, "Final Claims")
-    final_premium = fit_prophet(monthly, "EARNED_PREMIUM", holidays_df, "Final Premium")
-    if final_claims is None or final_premium is None:
-        raise RuntimeError("Prophet final fitting failed.")
-    future = final_claims.make_future_dataframe(periods=n_final, freq="MS")
-    fc_c = final_claims.predict(future)
-    fc_p = final_premium.predict(future)
-    fwd = fc_c["ds"] > last_actual
-    forecast_df = pd.DataFrame({
-        "ds": fc_c.loc[fwd, "ds"].values[:n_final],
-        "FORECAST_CLAIMS": fc_c.loc[fwd, "yhat"].values[:n_final],
-        "CI_CLAIMS_LOWER": fc_c.loc[fwd, "yhat_lower"].values[:n_final],
-        "CI_CLAIMS_UPPER": fc_c.loc[fwd, "yhat_upper"].values[:n_final],
-        "FORECAST_PREMIUM": fc_p.loc[fwd, "yhat"].values[:n_final],
-        "CI_PREMIUM_LOWER": fc_p.loc[fwd, "yhat_lower"].values[:n_final],
-        "CI_PREMIUM_UPPER": fc_p.loc[fwd, "yhat_upper"].values[:n_final],
-    })
-    try:
-        sf = fc_c.loc[fwd, ["ds", "yearly_weak"]].head(n_final).copy()
-        sf["SEASONAL_INDEX"] = 1.0 + sf["yearly_weak"] / max(1.0, abs(sf["yearly_weak"]).max())
-        seasonal = sf[["ds", "SEASONAL_INDEX"]].copy()
-    except Exception:
-        seasonal = pd.DataFrame({"ds": future_dates, "SEASONAL_INDEX": 1.0})
-
-elif winner == "SARIMA":
-    final_claims = fit_sarima(monthly.set_index("ds")["TOTAL_ULTIMATE"], "Final Claims")
-    final_premium = fit_sarima(monthly.set_index("ds")["EARNED_PREMIUM"], "Final Premium")
-    if final_claims is None or final_premium is None:
-        raise RuntimeError("SARIMA final fitting failed.")
-    fc_c = final_claims.get_forecast(steps=n_final)
-    fc_p = final_premium.get_forecast(steps=n_final)
-    ci_c = np.asarray(fc_c.conf_int(alpha=1 - CI_WIDTH))
-    ci_p = np.asarray(fc_p.conf_int(alpha=1 - CI_WIDTH))
-    forecast_df = pd.DataFrame({
-        "ds": future_dates,
-        "FORECAST_CLAIMS": np.asarray(fc_c.predicted_mean),
-        "CI_CLAIMS_LOWER": ci_c[:, 0],
-        "CI_CLAIMS_UPPER": ci_c[:, 1],
-        "FORECAST_PREMIUM": np.asarray(fc_p.predicted_mean),
-        "CI_PREMIUM_LOWER": ci_p[:, 0],
-        "CI_PREMIUM_UPPER": ci_p[:, 1],
-    })
-    seasonal = pd.DataFrame({"ds": future_dates, "SEASONAL_INDEX": 1.0})
-
-elif winner == "HoltWinters":
-    final_claims = fit_hw(monthly.set_index("ds")["TOTAL_ULTIMATE"], "Final Claims")
-    final_premium = fit_hw(monthly.set_index("ds")["EARNED_PREMIUM"], "Final Premium")
-    if final_claims is None or final_premium is None:
-        raise RuntimeError("Holt-Winters final fitting failed.")
-    c_mean = np.asarray(final_claims.forecast(n_final))
-    p_mean = np.asarray(final_premium.forecast(n_final))
-    c_std = max(np.nanstd(final_claims.resid), monthly["TOTAL_ULTIMATE"].std() * 0.20)
-    p_std = max(np.nanstd(final_premium.resid), monthly["EARNED_PREMIUM"].std() * 0.10)
-    forecast_df = pd.DataFrame({
-        "ds": future_dates,
-        "FORECAST_CLAIMS": c_mean,
-        "CI_CLAIMS_LOWER": c_mean - 1.645 * c_std,
-        "CI_CLAIMS_UPPER": c_mean + 1.645 * c_std,
-        "FORECAST_PREMIUM": p_mean,
-        "CI_PREMIUM_LOWER": p_mean - 1.645 * p_std,
-        "CI_PREMIUM_UPPER": p_mean + 1.645 * p_std,
-    })
-    seasonal = pd.DataFrame({"ds": future_dates, "SEASONAL_INDEX": 1.0})
-
-else:
-    # Naive: last year replay
-    print("Using seasonal-naive final forecast.")
-    fc_rows = []
-    for d in future_dates:
-        prev = d - pd.DateOffset(years=1)
-        match = monthly[monthly["ds"] == prev]
-        if len(match) > 0:
-            fc_rows.append({"ds": d, "c": match["TOTAL_ULTIMATE"].iloc[0], "p": match["EARNED_PREMIUM"].iloc[0]})
-        else:
-            fc_rows.append({"ds": d, "c": monthly["TOTAL_ULTIMATE"].tail(12).mean(), "p": monthly["EARNED_PREMIUM"].tail(12).mean()})
-    nf = pd.DataFrame(fc_rows)
-    c_std = monthly["TOTAL_ULTIMATE"].tail(12).std()
-    p_std = monthly["EARNED_PREMIUM"].tail(12).std()
-    forecast_df = pd.DataFrame({
-        "ds": nf["ds"],
-        "FORECAST_CLAIMS": nf["c"],
-        "CI_CLAIMS_LOWER": nf["c"] - 1.645 * c_std,
-        "CI_CLAIMS_UPPER": nf["c"] + 1.645 * c_std,
-        "FORECAST_PREMIUM": nf["p"],
-        "CI_PREMIUM_LOWER": nf["p"] - 1.645 * p_std,
-        "CI_PREMIUM_UPPER": nf["p"] + 1.645 * p_std,
-    })
-    seasonal = pd.DataFrame({"ds": future_dates, "SEASONAL_INDEX": 1.0})
-
-
-# =============================================================================
-# STEP 14 — CLEAN FORECAST
-# =============================================================================
-
-print()
-print("=" * 78)
-print("STEP 14: Cleaning and stabilising forecast")
-print("=" * 78)
-
-forecast_df = forecast_df.copy()
-num_cols = ["FORECAST_CLAIMS", "CI_CLAIMS_LOWER", "CI_CLAIMS_UPPER",
-            "FORECAST_PREMIUM", "CI_PREMIUM_LOWER", "CI_PREMIUM_UPPER"]
-for col in num_cols:
-    forecast_df[col] = pd.to_numeric(forecast_df[col], errors="coerce")
-forecast_df = clip_nonnegative(forecast_df, num_cols)
-
-# Premium stability guardrail
-trailing_12_avg_prem = monthly["EARNED_PREMIUM"].tail(12).mean()
-if pd.notna(trailing_12_avg_prem) and trailing_12_avg_prem > 0:
-    fc_avg_prem = forecast_df["FORECAST_PREMIUM"].mean()
-    prem_ratio = fc_avg_prem / trailing_12_avg_prem
-    if prem_ratio < (1 - MAX_PREMIUM_DEVIATION):
-        scale = (1 - MAX_PREMIUM_DEVIATION) / prem_ratio
-        print(f"Premium forecast below guardrail. Scaling by {scale:.3f}")
-        for c in ["FORECAST_PREMIUM", "CI_PREMIUM_LOWER", "CI_PREMIUM_UPPER"]:
-            forecast_df[c] *= scale
-    elif prem_ratio > (1 + MAX_PREMIUM_DEVIATION):
-        scale = (1 + MAX_PREMIUM_DEVIATION) / prem_ratio
-        print(f"Premium forecast above guardrail. Scaling by {scale:.3f}")
-        for c in ["FORECAST_PREMIUM", "CI_PREMIUM_LOWER", "CI_PREMIUM_UPPER"]:
-            forecast_df[c] *= scale
-
-
-# =============================================================================
-# STEP 15 — LOSS RATIO AND CONFIDENCE INTERVALS
-# =============================================================================
-
-print()
-print("=" * 78)
-print("STEP 15: Calculating forecast KPIs")
-print("=" * 78)
-
-# Loss ratio = claims / premium (no cap — EDIT 2)
-forecast_df["FORECAST_LOSS_RATIO"] = np.where(
-    forecast_df["FORECAST_PREMIUM"] > 0,
-    forecast_df["FORECAST_CLAIMS"] / forecast_df["FORECAST_PREMIUM"],
-    np.nan,
-)
-
-# Conservative CI: claim CI / point premium (not worst claims / best premium)
-forecast_df["CI_LR_LOWER"] = np.where(
-    forecast_df["FORECAST_PREMIUM"] > 0,
-    forecast_df["CI_CLAIMS_LOWER"] / forecast_df["FORECAST_PREMIUM"],
-    np.nan,
-).clip(min=0)
-
-forecast_df["CI_LR_UPPER"] = np.where(
-    forecast_df["FORECAST_PREMIUM"] > 0,
-    forecast_df["CI_CLAIMS_UPPER"] / forecast_df["FORECAST_PREMIUM"],
-    np.nan,
-).clip(min=0)
-
-
-# =============================================================================
-# STEP 16 — BUSINESS LR GUARDRAIL (floor only, no cap)
-# =============================================================================
-
-trailing_12_claims = monthly["TOTAL_ULTIMATE"].tail(12).sum()
-trailing_12_premium = monthly["EARNED_PREMIUM"].tail(12).sum()
-trailing_12_lr = trailing_12_claims / trailing_12_premium if trailing_12_premium > 0 else np.nan
-
-if pd.notna(trailing_12_lr) and trailing_12_lr > MIN_FORECAST_LR:
-    lower_allowed_lr = max(MIN_FORECAST_LR, trailing_12_lr * 0.65)
-    raw_mean_lr = forecast_df["FORECAST_LOSS_RATIO"].mean()
-    if pd.notna(raw_mean_lr) and raw_mean_lr < lower_allowed_lr:
-        print(f"\nWARNING: Forecast LR ({raw_mean_lr:.1%}) shows unexplained improvement vs trailing ({trailing_12_lr:.1%}).")
-        print(f"Blending toward {lower_allowed_lr:.1%}.")
-        blend = 0.70
-        forecast_df["FORECAST_LOSS_RATIO"] = blend * lower_allowed_lr + (1 - blend) * forecast_df["FORECAST_LOSS_RATIO"]
-        # Reconstruct claims to stay consistent (EDIT 2: no cap afterward)
-        forecast_df["FORECAST_CLAIMS"] = forecast_df["FORECAST_LOSS_RATIO"] * forecast_df["FORECAST_PREMIUM"]
-        forecast_df["CI_CLAIMS_LOWER"] = forecast_df["CI_LR_LOWER"] * forecast_df["FORECAST_PREMIUM"]
-        forecast_df["CI_CLAIMS_UPPER"] = forecast_df["CI_LR_UPPER"] * forecast_df["FORECAST_PREMIUM"]
-
-# Claim count and severity
-avg_severity = monthly["AVG_SEVERITY"].replace([np.inf, -np.inf], np.nan).dropna().mean()
-if pd.isna(avg_severity) or avg_severity <= 0:
-    avg_severity = 1.0
-forecast_df["FORECAST_CLAIM_COUNT"] = forecast_df["FORECAST_CLAIMS"] / avg_severity
-forecast_df["FORECAST_AVG_SEVERITY"] = avg_severity
-
-# Final cleanup
-forecast_df = clip_nonnegative(forecast_df, [
-    "FORECAST_CLAIMS", "CI_CLAIMS_LOWER", "CI_CLAIMS_UPPER",
-    "FORECAST_PREMIUM", "CI_PREMIUM_LOWER", "CI_PREMIUM_UPPER",
-    "FORECAST_CLAIM_COUNT", "FORECAST_AVG_SEVERITY",
-    "CI_LR_LOWER", "CI_LR_UPPER",
-])
-
-
-# =============================================================================
-# STEP 17 — SEASONAL INDEX
-# =============================================================================
-
-forecast_df = forecast_df.merge(seasonal, on="ds", how="left")
-forecast_df["SEASONAL_INDEX"] = forecast_df["SEASONAL_INDEX"].fillna(1.0).clip(0.75, 1.25)
-
-
-# =============================================================================
-# STEP 18 — BUSINESS CHECKS
-# =============================================================================
-# EDIT 1: compare monthly avg to monthly avg (not annual sum to monthly avg)
-
-print()
-print("=" * 78)
-print("STEP 18: Business logic checks")
-print("=" * 78)
-
-trailing_12_avg_prem = monthly["EARNED_PREMIUM"].tail(12).mean()
-forecast_avg_prem = forecast_df["FORECAST_PREMIUM"].mean()
-premium_change = forecast_avg_prem / trailing_12_avg_prem - 1 if trailing_12_avg_prem > 0 else np.nan
-
-forecast_12_lr = forecast_df["FORECAST_CLAIMS"].sum() / forecast_df["FORECAST_PREMIUM"].sum()
-
-print(f"Trailing 12M avg monthly premium: {trailing_12_avg_prem:,.0f}")
-print(f"Forecast avg monthly premium:      {forecast_avg_prem:,.0f}")
-print(f"Premium change:                     {premium_change:+.1%}")
-if pd.notna(premium_change) and abs(premium_change) <= MAX_PREMIUM_DEVIATION:
-    print("Premium stability: PASS")
-else:
-    print("Premium stability: REVIEW")
-
-print(f"\nTrailing 12M LR: {trailing_12_lr:.1%}")
-print(f"Forecast 12M LR: {forecast_12_lr:.1%}")
-
-if pd.notna(trailing_12_lr) and trailing_12_lr > 1.0 and forecast_12_lr < 1.0:
-    print("WARNING: Forecast below 100% LR while trailing is above 100%.")
-
-
-# =============================================================================
-# STEP 19 — BUILD OUTPUT TABLE
-# =============================================================================
-# EDIT 4 & 5: add actual months + PERIOD_TYPE column
-
-print()
-print("=" * 78)
-print("STEP 19: Building output table")
-print("=" * 78)
-
-rows = []
-
-# --- ACTUAL MONTHS (EDIT 4) ---
-for _, row in monthly.iterrows():
-    lr = row["TOTAL_ULTIMATE"] / row["EARNED_PREMIUM"] if row["EARNED_PREMIUM"] > 0 else 0
-    rows.append({
-        "SEGMENT_ID": "PORTFOLIO",
-        "MONTH_DATE": row["ds"].strftime("%Y-%m-%d"),
-        "FORECAST_HORIZON": "ACTUAL",
-        "PERIOD_TYPE": "actual",
-        "FORECAST_CLAIMS": round(row["TOTAL_ULTIMATE"], 2),
-        "FORECAST_PREMIUM": round(row["EARNED_PREMIUM"], 2),
-        "FORECAST_LOSS_RATIO": round(lr, 4),
-        "CI_LOWER_90": np.nan,
-        "CI_UPPER_90": np.nan,
-        "FORECAST_CLAIM_COUNT": round(row["CLAIM_COUNT"], 1),
-        "FORECAST_AVG_SEVERITY": round(row["AVG_SEVERITY"], 2),
-        "SEASONAL_INDEX": 1.0,
-        "MODEL_TYPE": "actual",
-        "MODEL_WAPE": np.nan,
-        "BIAS_CORRECTION": np.nan,
-    })
-
-# --- FORECAST MONTHS ---
-for horizon in FORECAST_HORIZONS:
-    for _, row in forecast_df.head(horizon).iterrows():
+        preds = [seasonal_naive(h[s], horizon) for s in MODELLED]
+    index = pd.period_range(history.index[-1] + 1, periods=horizon, freq="M")
+    fc = pd.DataFrame({s: np.clip(p, 0, None) for s, p in zip(MODELLED, preds)}, index=index)
+    fc["EARNED_PREMIUM"], fc["RUNOFF_PREMIUM"] = earned_premium(cohorts, history.index[-1],
+                                                                fc["WRITTEN_PREMIUM"])
+    fc["CLAIM_COUNT"] = fc["CLAIM_RATE"] * fc["EARNED_PREMIUM"]
+    fc["CLAIMS_COST"] = fc["COST_RATE"] * fc["EARNED_PREMIUM"]
+    return fc
+
+
+# =========================================================================
+# Rolling validation
+# =========================================================================
+def rolling_backtest(history: pd.DataFrame, cohorts: pd.DataFrame, models: list[str]) -> pd.DataFrame:
+    """
+    Forecast from every quarter-end origin with MIN_CONTEXT_MONTHS of history before it and at
+    least the shortest horizon of actuals after it, exactly as the live forecast is made.
+    One row per origin x model x month ahead, with forecast and actual for each series.
+    """
+    last = history.index[-1]
+    origins = [o for o in history.index[MIN_CONTEXT_MONTHS - 1:]
+               if o.month % VALIDATION_STEP_MONTHS == 0 and o + min(FORECAST_HORIZONS) <= last]
+    rows = []
+    for o in origins:
+        actual = history.loc[o + 1:o + max(FORECAST_HORIZONS)]
+        for m in models:
+            pred = forecast(m, history.loc[:o], cohorts, max(FORECAST_HORIZONS)).loc[actual.index]
+            for step, month in enumerate(actual.index, start=1):
+                rows.append({"ORIGIN": o, "MODEL": m, "STEP": step, "MONTH": month,
+                             **{f"PRED_{s}": pred.at[month, s] for s in SERIES},
+                             **{f"ACT_{s}": actual.at[month, s] for s in SERIES}})
+    return pd.DataFrame(rows)
+
+
+def score(bt: pd.DataFrame) -> pd.DataFrame:
+    """WAPE and bias of the h-month totals, per model x series x horizon, over all origins."""
+    rows = []
+    for h in FORECAST_HORIZONS:
+        full = bt[bt["STEP"] <= h].groupby(["MODEL", "ORIGIN"]).filter(lambda g: len(g) == h)
+        tot = full.groupby(["MODEL", "ORIGIN"]).sum(numeric_only=True)
+        for m, g in tot.groupby(level="MODEL"):
+            for s in SERIES:
+                err = g[f"PRED_{s}"] - g[f"ACT_{s}"]
+                rows.append({"MODEL": m, "SERIES": s, "HORIZON": h, "N_ORIGINS": len(g),
+                             "WAPE": err.abs().sum() / g[f"ACT_{s}"].sum(),
+                             "BIAS": err.sum() / g[f"ACT_{s}"].sum()})
+    return pd.DataFrame(rows)
+
+
+def band(bt: pd.DataFrame, model: str) -> tuple[float, float]:
+    """
+    Relative spread of the model's monthly claims-cost errors (the live forecast band), and
+    its out-of-sample coverage: each origin's months are checked against a band built from
+    the other origins only.
+    """
+    b = bt[bt["MODEL"] == model]
+    rel = (b["PRED_CLAIMS_COST"] - b["ACT_CLAIMS_COST"]) / b["ACT_CLAIMS_COST"]
+    z = NormalDist().inv_cdf(0.5 + CI_LEVEL / 2)
+    inside = []
+    for o in b["ORIGIN"].unique():
+        own = (b["ORIGIN"] == o).to_numpy()
+        sd = rel[~own].std(ddof=1)
+        inside.extend((rel[own].abs() <= z * sd).tolist())
+    return float(rel.std(ddof=1)), float(np.mean(inside))
+
+
+def seasonal_index(claims: pd.Series) -> pd.Series:
+    """Claims in each calendar month relative to the centred 12-month average."""
+    trend = claims.rolling(12, center=True).mean()
+    ratio = (claims / trend).dropna()
+    return ratio.groupby(ratio.index.month).mean()
+
+
+# =========================================================================
+# Output
+# =========================================================================
+def build_rows(history: pd.DataFrame, fc: pd.DataFrame, model: str, model_wape: float,
+               rel_sd: float, season: pd.Series) -> pd.DataFrame:
+    z = NormalDist().inv_cdf(0.5 + CI_LEVEL / 2)
+    rows = []
+    for m, r in history.iterrows():
         rows.append({
-            "SEGMENT_ID": "PORTFOLIO",
-            "MONTH_DATE": row["ds"].strftime("%Y-%m-%d"),
-            "FORECAST_HORIZON": f"{horizon}M",
-            "PERIOD_TYPE": "forecast",
-            "FORECAST_CLAIMS": round(safe_float(row["FORECAST_CLAIMS"]), 2),
-            "FORECAST_PREMIUM": round(safe_float(row["FORECAST_PREMIUM"]), 2),
-            "FORECAST_LOSS_RATIO": round(safe_float(row["FORECAST_LOSS_RATIO"]), 4),
-            "CI_LOWER_90": round(safe_float(row["CI_LR_LOWER"]), 4),
-            "CI_UPPER_90": round(safe_float(row["CI_LR_UPPER"]), 4),
-            "FORECAST_CLAIM_COUNT": round(safe_float(row["FORECAST_CLAIM_COUNT"]), 1),
-            "FORECAST_AVG_SEVERITY": round(safe_float(row["FORECAST_AVG_SEVERITY"]), 2),
-            "SEASONAL_INDEX": round(safe_float(row["SEASONAL_INDEX"], 1.0), 4),
-            "MODEL_TYPE": winner.lower(),
-            "MODEL_WAPE": round(safe_float(winner_wape, 0), 4),
-            "BIAS_CORRECTION": 1.0,
+            "MONTH_DATE": m.to_timestamp(), "FORECAST_HORIZON": "ACTUAL", "PERIOD_TYPE": "actual",
+            "FORECAST_CLAIMS": r["CLAIMS_COST"], "FORECAST_PREMIUM": r["EARNED_PREMIUM"],
+            "CI_LOWER_90": np.nan, "CI_UPPER_90": np.nan, "FORECAST_CLAIM_COUNT": r["CLAIM_COUNT"],
+            "SEASONAL_INDEX": 1.0, "MODEL_TYPE": "actual", "MODEL_WAPE": np.nan, "BIAS_CORRECTION": np.nan,
         })
-
-output = pd.DataFrame(rows)
-
-
-# =============================================================================
-# STEP 20 — SAVE CSV
-# =============================================================================
-
-output_path = FACTS_DIR / "fact_forecast_seasonal.csv"
-output.to_csv(output_path, index=False, encoding="utf-8")
-print(f"\nSaved: {output_path}")
-print(f"Rows: {len(output)}  (actuals: {len(monthly)}, forecast: {len(output) - len(monthly)})")
-
-
-# =============================================================================
-# STEP 21 — VALIDATION SUMMARY
-# =============================================================================
-
-print()
-print("=" * 78)
-print("STEP 21: Validation summary")
-print("=" * 78)
-
-agg_actual = holdout["TOTAL_ULTIMATE"].sum()
-if winner == "Prophet":
-    wp = fc_prophet_claims[fc_prophet_claims["ds"].isin(holdout["ds"])]["yhat"].values
-elif winner == "SARIMA":
-    wp = sarima_validation_pred
-elif winner == "HoltWinters":
-    wp = hw_validation_pred
-else:
-    wp = naive_predictions[naive_valid]
-
-if wp is not None and len(wp) > 0 and agg_actual > 0:
-    agg_pred = np.sum(wp)
-    agg_wape = abs(agg_actual - agg_pred) / agg_actual
-else:
-    agg_pred, agg_wape = np.nan, np.inf
-
-agg_wape_pass = pd.notna(agg_wape) and agg_wape <= MAX_WAPE
-
-print(f"Model:              {winner}")
-print(f"Aggregate WAPE:     {agg_wape:.1%} {'PASS' if agg_wape_pass else 'REVIEW'}")
-print(f"Monthly WAPE:       {winner_wape:.1%}")
-print(f"Raw bias:            {winner_bias:.3f}")
-print(f"90% coverage:        {winner_coverage:.0%}" if pd.notna(winner_coverage) else "90% coverage:        N/A")
+    for h in FORECAST_HORIZONS:
+        for m, r in fc.head(h).iterrows():
+            prem = r["EARNED_PREMIUM"]
+            rows.append({
+                "MONTH_DATE": m.to_timestamp(), "FORECAST_HORIZON": f"{h}M", "PERIOD_TYPE": "forecast",
+                "FORECAST_CLAIMS": r["CLAIMS_COST"], "FORECAST_PREMIUM": prem,
+                # Band on claims from the rolling-validation errors, as a loss ratio on point premium
+                "CI_LOWER_90": max(0.0, r["CLAIMS_COST"] * (1 - z * rel_sd)) / prem if prem > 0 else np.nan,
+                "CI_UPPER_90": r["CLAIMS_COST"] * (1 + z * rel_sd) / prem if prem > 0 else np.nan,
+                "FORECAST_CLAIM_COUNT": r["CLAIM_COUNT"],
+                "SEASONAL_INDEX": season.get(m.month, 1.0), "MODEL_TYPE": model,
+                "MODEL_WAPE": model_wape, "BIAS_CORRECTION": 1.0,
+            })
+    out = pd.DataFrame(rows)
+    out.insert(0, "SEGMENT_ID", "PORTFOLIO")
+    out["FORECAST_LOSS_RATIO"] = np.where(out["FORECAST_PREMIUM"] > 0,
+                                          out["FORECAST_CLAIMS"] / out["FORECAST_PREMIUM"], np.nan)
+    out["FORECAST_AVG_SEVERITY"] = np.where(out["FORECAST_CLAIM_COUNT"] > 0,
+                                            out["FORECAST_CLAIMS"] / out["FORECAST_CLAIM_COUNT"], np.nan)
+    out["MONTH_DATE"] = out["MONTH_DATE"].dt.strftime("%Y-%m-%d")
+    cols = ["SEGMENT_ID", "MONTH_DATE", "FORECAST_HORIZON", "PERIOD_TYPE", "FORECAST_CLAIMS",
+            "FORECAST_PREMIUM", "FORECAST_LOSS_RATIO", "CI_LOWER_90", "CI_UPPER_90",
+            "FORECAST_CLAIM_COUNT", "FORECAST_AVG_SEVERITY", "SEASONAL_INDEX", "MODEL_TYPE",
+            "MODEL_WAPE", "BIAS_CORRECTION"]
+    return out[cols].round({"FORECAST_CLAIMS": 2, "FORECAST_PREMIUM": 2, "FORECAST_LOSS_RATIO": 4,
+                            "CI_LOWER_90": 4, "CI_UPPER_90": 4, "FORECAST_CLAIM_COUNT": 1,
+                            "FORECAST_AVG_SEVERITY": 2, "SEASONAL_INDEX": 4, "MODEL_WAPE": 4})
 
 
-# =============================================================================
-# STEP 22 — VALIDATION VISUAL
-# =============================================================================
+LABEL = {"timesfm": "TimesFM", "seasonal_naive": "Seasonal naive"}
+NAMES = {"EARNED_PREMIUM": "Earned premium", "CLAIM_COUNT": "Claim count", "CLAIMS_COST": "Claims cost"}
 
-print()
-print("=" * 78)
-print("STEP 22: Creating validation visual")
-print("=" * 78)
 
-try:
-    import matplotlib.pyplot as plt
-    fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+def validation_table(scores: pd.DataFrame, model: str, coverage: float, dev: dict,
+                     premium_check: float, data_end: pd.Timestamp) -> pd.DataFrame:
+    """Every check with its value, pass rule and status: one table for the report and Power BI."""
+    rows = []
 
-    ax = axes[0, 0]
-    ax.plot(monthly["ds"], monthly["TOTAL_ULTIMATE"], "b-o", label="Actual", markersize=3)
-    ax.plot(forecast_df["ds"], forecast_df["FORECAST_CLAIMS"], "r--s", label="Forecast", markersize=3)
-    ax.fill_between(forecast_df["ds"], forecast_df["CI_CLAIMS_LOWER"], forecast_df["CI_CLAIMS_UPPER"], alpha=0.2, color="red")
-    ax.set_title("Monthly Claims: Actual vs Forecast")
-    ax.set_ylabel("SAR")
-    ax.legend()
+    def add(group, check, measure, value, threshold, ok, horizon="", benchmark=np.nan):
+        rows.append({"CHECK_GROUP": group, "CHECK": check, "MEASURE": measure, "HORIZON": horizon,
+                     "MODEL": LABEL[model], "VALUE": value, "BENCHMARK": benchmark,
+                     "THRESHOLD": threshold, "STATUS": "INFO" if ok is None else ("PASS" if ok else "REVIEW")})
+
+    for r in scores[scores["MODEL"] == model].itertuples():
+        naive = scores[(scores["MODEL"] == "seasonal_naive") & (scores["SERIES"] == r.SERIES)
+                       & (scores["HORIZON"] == r.HORIZON)]["WAPE"].iloc[0]
+        vs_naive = None if model == "seasonal_naive" else r.WAPE <= naive
+        add("accuracy", f"Error (WAPE) over {r.N_ORIGINS} forecast origins, vs seasonal naive",
+            NAMES[r.SERIES], r.WAPE, "at or below seasonal naive", vs_naive, f"{r.HORIZON}M", naive)
+        add("accuracy", f"Bias over {r.N_ORIGINS} forecast origins", NAMES[r.SERIES], r.BIAS,
+            f"within ±{BIAS_TOLERANCE:.0%}", abs(r.BIAS) <= BIAS_TOLERANCE, f"{r.HORIZON}M")
+    add("band", f"Months inside the {CI_LEVEL:.0%} band (each origin tested on a band from the others)",
+        "Claims cost", coverage, f"{COVERAGE_RANGE[0]:.0%} to {COVERAGE_RANGE[1]:.0%}",
+        COVERAGE_RANGE[0] <= coverage <= COVERAGE_RANGE[1])
+    add("inputs", "Earned premium rebuilt from policy dates / fact_earned_premium", "Earned premium",
+        premium_check, f"within ±{INPUT_TOLERANCE:.0%}", abs(premium_check - 1) <= INPUT_TOLERANCE)
+    if dev["developed"]:
+        for col, lb in dev["lookback"].items():
+            v = lb["ACTUAL_NOW"].sum() / lb["EXPECTED_NOW"].sum()
+            add("development", f"Actual / expected development over the last {DEV_LOOKBACK_QUARTERS} "
+                f"quarters ({DEV_LOOKBACK_AQS} accident quarters, factors as at then)", NAMES[col], v,
+                f"within ±{DEV_TOLERANCE:.0%}", abs(v - 1) <= DEV_TOLERANCE)
+        for col, nq in dev["newest"].items():
+            v = nq["ACTUAL_VS_EXPECTED"].mean()
+            add("development", f"Newest accident quarter: actual / expected development, mean of "
+                f"{len(nq)} past valuations ({nq['VALUED_AT'].iloc[-1]} to {nq['VALUED_AT'].iloc[0]})",
+                NAMES[col], v, f"within ±{DEV_TOLERANCE:.0%}", abs(v - 1) <= DEV_TOLERANCE)
+        for col, v in dev["tri_vs_extract"].items():
+            add("inputs", "Claim triangle / claims extract, last 8 accident quarters", NAMES[col], v,
+                f"within ±{INPUT_TOLERANCE:.0%}", abs(v - 1) <= INPUT_TOLERANCE)
+    out = pd.DataFrame(rows)
+    out["DATA_TO"] = data_end.date().isoformat()
+    return out
+
+
+def write_chart(history: pd.DataFrame, fc: pd.DataFrame, rel_sd: float) -> None:
+    z = NormalDist().inv_cdf(0.5 + CI_LEVEL / 2)
+    x_h, x_f = history.index.to_timestamp(), fc.index.to_timestamp()
+    fig, ax = plt.subplots(figsize=(11, 4.5))
+    ax.plot(x_h, history["REPORTED_COST"] / 1e6, color="grey", lw=1, label="Reported so far")
+    ax.plot(x_h, history["CLAIMS_COST"] / 1e6, color="black", lw=1.5, label="Developed to ultimate")
+    ax.plot(x_f, fc["CLAIMS_COST"] / 1e6, color="tab:red", lw=1.5, label="Forecast")
+    ax.fill_between(x_f, fc["CLAIMS_COST"] * (1 - z * rel_sd) / 1e6,
+                    fc["CLAIMS_COST"] * (1 + z * rel_sd) / 1e6, color="tab:red", alpha=0.15,
+                    label=f"{CI_LEVEL:.0%} band")
+    ax.set_ylabel("Claims cost per month (millions)")
     ax.grid(alpha=0.2)
-
-    ax = axes[0, 1]
-    ax.plot(monthly["ds"], monthly["EARNED_PREMIUM"], "g-o", label="Actual Premium", markersize=3)
-    ax.plot(forecast_df["ds"], forecast_df["FORECAST_PREMIUM"], "r--s", label="Forecast Premium", markersize=3)
-    ax.set_title("Monthly Premium: Actual vs Forecast")
-    ax.set_ylabel("SAR")
-    ax.legend()
-    ax.grid(alpha=0.2)
-
-    ax = axes[1, 0]
-    ax.plot(monthly["ds"], monthly["LOSS_RATIO"], "b-o", label="Actual LR", markersize=3)
-    ax.plot(forecast_df["ds"], forecast_df["FORECAST_LOSS_RATIO"], "r--s", label="Forecast LR", markersize=3)
-    ax.fill_between(forecast_df["ds"], forecast_df["CI_LR_LOWER"], forecast_df["CI_LR_UPPER"], alpha=0.2, color="red")
-    ax.axhline(y=1.0, color="black", linestyle=":", alpha=0.6, label="100% LR")
-    ax.set_title("Loss Ratio: Actual vs Forecast")
-    ax.legend()
-    ax.grid(alpha=0.2)
-
-    ax = axes[1, 1]
-    scatter_pred = None
-    if winner == "Prophet" and fc_prophet_claims is not None:
-        scatter_pred = fc_prophet_claims[fc_prophet_claims["ds"].isin(holdout["ds"])]["yhat"].values
-    elif winner == "SARIMA":
-        scatter_pred = sarima_validation_pred
-    elif winner == "HoltWinters":
-        scatter_pred = hw_validation_pred
-    elif winner == "Naive":
-        scatter_pred = naive_predictions[naive_valid]
-    if scatter_pred is not None and len(scatter_pred) == len(holdout_actual):
-        ax.scatter(holdout_actual, scatter_pred, c="blue", alpha=0.75)
-        mx = max(np.max(holdout_actual), np.max(scatter_pred)) * 1.1
-        ax.plot([0, mx], [0, mx], "k--", alpha=0.5, label="Perfect forecast")
-        ax.set_xlabel("Actual")
-        ax.set_ylabel("Forecast")
-        ax.set_title(f"{winner}: Forecast vs Actual")
-        ax.legend()
-    else:
-        ax.text(0.5, 0.5, "Scatter unavailable", ha="center", va="center", transform=ax.transAxes)
-    ax.grid(alpha=0.2)
-
-    plt.suptitle("Saudi Motor Insurance DSS — Demo Forecast Validation", fontsize=15, fontweight="bold")
-    plt.tight_layout()
-    vp = OUTPUT_DIR / "forecast_validation.png"
-    plt.savefig(vp, dpi=150, bbox_inches="tight")
-    plt.close()
-    print(f"Validation plot saved: {vp}")
-except ImportError:
-    print("matplotlib not available — skipping plot.")
+    ax.legend(loc="upper left")
+    fig.tight_layout()
+    fig.savefig(OUTPUT_DIR / "forecast_validation.png", dpi=120)
+    plt.close(fig)
 
 
-# =============================================================================
-# STEP 23 — MARKDOWN REPORT
-# =============================================================================
+def write_report(history: pd.DataFrame, fc: pd.DataFrame, scores: pd.DataFrame, model: str,
+                 checks: pd.DataFrame, dev: dict, data_end: pd.Timestamp) -> None:
+    label, names = LABEL, NAMES
+    last12 = history.iloc[-12:]
+    with open(OUTPUT_DIR / "seasonal_forecast_report.md", "w", encoding="utf-8") as f:
+        f.write("# Portfolio Forecast Report\n\n")
+        f.write(f"Data source: **{S.source}**. Claims data to {data_end.date()}.\n\n")
+        f.write("## Window\n\n")
+        why = ("Set by forecast_window in config.toml." if S.config["profiles"][S.source].get("forecast_window")
+               else f"Starts {BOOK_RAMP_MONTHS} months after the first earned premium; ends with the "
+                    "last complete month of claims data.")
+        f.write(f"- History: {history.index[0]} to {history.index[-1]} ({len(history)} months). {why}\n")
+        f.write(f"- Forecast: {fc.index[0]} to {fc.index[-1]}.\n\n")
 
-print()
-print("=" * 78)
-print("STEP 23: Writing markdown report")
-print("=" * 78)
+        known = fc["RUNOFF_PREMIUM"].sum() / fc["EARNED_PREMIUM"].sum()
+        f.write(f"Earned premium = run-off of policies already written ({known:.0%} of the forecast "
+                "year, exact) + new business (forecast written premium, earned with the latest "
+                "year's policy terms).\n\n")
+        f.write("## Development to ultimate\n\n")
+        if dev["developed"]:
+            f.write(f"Chain-ladder at {dev['valuation_quarter']}, volume-weighted over the latest "
+                    f"{DEV_DIAGONALS} diagonals. Factor to ultimate by age of the accident quarter:\n\n")
+            f.write("| Age (quarters) | " + " | ".join(str(i) for i in range(8)) + " |\n")
+            f.write("|---|" + "---|" * 8 + "\n")
+            for col, cdf in dev["cdf"].items():
+                f.write(f"| {names[col]} | " + " | ".join(f"{v:.3f}" for v in cdf) + " |\n")
+            f.write("\nThe claims extract runs past the last quarter-end, so each accident quarter is "
+                    "scaled by its ultimate over everything recorded to the data end "
+                    f"(latest quarter: cost x{dev['latest_ratio']['CLAIMS_COST']:.3f}, "
+                    f"count x{dev['latest_ratio']['CLAIM_COUNT']:.3f}).\n")
+            up = last12["CLAIMS_COST"].sum() / last12["REPORTED_COST"].sum() - 1
+            f.write(f"\nThe last 12 months of claims cost are {up:+.1%} above what is reported so far.\n\n")
+        else:
+            f.write("Not applied: no claim triangles for this source (claims used as recorded).\n\n")
 
-report_path = OUTPUT_DIR / "seasonal_forecast_report.md"
-with open(report_path, "w", encoding="utf-8") as rpt:
-    rpt.write("# Seasonal Forecast Report\n\n")
-    rpt.write(f"Generated: {datetime.now():%Y-%m-%d %H:%M}\n\n")
-    rpt.write("> **DEMO FORECAST:** Synthetic data. Modelling window excludes immature Oct–Dec 2023.\n\n")
+        n_origins = int(scores["N_ORIGINS"].max())
+        f.write(f"## Validation ({n_origins} forecast origins, every quarter-end with "
+                f"{MIN_CONTEXT_MONTHS}+ months of history)\n\n")
+        n_review = int((checks["STATUS"] == "REVIEW").sum())
+        f.write(f"**{(checks['STATUS'] == 'PASS').sum()} checks pass, {n_review} need review.** "
+                "The same rows are in fact_forecast_validation.csv for Power BI.\n\n")
+        f.write("| Group | Check | Measure | Horizon | Value | Benchmark | Rule | Status |\n")
+        f.write("|---|---|---|---|---:|---:|---|---|\n")
+        for r in checks.itertuples():
+            pct = r.CHECK_GROUP in ("accuracy", "band")
+            val = f"{r.VALUE:+.1%}" if r.CHECK.startswith("Bias") else (f"{r.VALUE:.1%}" if pct else f"{r.VALUE:.3f}")
+            bench = f"{r.BENCHMARK:.1%}" if pd.notna(r.BENCHMARK) else ""
+            f.write(f"| {r.CHECK_GROUP} | {r.CHECK} | {r.MEASURE} | {r.HORIZON} | {val} | {bench} | "
+                    f"{r.THRESHOLD} | **{r.STATUS}** |\n")
 
-    rpt.write("## Data Summary\n\n")
-    rpt.write(f"- Window: {monthly['ds'].min():%Y-%m} to {monthly['ds'].max():%Y-%m} ({len(monthly)} months)\n")
-    rpt.write(f"- Train: {len(train)}, Holdout: {len(holdout)}\n")
-    rpt.write(f"- Total claims: {monthly['CLAIM_COUNT'].sum():,.0f}\n\n")
+        f.write("\n### Model choice\n\n| Model | Horizon | " +
+                " | ".join(f"{names[s]} WAPE" for s in SERIES) + " | Claims cost bias |\n")
+        f.write("|---|---|" + "---|" * (len(SERIES) + 1) + "\n")
+        for (m, h), g in scores.groupby(["MODEL", "HORIZON"]):
+            g = g.set_index("SERIES")
+            f.write(f"| {label[m]} | {h}M | " + " | ".join(f"{g.at[s, 'WAPE']:.1%}" for s in SERIES) +
+                    f" | {g.at['CLAIMS_COST', 'BIAS']:+.1%} |\n")
+        f.write(f"\n**Selected: {label[model]}** (lowest mean WAPE over the three measures and horizons).")
+        if "timesfm" not in set(scores["MODEL"]):
+            f.write(" TimesFM is not installed, so only seasonal naive was available.")
+        f.write("\nActuals for the latest months are themselves developed estimates, and the "
+                "development factors are today's: the test shows how well the method forecasts the "
+                "developed book, not what the dashboard would have shown at each origin.\n\n")
 
-    rpt.write("## Model Comparison\n\n")
-    rpt.write("| Model | WAPE | Bias | Coverage | MAE |\n|---|---:|---:|---:|---:|\n")
-    for nm, m in validation_results.items():
-        cov = f"{m['coverage']:.0%}" if pd.notna(m['coverage']) else "—"
-        rpt.write(f"| {nm} | {m['wape']:.1%} | {m['bias']:.3f} | {cov} | {m['mae']:,.0f} |\n")
-    rpt.write(f"\n**Selected:** {winner} — {selection_reason}\n\n")
+        if dev["developed"]:
+            f.write(f"### Development look-back (factors as at {DEV_LOOKBACK_QUARTERS} quarters ago)\n\n")
+            for col, lb in dev["lookback"].items():
+                f.write(f"**{names[col]}**\n\n| Accident quarter | Known then | Expected now | "
+                        "Actual now | Actual / expected |\n|---|---:|---:|---:|---:|\n")
+                for r in lb.itertuples():
+                    f.write(f"| {r.ACC_QUARTER} | {r.KNOWN_THEN:,.0f} | {r.EXPECTED_NOW:,.0f} | "
+                            f"{r.ACTUAL_NOW:,.0f} | {r.ACTUAL_VS_EXPECTED:.3f} |\n")
+                f.write("\n")
+            f.write("### Newest accident quarter at past valuations (actual / expected development)\n\n")
+            f.write("| Valued at | " + " | ".join(names[c] for c in dev["newest"]) + " |\n")
+            f.write("|---|" + "---:|" * len(dev["newest"]) + "\n")
+            tests = pd.concat({c: d.set_index("VALUED_AT")["ACTUAL_VS_EXPECTED"] for c, d in dev["newest"].items()}, axis=1)
+            for q, r in tests.iterrows():
+                f.write(f"| {q} | " + " | ".join(f"{v:.3f}" for v in r) + " |\n")
+            f.write("\nBelow 1 means the factors over-stated how much the newest quarter would grow. "
+                    "A consistent gap here moves the latest months of developed history, and through "
+                    "them the forecast loss ratio.\n\n")
 
-    rpt.write("## Seasonality\n\n")
-    if pd.notna(seasonality_p):
-        rpt.write(f"- ANOVA F={seasonality_f:.2f}, p={seasonality_p:.4f}\n")
-        rpt.write(f"- {'Significant' if seasonality_p < 0.05 else 'Not significant'} at 5%\n\n")
-    else:
-        rpt.write("- ANOVA unavailable\n\n")
+        f.write("## Next 12 months vs the last 12\n\n")
+        f.write("| | Last 12 months | Forecast | Change |\n|---|---:|---:|---:|\n")
+        for s in SERIES:
+            a, b = last12[s].sum(), fc[s].sum()
+            f.write(f"| {names[s]} | {a:,.0f} | {b:,.0f} | {b / a - 1:+.1%} |\n")
+        lr_a = last12["CLAIMS_COST"].sum() / last12["EARNED_PREMIUM"].sum()
+        lr_b = fc["CLAIMS_COST"].sum() / fc["EARNED_PREMIUM"].sum()
+        f.write(f"| Loss ratio | {lr_a:.1%} | {lr_b:.1%} | {100 * (lr_b - lr_a):+.1f} pts |\n\n")
 
-    rpt.write("## Business Validation\n\n")
-    rpt.write(f"- Trailing 12M avg monthly premium: {trailing_12_avg_prem:,.0f}\n")
-    rpt.write(f"- Forecast avg monthly premium: {forecast_avg_prem:,.0f}\n")
-    rpt.write(f"- Premium change: {premium_change:+.1%}\n")
-    rpt.write(f"- Trailing 12M LR: {trailing_12_lr:.1%}\n")
-    rpt.write(f"- Forecast 12M LR: {forecast_12_lr:.1%}\n\n")
-
-    rpt.write("## Validation Summary\n\n")
-    rpt.write(f"- Aggregate WAPE: {agg_wape:.1%} {'PASS' if agg_wape_pass else 'REVIEW'}\n")
-    rpt.write(f"- Monthly WAPE: {winner_wape:.1%}\n")
-    rpt.write(f"- Raw bias: {winner_bias:.3f}\n")
-    cov_str = f"{winner_coverage:.0%}" if pd.notna(winner_coverage) else "N/A"
-    rpt.write(f"- Coverage: {cov_str}\n\n")
-
-    rpt.write("## 12-Month Forecast Preview\n\n")
-    rpt.write("| Month | Claims | Premium | LR | CI Lower | CI Upper |\n|---|---:|---:|---:|---:|---:|\n")
-    preview = output[(output["FORECAST_HORIZON"] == "12M")]
-    for _, r in preview.iterrows():
-        rpt.write(f"| {r['MONTH_DATE'][:7]} | {r['FORECAST_CLAIMS']:,.0f} | {r['FORECAST_PREMIUM']:,.0f} | {r['FORECAST_LOSS_RATIO']:.1%} | {r['CI_LOWER_90']:.1%} | {r['CI_UPPER_90']:.1%} |\n")
-    rpt.write("\n")
-
-print(f"Report saved: {report_path}")
-
-
-# =============================================================================
-# FINAL PREVIEW
-# =============================================================================
-
-print()
-print("=" * 78)
-print("FINAL FORECAST PREVIEW")
-print("=" * 78)
-
-preview = output[output["FORECAST_HORIZON"] == "12M"].copy()
-print(f"{'Month':>10} {'Claims':>15} {'Premium':>15} {'LR':>8} {'CI Lo':>10} {'CI Hi':>10}")
-for _, r in preview.iterrows():
-    print(f"{r['MONTH_DATE'][:7]:>10} {r['FORECAST_CLAIMS']:>15,.0f} {r['FORECAST_PREMIUM']:>15,.0f} {r['FORECAST_LOSS_RATIO']:>7.1%} {r['CI_LOWER_90']:>9.1%} {r['CI_UPPER_90']:>9.1%}")
+        f.write("## Monthly forecast\n\n| Month | Premium | Claims | Claim count | Loss ratio |\n")
+        f.write("|---|---:|---:|---:|---:|\n")
+        for m, r in fc.iterrows():
+            f.write(f"| {m} | {r['EARNED_PREMIUM']:,.0f} | {r['CLAIMS_COST']:,.0f} | "
+                    f"{r['CLAIM_COUNT']:,.0f} | {r['CLAIMS_COST'] / r['EARNED_PREMIUM']:.1%} |\n")
 
 
-# =============================================================================
-# DONE
-# =============================================================================
+# =========================================================================
+# Entry point
+# =========================================================================
+def main() -> None:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    monthly, first_premium, data_end = load_monthly()
+    start, end = history_window(first_premium, data_end)
+    _log(f"claims data to {data_end.date()}; history {start} to {end}")
 
-print()
-print("=" * 78)
-print("DONE")
-print("=" * 78)
-print(f"\nOutputs:")
-print(f"  CSV:  {output_path}")
-print(f"  Report: {report_path}")
-print(f"  Plot: {OUTPUT_DIR / 'forecast_validation.png'}")
-print(f"\nCSV contains {len(monthly)} actual rows + {len(output) - len(monthly)} forecast rows.")
-print(f"Filter PERIOD_TYPE='actual' for history, 'forecast' + FORECAST_HORIZON for forward view.")
-print(f"\nNOTE: Demo forecast. Not production actuarial assumptions.")
+    monthly, dev = develop(monthly, data_end)
+    cohorts = premium_cohorts()
+    monthly["WRITTEN_PREMIUM"] = cohorts.sum(axis=1).reindex(monthly.index, fill_value=0.0)
+    history = monthly.loc[start:end]
+
+    models = (["timesfm"] if timesfm_model.available() else []) + ["seasonal_naive"]
+    if "timesfm" not in models:
+        _log("TimesFM not installed — seasonal naive only")
+    bt = rolling_backtest(history, cohorts, models)
+    scores = score(bt)
+    mean_wape = scores.groupby("MODEL")["WAPE"].mean()
+    for m, v in mean_wape.items():
+        _log(f"validation {m}: mean WAPE {v:.1%} over {bt[bt['MODEL'] == m]['ORIGIN'].nunique()} origins")
+    model = mean_wape.idxmin()
+    rel_sd, coverage = band(bt, model)
+    b = bt[bt["MODEL"] == model]
+    monthly_wape = float((b["PRED_CLAIMS_COST"] - b["ACT_CLAIMS_COST"]).abs().sum() / b["ACT_CLAIMS_COST"].sum())
+    _log(f"selected: {model}; band coverage {coverage:.0%} out of sample")
+
+    # Input check: the premium rebuilt from policy dates must equal fact_earned_premium
+    premium_check = float(cohorts.sum().reindex(history.index, fill_value=0.0).sum()
+                          / history["EARNED_PREMIUM"].sum())
+    checks = validation_table(scores, model, coverage, dev, premium_check, data_end)
+    checks.to_csv(FACTS_DIR / "fact_forecast_validation.csv", index=False, encoding="utf-8")
+    review = checks[checks["STATUS"] == "REVIEW"]
+    _log(f"checks: {(checks['STATUS'] == 'PASS').sum()} pass, {len(review)} need review"
+         + "".join(f"\n           REVIEW {r.CHECK_GROUP}: {r.MEASURE} {r.HORIZON} = {r.VALUE:.3f} ({r.THRESHOLD})"
+                   for r in review.itertuples()))
+
+    fc = forecast(model, history, cohorts, max(FORECAST_HORIZONS))
+    out = build_rows(history, fc, model, monthly_wape, rel_sd, seasonal_index(history["CLAIMS_COST"]))
+    path = FACTS_DIR / "fact_forecast_seasonal.csv"
+    out.to_csv(path, index=False, encoding="utf-8")
+    _log(f"wrote {path} ({len(out)} rows: {len(history)} actual months, forecast {fc.index[0]} to {fc.index[-1]})")
+
+    write_chart(history, fc, rel_sd)
+    write_report(history, fc, scores, model, checks, dev, data_end)
+    _log("Done.")
+
+
+if __name__ == "__main__":
+    main()

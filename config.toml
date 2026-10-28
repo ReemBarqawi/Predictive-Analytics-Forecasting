@@ -16,6 +16,10 @@ source = "synthetic"          # "synthetic" (demo Excel files) or "oracle" (comp
 output_root = "SYNTHETIC_DSS_DATA"
 models_dir  = "models"
 reports_dir = "outputs"
+# Forecast history window (07_forecast_seasonal). The demo data has almost no claims in
+# 2014-2019 and stops developing its claims after 2023-09, so its window is set here.
+# Leave it out for real data: the window is then derived from the data.
+forecast_window = ["2020-01", "2023-09"]
 
 [profiles.oracle]
 raw_dir     = "data/raw"            # warehouse extracts (git-ignored, never commit)
@@ -33,7 +37,7 @@ motor_classes = ["Motor Private", "Motor Commercial", "Motor Rent a Car"]
 #   user = "READONLY_USER"
 # The password is never stored in a file: it is read from the environment variable
 # AMAN_ORACLE_PASSWORD, or asked for when the extract runs.
-sql_dir = "sql"               # one .sql file per extract (policies.sql, claims.sql)
+sql_dir = "sql"               # one .sql file per extract (policies, claims, claims_dev_*)
 fetch_batch_rows = 50000
 
 [prepare]
