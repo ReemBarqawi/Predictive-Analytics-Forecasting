@@ -31,6 +31,12 @@ reports_dir = "data/real/reports"
 # Classes treated as motor business. Empty list = keep every class the extract returns.
 motor_classes = ["Motor Private", "Motor Commercial", "Motor Rent a Car"]
 
+[report]
+# How many policy years Power BI loads, ending at the current year. The current year is worked out
+# from the data (the last calendar year the claims reach to its end), so it moves forward on its own.
+# The models always use the full history; only the dashboard is limited. Forecast months are kept.
+years = 5
+
 [oracle]
 # Connection details belong in config.local.toml, not here:
 #   dsn  = "host:port/service_name"

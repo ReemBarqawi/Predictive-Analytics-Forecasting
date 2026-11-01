@@ -14,6 +14,7 @@ month is "current"**. Today several steps do:
 | Step | How it decides "now" today |
 |---|---|
 | `11_build_alerts.py` | ✅ From the data: latest accident date, partial or under-reported month dropped |
+| `12_report_window.py` | ✅ From the data: current year = last calendar year the claims reach to its end (added 2026-11-01) |
 | `07_forecast_seasonal.py` | `MATURE_DATA_END = "2023-09-30"`, typed in code |
 | `05_segment_performance_by_year.py` | `LATEST_MATURE_YEAR = 2023`, typed in code |
 | `04_backtest.py` | backtest points 2019-12-31 to 2024-06-30, typed in code |

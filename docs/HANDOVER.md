@@ -157,6 +157,7 @@ On 2026-10-20 the scripts were renamed to match their content, numbered in run o
 | 9 | `pipeline/09_profit_optimizer.py` | `notebooks/13_profit optimizer` (a.k.a. "08_profit_optimizer.py") | fact_scenario_results, fact_optimal_scenarios, fact_optimizer_run, fact_floor_sensitivity |
 | 10 | `pipeline/10_underwriting_pnl.py` | `notebooks/09 underwriting pnl.py` | fact_uw_pnl, fact_uw_pnl_bridge |
 | 11 | `pipeline/11_build_alerts.py` | `notebooks/08_Build_alerts.py` | fact_alerts |
+| 12 | `pipeline/12_report_window.py` | (new, 2026-11-01) | `03_dims/dim_report_window.csv`: the policy years Power BI loads (current year from the data + `config.toml [report] years`); `fact_policy_pricing_report.csv` and `fact_claim_report.csv`, the small copies Power BI loads |
 
 Steps 5–9 only depend on steps 1–3, so they can run in any order. Step 10 needs 9. Step 11 needs 3 and 4.
 

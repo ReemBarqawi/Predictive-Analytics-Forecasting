@@ -36,6 +36,7 @@ MODEL_STEPS = [
     (9, "09_profit_optimizer.py"),
     (10, "10_underwriting_pnl.py"),
     (11, "11_build_alerts.py"),
+    (12, "12_report_window.py"),
 ]
 STEPS = {
     "synthetic": [(1, "01_build_synthetic_data.py")] + MODEL_STEPS,
