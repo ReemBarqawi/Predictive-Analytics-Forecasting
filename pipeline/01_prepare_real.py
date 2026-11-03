@@ -29,7 +29,7 @@ import pandas as pd
 
 from contract import CLAIMS, POLICIES
 from settings import ROOT, S, is_motor, valuation_date
-from zone_mapping import map_office_to_zone
+from zone_mapping import map_office_to_zone, with_office_location
 
 TEMPLATE_DIR = ROOT / "SYNTHETIC_DSS_DATA"      # column layout Power BI expects
 report: list[str] = []
@@ -95,6 +95,7 @@ def prepare_policies(raw: pd.DataFrame) -> pd.DataFrame:
     # A ZONE supplied by the warehouse wins; the mapping only fills the gaps.
     if "OFFICE_NAME" in p:
         lookup = pd.DataFrame([map_office_to_zone(o) for o in p["OFFICE_NAME"].dropna().unique()])
+        lookup = lookup[["OFFICE_NAME", "CITY", "REGION", "ZONE"]] if not lookup.empty else lookup  # map columns go on dim_zone
         if not lookup.empty:
             if "ZONE" in p:
                 lookup = lookup.rename(columns={"ZONE": "ZONE_map"})
@@ -234,7 +235,7 @@ def build_dims(p: pd.DataFrame, as_of: pd.Timestamp) -> dict[str, pd.DataFrame]:
     end = max(p["POLICY_EXPIRY_DATE"].max(), as_of).normalize()
     dates = pd.date_range(start, end, freq="D")
     return {
-        "dim_zone": p[["OFFICE_NAME", "CITY", "REGION", "ZONE"]].drop_duplicates(),
+        "dim_zone": with_office_location(p[["OFFICE_NAME", "CITY", "REGION", "ZONE"]].drop_duplicates()),
         "dim_business_class": p[["CLASS_NO", "CLASS_DESC"]].drop_duplicates(),
         "dim_product": p[["POLICY_TYPE_NO", "POLICY_TYPE_DESC"]].drop_duplicates(),
         "dim_date": pd.DataFrame({

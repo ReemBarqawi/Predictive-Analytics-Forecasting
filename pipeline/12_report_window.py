@@ -23,7 +23,7 @@ import sys
 
 import pandas as pd
 
-from settings import S
+from settings import S, current_year
 
 # Columns of fact_policy_pricing the dashboard uses: the segment keys of its relationships,
 # the year and the cancelled flag (measure "BM Total Policies").
@@ -33,11 +33,7 @@ years = int(S.config.get("report", {}).get("years", 5))
 if years < 1:
     sys.exit("[report] years in config.toml must be 1 or more.")
 
-claims = pd.read_csv(S.facts_dir / "fact_claim.csv", usecols=["ACC_DATE"], parse_dates=["ACC_DATE"])
-cutoff = claims["ACC_DATE"].max()
-if pd.isna(cutoff):
-    sys.exit("fact_claim.csv has no accident dates: cannot tell which year is current.")
-current = cutoff.year if (cutoff.month, cutoff.day) == (12, 31) else cutoff.year - 1
+cutoff, current = current_year()
 
 seg = pd.read_csv(S.facts_dir / "fact_segment_performance_by_year.csv", usecols=["POLICY_YEAR"])
 history = seg["POLICY_YEAR"][seg["POLICY_YEAR"] <= cutoff.year]

@@ -30,7 +30,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent))
-from zone_mapping import map_office_to_zone
+from zone_mapping import map_office_to_zone, with_office_location
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -124,6 +124,7 @@ def enrich_policy_bridge(policies: pd.DataFrame) -> pd.DataFrame:
     # Zone lookup from office name
     unique_offices = p["OFFICE_NAME"].drop_duplicates().to_frame()
     zone_lookup = pd.DataFrame([map_office_to_zone(o) for o in unique_offices["OFFICE_NAME"]])
+    zone_lookup = zone_lookup[["OFFICE_NAME", "CITY", "REGION", "ZONE"]]  # map columns go on dim_zone
     p = p.merge(zone_lookup, on="OFFICE_NAME", how="left")
 
     # Synthetic SUM_INSURED, drawn from log-normal by policy type
@@ -748,7 +749,7 @@ def build_profitability_surface(segments: pd.DataFrame) -> pd.DataFrame:
 # ==========================================================================
 def build_dims(policies_enriched: pd.DataFrame) -> dict:
     _log("Building dimension tables")
-    dim_zone = policies_enriched[["OFFICE_NAME", "CITY", "REGION", "ZONE"]].drop_duplicates()
+    dim_zone = with_office_location(policies_enriched[["OFFICE_NAME", "CITY", "REGION", "ZONE"]].drop_duplicates())
     dim_class = policies_enriched[["CLASS_NO", "CLASS_DESC"]].drop_duplicates()
     dim_product = policies_enriched[["POLICY_TYPE_NO", "POLICY_TYPE_DESC"]].drop_duplicates()
 

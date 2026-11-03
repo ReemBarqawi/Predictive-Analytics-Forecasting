@@ -37,6 +37,12 @@ motor_classes = ["Motor Private", "Motor Commercial", "Motor Rent a Car"]
 # The models always use the full history; only the dashboard is limited. Forecast months are kept.
 years = 5
 
+[zones]
+# Offices whose name carries no city (online aggregators, e-commerce, telesales, outlets) are
+# placed in this city's zone: the head office, per the team's office-location specification.
+# Must be a city in pipeline/zone_mapping.py. dim_zone[LOCATION_BASIS] marks these offices.
+default_office_city = "Riyadh"
+
 [oracle]
 # Connection details belong in config.local.toml, not here:
 #   dsn  = "host:port/service_name"

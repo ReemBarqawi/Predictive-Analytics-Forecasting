@@ -1,49 +1,49 @@
-OFFICE_NAME,CITY,REGION,ZONE
-الرياض-العليا,Riyadh,Central,Central
-دمام,Dammam,Eastern,Eastern
-جدة,Jeddah,Western,Western
-المكتب الرئيسي,Head Office (Riyadh),Central,Central
-الرياض-الخريص,Riyadh,Central,Central
-بريدة,Buraidah,Central,Central
-شركات صغيرة - جدة,Jeddah,Western,Western
-مكة المكرمة,Mecca,Western,Western
-جدة-أوتومول,Jeddah,Western,Western
-المدينة,Medina,Western,Western
-نقطة بيع بدر مرور,Badr,Western,Western
-نقطة بيع قريات مرور,Qurayyat,Northern,Northern
-نقطة بيع الباحة مرور,Al Bahah,Southern,Southern
-شركات صغيرة - بريدة,Buraidah,Central,Central
-شركات صغيرة - تبوك,Tabuk,Northern,Northern
-نقطة بيع مكه مرور2,Mecca,Western,Western
-الميازين,Al Mayazin,Central,Central
-غير محدد,Unspecified,Unspecified,Unspecified
-نقطة بيع تبوك معارض,Tabuk,Northern,Northern
-نقطة بيع جدة جوازات,Jeddah,Western,Western
-نقطة بيع ابها مرور,Abha,Southern,Southern
-نقطةبيع المدينه مرور,Medina,Western,Western
-إعادة تواصل,Call Center,Central,Central
-نقطة بيع مرور عسير,Asir,Southern,Southern
-نقطة بيع الطائف مرور,Taif,Western,Western
-نقطة بيع مهد مرور,Mahd,Western,Western
-نقطة بيع نجران مرور,Najran,Southern,Southern
-نقطة بيع الرس مرور,Ar Rass,Central,Central
-نقطةبيع القنفذة مرور,Al Qunfudhah,Western,Western
-نقطة صبيا المرور,Sabya,Southern,Southern
-نقطة بيع مكه مرور,Mecca,Western,Western
-نقطة بيع عنيزة مرور,Unayzah,Central,Central
-شركات صغيرة - الباحة,Al Bahah,Southern,Southern
-شركات صغيرة- المدينة,Medina,Western,Western
-نقطة بيع خميس مرور,Khamis Mushait,Southern,Southern
-نقطة بيع جيزان مرور,Jazan,Southern,Southern
-نقطة بيشة المرور,Bisha,Southern,Southern
-نقطة بيع عرعر مرور,Arar,Northern,Northern
-نقطة بيع بريدة مرور,Buraidah,Central,Central
-نقطة بيع جده المعارض,Jeddah,Western,Western
-شركات صغيرة - جازان,Jazan,Southern,Southern
-نقطةبيع الرياض (ج),Riyadh,Central,Central
-نقطة صامطة المرور,Samitah,Southern,Southern
-نقطة بيع النماص مرور,Other,Other,Other
-نقطة بيع الدواسرمرور,Other,Other,Other
-نقطة بيع حفر الباطن,Hafar,Eastern,Eastern
-التعزيزات لوكالة,Support Unit,Central,Central
-شركات صغيرة - نجران,Najran,Southern,Southern
+OFFICE_NAME,CITY,REGION,ZONE,LATITUDE,LONGITUDE,LOCATION_BASIS
+الرياض-العليا,Riyadh,Central,Central,24.7136,46.6753,City in office name
+دمام,Dammam,Eastern,Eastern,26.4207,50.0888,City in office name
+جدة,Jeddah,Western,Western,21.4858,39.1925,City in office name
+المكتب الرئيسي,Head Office (Riyadh),Central,Central,24.7136,46.6753,City in office name
+الرياض-الخريص,Riyadh,Central,Central,24.7136,46.6753,City in office name
+بريدة,Buraidah,Central,Central,26.326,43.975,City in office name
+شركات صغيرة - جدة,Jeddah,Western,Western,21.4858,39.1925,City in office name
+مكة المكرمة,Mecca,Western,Western,21.3891,39.8579,City in office name
+جدة-أوتومول,Jeddah,Western,Western,21.4858,39.1925,City in office name
+المدينة,Medina,Western,Western,24.5247,39.5692,City in office name
+نقطة بيع بدر مرور,Badr,Western,Western,23.7742,38.7885,City in office name
+نقطة بيع قريات مرور,Qurayyat,Northern,Northern,31.3318,37.3417,City in office name
+نقطة بيع الباحة مرور,Al Bahah,Southern,Southern,20.0129,41.4677,City in office name
+شركات صغيرة - بريدة,Buraidah,Central,Central,26.326,43.975,City in office name
+شركات صغيرة - تبوك,Tabuk,Northern,Northern,28.3838,36.555,City in office name
+نقطة بيع مكه مرور2,Mecca,Western,Western,21.3891,39.8579,City in office name
+الميازين,Al Mayazin,Central,Central,24.7136,46.6753,City in office name
+غير محدد,Head office / online (Riyadh),Central,Central,24.7136,46.6753,Default office city
+نقطة بيع تبوك معارض,Tabuk,Northern,Northern,28.3838,36.555,City in office name
+نقطة بيع جدة جوازات,Jeddah,Western,Western,21.4858,39.1925,City in office name
+نقطة بيع ابها مرور,Abha,Southern,Southern,18.2164,42.5053,City in office name
+نقطةبيع المدينه مرور,Medina,Western,Western,24.5247,39.5692,City in office name
+إعادة تواصل,Call Center,Central,Central,24.7136,46.6753,City in office name
+نقطة بيع مرور عسير,Abha,Southern,Southern,18.2164,42.5053,City in office name
+نقطة بيع الطائف مرور,Taif,Western,Western,21.2703,40.4158,City in office name
+نقطة بيع مهد مرور,Mahd,Western,Western,23.4986,40.8614,City in office name
+نقطة بيع نجران مرور,Najran,Southern,Southern,17.4933,44.1277,City in office name
+نقطة بيع الرس مرور,Ar Rass,Central,Central,25.8692,43.4977,City in office name
+نقطةبيع القنفذة مرور,Al Qunfudhah,Western,Western,19.1264,41.0783,City in office name
+نقطة صبيا المرور,Sabya,Southern,Southern,17.1493,42.6248,City in office name
+نقطة بيع مكه مرور,Mecca,Western,Western,21.3891,39.8579,City in office name
+نقطة بيع عنيزة مرور,Unayzah,Central,Central,26.0842,43.985,City in office name
+شركات صغيرة - الباحة,Al Bahah,Southern,Southern,20.0129,41.4677,City in office name
+شركات صغيرة- المدينة,Medina,Western,Western,24.5247,39.5692,City in office name
+نقطة بيع خميس مرور,Khamis Mushait,Southern,Southern,18.3,42.7333,City in office name
+نقطة بيع جيزان مرور,Jazan,Southern,Southern,16.8892,42.5611,City in office name
+نقطة بيشة المرور,Bisha,Southern,Southern,19.9821,42.6002,City in office name
+نقطة بيع عرعر مرور,Arar,Northern,Northern,30.9756,41.0378,City in office name
+نقطة بيع بريدة مرور,Buraidah,Central,Central,26.326,43.975,City in office name
+نقطة بيع جده المعارض,Jeddah,Western,Western,21.4858,39.1925,City in office name
+شركات صغيرة - جازان,Jazan,Southern,Southern,16.8892,42.5611,City in office name
+نقطةبيع الرياض (ج),Riyadh,Central,Central,24.7136,46.6753,City in office name
+نقطة صامطة المرور,Samitah,Southern,Southern,16.5939,42.9436,City in office name
+نقطة بيع النماص مرور,An Namas,Southern,Southern,19.1197,42.1522,City in office name
+نقطة بيع الدواسرمرور,Wadi ad-Dawasir,Central,Central,20.4708,44.7896,City in office name
+نقطة بيع حفر الباطن,Hafar Al Batin,Eastern,Eastern,28.4342,45.9601,City in office name
+التعزيزات لوكالة,Support Unit,Central,Central,24.7136,46.6753,City in office name
+شركات صغيرة - نجران,Najran,Southern,Southern,17.4933,44.1277,City in office name

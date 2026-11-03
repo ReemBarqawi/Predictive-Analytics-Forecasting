@@ -4,8 +4,13 @@
 Splits each segment's combined-ratio gap across the 5 profitability levers
 (Risk-Based Repricing, Bonus-Malus, UW Controls, Claims Management, Distribution & Mix).
 
-Reads : SYNTHETIC_DSS_DATA/02_facts/fact_segment_performance.csv
-Writes: SYNTHETIC_DSS_DATA/02_facts/fact_lever_allocation.csv
+Reads : 02_facts/fact_segment_performance_by_year.csv  (current policy year only)
+Writes: 02_facts/fact_lever_allocation.csv
+
+The baseline is the current policy year (settings.current_year), the same book as the
+Profitability page's default year and the optimizer, so every page starts from one combined
+ratio. The all-years fact_segment_performance.csv summed every policy year in the extract
+(including years outside the report window and the part-year after the cut-off).
 
 Lever values are raw (unscaled); the proportional "never overshoot" allocation is done in DAX.
 """
@@ -15,10 +20,10 @@ import pandas as pd
 # ─────────────────────────────────────────────────────────────
 # Paths
 # ─────────────────────────────────────────────────────────────
-from settings import S, is_motor  # folders + motor classes for the active data source
+from settings import S, is_motor, current_year  # folders + motor classes for the active data source
 FACTS_DIR  = str(S.facts_dir)
 
-INPUT_PATH  = os.path.join(FACTS_DIR, "fact_segment_performance.csv")
+INPUT_PATH  = os.path.join(FACTS_DIR, "fact_segment_performance_by_year.csv")
 OUTPUT_PATH = os.path.join(FACTS_DIR, "fact_lever_allocation.csv")
 
 TARGET_CR = 0.85  # target combined ratio
@@ -207,7 +212,9 @@ def build_lever_allocation(seg_perf_df):
 if __name__ == "__main__":
     print("Loading fact_segment_performance...")
     seg_perf_df = pd.read_csv(INPUT_PATH)
-    print(f"  Raw rows: {len(seg_perf_df)}")
+    _, year = current_year()
+    seg_perf_df = seg_perf_df[seg_perf_df['POLICY_YEAR'] == year]
+    print(f"  Policy year {year}: {len(seg_perf_df)} rows")
 
     # FIX 1: collapse duplicates + drop zero-premium rows
     print("Aggregating segments...")

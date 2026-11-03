@@ -97,6 +97,18 @@ def valuation_date() -> date:
     return date.today()
 
 
+def current_year():
+    """The data cut-off and the current policy year: the last calendar year the claims reach to its
+    end (claims to 18 Jan 2025 -> 2024). Every step that reports "the current year" uses this, so
+    the dashboard pages describe the same book. Returns (cutoff Timestamp, year)."""
+    import pandas as pd
+    acc = pd.read_csv(S.facts_dir / "fact_claim.csv", usecols=["ACC_DATE"], parse_dates=["ACC_DATE"])["ACC_DATE"]
+    cutoff = acc.max()
+    if pd.isna(cutoff):
+        raise SystemExit("fact_claim.csv has no accident dates: cannot tell which year is current.")
+    return cutoff, cutoff.year if (cutoff.month, cutoff.day) == (12, 31) else cutoff.year - 1
+
+
 def is_motor(series):
     """Boolean mask for motor business; keeps every row when no class list is configured."""
     return series.isin(S.motor_classes) if S.motor_classes else series.notna() | series.isna()

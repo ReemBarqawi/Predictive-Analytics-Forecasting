@@ -42,8 +42,13 @@ ep = pd.read_csv(FACTS / "fact_earned_premium.csv",
                  usecols=KEYS + ["EARNED_PREMIUM"], encoding_errors="replace")
 pp = pd.read_csv(FACTS / "fact_policy_pricing.csv",
                  usecols=KEYS + ["POLICY_NO", "EXPOSURE_YEARS", "COMMISSION",
-                                 "pure_premium_period", "expected_frequency_period"],
+                                 "pure_premium_period", "expected_frequency_period", "charged_premium"],
                  encoding_errors="replace")
+# Model claims only on priced policies, the same rule as 09_profit_optimizer: zero-premium records
+# (fleet headers, flat cancellations) get impossible model frequencies (12+ claims per year) and
+# would add claims with no premium behind them.
+unpriced = ~((pp.charged_premium > 0) & (pp.EXPOSURE_YEARS > 0))
+pp.loc[unpriced, ["pure_premium_period", "expected_frequency_period"]] = 0.0
 fc = pd.read_csv(FACTS / "fact_claim.csv",
                  usecols=["POLICY_NO", "POLICY_YEAR", "CLM_NO", "POLICY_MATCHED", "ULTIMATE_CLAIM"],
                  encoding_errors="replace")
