@@ -116,7 +116,7 @@ Grain and key columns for the tables Power BI uses. Full headers are in the CSVs
 | fact_scenario_results | 5,673 | segment × case × premium step | premium_change (−10%…+50% in 1% steps), retention, expected_claims/commission/admin, combined_ratio, underwriting_profit, pass_* flags, is_feasible |
 | fact_optimal_scenarios | 93 | segment × sensitivity case (low/base/high) | optimal_premium_change, expected_retention, expected_profit, profit_change, binding_constraint, credibility_level, decision_source, nochange_* |
 | fact_optimizer_run | 1 | run | every optimizer assumption, stored as strings |
-| fact_forecast_seasonal | 66 | month × horizon (3M/6M/12M + ACTUAL) | FORECAST_CLAIMS, FORECAST_PREMIUM, FORECAST_LOSS_RATIO, CI_LOWER_90/UPPER_90, MODEL_TYPE, MODEL_WAPE |
+| fact_forecast_seasonal | 66 | month × horizon (3M/6M/12M + ACTUAL) | FORECAST_CLAIMS, FORECAST_PREMIUM, FORECAST_LOSS_RATIO, CLAIMS_P10/P90, PREMIUM_P10/P90, MODEL_TYPE, MODEL_WAPE |
 | fact_model_performance | 6,108 | segment × cutoff × horizon × model × target | horizon_label ∈ {2w, 1m, 3m, 12m}, model ∈ {glm, seasonal_naive} |
 | fact_alerts | 12 | alert | SEVERITY, TITLE, ISSUE, IMPACT, ACTION, SEGMENT_LABEL, METRIC_NAME/VALUE, ALERT_RULE_ID |
 

@@ -26,8 +26,9 @@ so they follow the book's known run-off instead of extending the past trend.
        are used as they are
   3. Rolling validation: both models forecast from every quarter-end with two years of
      history, exactly as the live forecast is made; the lower mean WAPE over premium, count
-     and cost at 3 / 6 / 12 months picks the model. Its monthly errors set the 90% band, and
-     the band's coverage is tested out of sample (each origin against the others' errors).
+     and cost at 3 / 6 / 12 months picks the model. The P10-P90 bands on premium and claims
+     come from its monthly actual / forecast ratios, on the basis the page shows, and their
+     coverage is tested out of sample (each origin against the others' ratios).
   4. Checks with pass rules: accuracy vs seasonal naive, bias, band coverage, development
      look-back (factors from a year ago vs what then happened), and input reconciliations
      (premium rebuilt from policies, triangle vs claims extract)
@@ -44,7 +45,6 @@ Outputs
 from __future__ import annotations
 
 import warnings
-from statistics import NormalDist
 
 import matplotlib
 matplotlib.use("Agg")
@@ -67,7 +67,7 @@ MIN_CONTEXT_MONTHS = 24
 VALIDATION_STEP_MONTHS = 3
 # Validation pass rules (method constants, shown with every result in the report and table)
 BIAS_TOLERANCE = 0.10                   # |bias| above this over all origins -> REVIEW
-COVERAGE_RANGE = (0.80, 0.97)           # share of months inside the 90% band
+COVERAGE_RANGE = (0.70, 0.90)           # share of months inside the P10-P90 band
 DEV_LOOKBACK_QUARTERS = 4               # development check: factors from one year ago ...
 DEV_LOOKBACK_AQS = 8                    # ... applied to the 8 accident quarters then most recent
 DEV_NEWEST_TESTS = 8                    # newest-quarter check: valuations 4 ... 11 quarters ago
@@ -79,7 +79,7 @@ BOOK_RAMP_MONTHS = 12
 # Method constant: chain-ladder factors are volume-weighted over the latest 20 quarterly
 # diagonals (5 years), so the current claims process and mix drive them, not 2008 behaviour.
 DEV_DIAGONALS = 20
-CI_LEVEL = 0.90                         # band width written to CI_LOWER_90 / CI_UPPER_90
+BAND_QUANTILES = (0.10, 0.90)           # written to CLAIMS_P10 / P90 and PREMIUM_P10 / P90
 
 SERIES = ["EARNED_PREMIUM", "CLAIM_COUNT", "CLAIMS_COST"]    # shown on the page and scored
 MODELLED = ["WRITTEN_PREMIUM", "CLAIM_RATE", "COST_RATE"]     # what the models forecast
@@ -349,7 +349,7 @@ def rolling_backtest(history: pd.DataFrame, cohorts: pd.DataFrame, models: list[
             pred = forecast(m, history.loc[:o], cohorts, max(FORECAST_HORIZONS)).loc[actual.index]
             for step, month in enumerate(actual.index, start=1):
                 rows.append({"ORIGIN": o, "MODEL": m, "STEP": step, "MONTH": month,
-                             **{f"PRED_{s}": pred.at[month, s] for s in SERIES},
+                             **{f"PRED_{s}": pred.at[month, s] for s in SERIES + ["WRITTEN_PREMIUM", "COST_RATE"]},
                              **{f"ACT_{s}": actual.at[month, s] for s in SERIES}})
     return pd.DataFrame(rows)
 
@@ -369,21 +369,35 @@ def score(bt: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def band(bt: pd.DataFrame, model: str) -> tuple[float, float]:
+def band_ratios(bt: pd.DataFrame, model: str, shown: pd.DataFrame, written: bool,
+                claims_scale: float = 1.0) -> pd.DataFrame:
     """
-    Relative spread of the model's monthly claims-cost errors (the live forecast band), and
-    its out-of-sample coverage: each origin's months are checked against a band built from
-    the other origins only.
+    Actual / forecast by origin and month, on the basis the page shows: on written_year, written
+    premium and claims at the forecast rate on it, against the page's actual months. Past claims
+    forecasts take the same scale as the page's line, so its bias correction is not counted twice.
     """
     b = bt[bt["MODEL"] == model]
-    rel = (b["PRED_CLAIMS_COST"] - b["ACT_CLAIMS_COST"]) / b["ACT_CLAIMS_COST"]
-    z = NormalDist().inv_cdf(0.5 + CI_LEVEL / 2)
+    prem = b["PRED_WRITTEN_PREMIUM"] if written else b["PRED_EARNED_PREMIUM"]
+    actual = shown.reindex(b["MONTH"])
+    return pd.DataFrame({
+        "ORIGIN": b["ORIGIN"].to_numpy(),
+        "PREMIUM": actual["EARNED_PREMIUM"].to_numpy() / prem.to_numpy(),
+        "CLAIMS": actual["CLAIMS_COST"].to_numpy() / (b["PRED_COST_RATE"] * prem * claims_scale).to_numpy()})
+
+
+def band(ratios: pd.DataFrame, series: str) -> tuple[float, float, float]:
+    """
+    P10 and P90 of one series' actual / forecast ratios, and their out-of-sample coverage: each
+    origin's months are checked against a band built from the other origins only.
+    """
+    r = ratios[series].replace([np.inf, -np.inf], np.nan)
     inside = []
-    for o in b["ORIGIN"].unique():
-        own = (b["ORIGIN"] == o).to_numpy()
-        sd = rel[~own].std(ddof=1)
-        inside.extend((rel[own].abs() <= z * sd).tolist())
-    return float(rel.std(ddof=1)), float(np.mean(inside))
+    for o in ratios["ORIGIN"].unique():
+        own = (ratios["ORIGIN"] == o).to_numpy()
+        low, high = r[~own].quantile(BAND_QUANTILES)
+        inside.extend(r[own].dropna().between(low, high).tolist())
+    low, high = r.quantile(BAND_QUANTILES)
+    return float(low), float(high), float(np.mean(inside))
 
 
 def seasonal_index(claims: pd.Series) -> pd.Series:
@@ -471,14 +485,14 @@ def trend_factor(history: pd.DataFrame, fc: pd.DataFrame, bt: pd.DataFrame, mode
 
 
 def build_rows(history: pd.DataFrame, fc: pd.DataFrame, model: str, model_wape: float,
-               rel_sd: float, season: pd.Series) -> pd.DataFrame:
-    z = NormalDist().inv_cdf(0.5 + CI_LEVEL / 2)
+               bands: dict, season: pd.Series) -> pd.DataFrame:
     rows = []
     for m, r in history.iterrows():
         rows.append({
             "MONTH_DATE": m.to_timestamp(), "FORECAST_HORIZON": "ACTUAL", "PERIOD_TYPE": "actual",
             "FORECAST_CLAIMS": r["CLAIMS_COST"], "FORECAST_PREMIUM": r["EARNED_PREMIUM"],
-            "CI_LOWER_90": np.nan, "CI_UPPER_90": np.nan, "FORECAST_CLAIM_COUNT": r["CLAIM_COUNT"],
+            "CLAIMS_P10": np.nan, "CLAIMS_P90": np.nan, "PREMIUM_P10": np.nan, "PREMIUM_P90": np.nan,
+            "FORECAST_CLAIM_COUNT": r["CLAIM_COUNT"],
             "SEASONAL_INDEX": 1.0, "MODEL_TYPE": "actual", "MODEL_WAPE": np.nan, "BIAS_CORRECTION": np.nan,
         })
     for h in FORECAST_HORIZONS:
@@ -487,9 +501,8 @@ def build_rows(history: pd.DataFrame, fc: pd.DataFrame, model: str, model_wape: 
             rows.append({
                 "MONTH_DATE": m.to_timestamp(), "FORECAST_HORIZON": f"{h}M", "PERIOD_TYPE": "forecast",
                 "FORECAST_CLAIMS": r["CLAIMS_COST"], "FORECAST_PREMIUM": prem,
-                # Band on claims from the rolling-validation errors, as a loss ratio on point premium
-                "CI_LOWER_90": max(0.0, r["CLAIMS_COST"] * (1 - z * rel_sd)) / prem if prem > 0 else np.nan,
-                "CI_UPPER_90": r["CLAIMS_COST"] * (1 + z * rel_sd) / prem if prem > 0 else np.nan,
+                "CLAIMS_P10": r["CLAIMS_COST"] * bands["CLAIMS"][0], "CLAIMS_P90": r["CLAIMS_COST"] * bands["CLAIMS"][1],
+                "PREMIUM_P10": prem * bands["PREMIUM"][0], "PREMIUM_P90": prem * bands["PREMIUM"][1],
                 "FORECAST_CLAIM_COUNT": r["CLAIM_COUNT"],
                 "SEASONAL_INDEX": season.get(m.month, 1.0), "MODEL_TYPE": model,
                 "MODEL_WAPE": model_wape, "BIAS_CORRECTION": 1.0,
@@ -502,7 +515,7 @@ def build_rows(history: pd.DataFrame, fc: pd.DataFrame, model: str, model_wape: 
                                             out["FORECAST_CLAIMS"] / out["FORECAST_CLAIM_COUNT"], np.nan)
     out["MONTH_DATE"] = out["MONTH_DATE"].dt.strftime("%Y-%m-%d")
     cols = ["SEGMENT_ID", "MONTH_DATE", "FORECAST_HORIZON", "PERIOD_TYPE", "FORECAST_CLAIMS",
-            "FORECAST_PREMIUM", "FORECAST_LOSS_RATIO", "CI_LOWER_90", "CI_UPPER_90",
+            "FORECAST_PREMIUM", "FORECAST_LOSS_RATIO", "CLAIMS_P10", "CLAIMS_P90", "PREMIUM_P10", "PREMIUM_P90",
             "FORECAST_CLAIM_COUNT", "FORECAST_AVG_SEVERITY", "SEASONAL_INDEX", "MODEL_TYPE",
             "MODEL_WAPE", "BIAS_CORRECTION"]
     return out[cols]
@@ -512,7 +525,7 @@ LABEL = {"timesfm": "TimesFM", "seasonal_naive": "Seasonal naive"}
 NAMES = {"EARNED_PREMIUM": "Earned premium", "CLAIM_COUNT": "Claim count", "CLAIMS_COST": "Claims cost"}
 
 
-def validation_table(scores: pd.DataFrame, model: str, coverage: float, dev: dict,
+def validation_table(scores: pd.DataFrame, model: str, bands: dict, dev: dict,
                      premium_check: float, data_end: pd.Timestamp) -> pd.DataFrame:
     """Every check with its value, pass rule and status: one table for the report and Power BI."""
     rows = []
@@ -530,9 +543,10 @@ def validation_table(scores: pd.DataFrame, model: str, coverage: float, dev: dic
             NAMES[r.SERIES], r.WAPE, "at or below seasonal naive", vs_naive, f"{r.HORIZON}M", naive)
         add("accuracy", f"Bias over {r.N_ORIGINS} forecast origins", NAMES[r.SERIES], r.BIAS,
             f"within ±{BIAS_TOLERANCE:.0%}", abs(r.BIAS) <= BIAS_TOLERANCE, f"{r.HORIZON}M")
-    add("band", f"Months inside the {CI_LEVEL:.0%} band (each origin tested on a band from the others)",
-        "Claims cost", coverage, f"{COVERAGE_RANGE[0]:.0%} to {COVERAGE_RANGE[1]:.0%}",
-        COVERAGE_RANGE[0] <= coverage <= COVERAGE_RANGE[1])
+    for series, (_, _, coverage) in bands.items():
+        add("band", "Months inside the P10-P90 band (each origin tested on a band from the others)",
+            series.capitalize(), coverage, f"{COVERAGE_RANGE[0]:.0%} to {COVERAGE_RANGE[1]:.0%}",
+            COVERAGE_RANGE[0] <= coverage <= COVERAGE_RANGE[1])
     add("inputs", "Earned premium rebuilt from policy dates / fact_earned_premium", "Earned premium",
         premium_check, f"within ±{INPUT_TOLERANCE:.0%}", abs(premium_check - 1) <= INPUT_TOLERANCE)
     if dev["developed"]:
@@ -554,16 +568,15 @@ def validation_table(scores: pd.DataFrame, model: str, coverage: float, dev: dic
     return out
 
 
-def write_chart(history: pd.DataFrame, fc: pd.DataFrame, rel_sd: float) -> None:
-    z = NormalDist().inv_cdf(0.5 + CI_LEVEL / 2)
+def write_chart(history: pd.DataFrame, fc: pd.DataFrame, claims_band: tuple) -> None:
     x_h, x_f = history.index.to_timestamp(), fc.index.to_timestamp()
     fig, ax = plt.subplots(figsize=(11, 4.5))
     ax.plot(x_h, history["REPORTED_COST"] / 1e6, color="grey", lw=1, label="Reported so far")
     ax.plot(x_h, history["CLAIMS_COST"] / 1e6, color="black", lw=1.5, label="Developed to ultimate")
     ax.plot(x_f, fc["CLAIMS_COST"] / 1e6, color="tab:red", lw=1.5, label="Forecast")
-    ax.fill_between(x_f, fc["CLAIMS_COST"] * (1 - z * rel_sd) / 1e6,
-                    fc["CLAIMS_COST"] * (1 + z * rel_sd) / 1e6, color="tab:red", alpha=0.15,
-                    label=f"{CI_LEVEL:.0%} band")
+    ax.fill_between(x_f, fc["CLAIMS_COST"] * claims_band[0] / 1e6,
+                    fc["CLAIMS_COST"] * claims_band[1] / 1e6, color="tab:red", alpha=0.15,
+                    label="P10-P90 band")
     ax.set_ylabel("Claims cost per month (millions)")
     ax.grid(alpha=0.2)
     ax.legend(loc="upper left")
@@ -694,20 +707,9 @@ def main() -> None:
     for m, v in mean_wape.items():
         _log(f"validation {m}: mean WAPE {v:.1%} over {bt[bt['MODEL'] == m]['ORIGIN'].nunique()} origins")
     model = mean_wape.idxmin()
-    rel_sd, coverage = band(bt, model)
     b = bt[bt["MODEL"] == model]
     monthly_wape = float((b["PRED_CLAIMS_COST"] - b["ACT_CLAIMS_COST"]).abs().sum() / b["ACT_CLAIMS_COST"].sum())
-    _log(f"selected: {model}; band coverage {coverage:.0%} out of sample")
-
-    # Input check: the premium rebuilt from policy dates must equal fact_earned_premium
-    premium_check = float(cohorts.sum().reindex(history.index, fill_value=0.0).sum()
-                          / history["EARNED_PREMIUM"].sum())
-    checks = validation_table(scores, model, coverage, dev, premium_check, data_end)
-    checks.to_csv(FACTS_DIR / "fact_forecast_validation.csv", index=False, encoding="utf-8")
-    review = checks[checks["STATUS"] == "REVIEW"]
-    _log(f"checks: {(checks['STATUS'] == 'PASS').sum()} pass, {len(review)} need review"
-         + "".join(f"\n           REVIEW {r.CHECK_GROUP}: {r.MEASURE} {r.HORIZON} = {r.VALUE:.3f} ({r.THRESHOLD})"
-                   for r in review.itertuples()))
+    _log(f"selected: {model}")
 
     fc = forecast(model, history, cohorts, max(FORECAST_HORIZONS))
     trend = trend_factor(history, fc, bt, model)
@@ -716,6 +718,7 @@ def main() -> None:
          f"{trend['BIAS_PTS']:+.1f} pts; error {trend['ERROR_CORRECTED_PTS']:.1f} vs no change "
          f"{trend['ERROR_NO_CHANGE_PTS']:.1f} pts over {trend['N_ORIGINS']} origins)")
     shown_history, shown_fc = written_month_view(history, fc) if year_basis() == "written_year" else (history, fc)
+    scale = 1.0
     if year_basis() == "written_year" and expected_claims_basis() == "experience":
         # The page's forecast year is the current year's loss ratio times the trend factor; months keep their shape.
         recent = shown_history.iloc[-12:]
@@ -723,12 +726,27 @@ def main() -> None:
         head = shown_fc.head(12)
         scale = wanted / (head["CLAIMS_COST"].sum() / head["EARNED_PREMIUM"].sum())
         shown_fc = shown_fc.assign(CLAIMS_COST=shown_fc["CLAIMS_COST"] * scale, CLAIM_COUNT=shown_fc["CLAIM_COUNT"] * scale)
-    out = build_rows(shown_history, shown_fc, model, monthly_wape, rel_sd, seasonal_index(history["CLAIMS_COST"]))
+    ratios = band_ratios(bt, model, shown_history, year_basis() == "written_year", scale)
+    bands = {s: band(ratios, s) for s in ("PREMIUM", "CLAIMS")}
+    for s, (low, high, coverage) in bands.items():
+        _log(f"{s.lower()} band: x{low:.2f} to x{high:.2f} of the forecast; {coverage:.0%} of months inside, out of sample")
+
+    # Input check: the premium rebuilt from policy dates must equal fact_earned_premium
+    premium_check = float(cohorts.sum().reindex(history.index, fill_value=0.0).sum()
+                          / history["EARNED_PREMIUM"].sum())
+    checks = validation_table(scores, model, bands, dev, premium_check, data_end)
+    checks.to_csv(FACTS_DIR / "fact_forecast_validation.csv", index=False, encoding="utf-8")
+    review = checks[checks["STATUS"] == "REVIEW"]
+    _log(f"checks: {(checks['STATUS'] == 'PASS').sum()} pass, {len(review)} need review"
+         + "".join(f"\n           REVIEW {r.CHECK_GROUP}: {r.MEASURE} {r.HORIZON} = {r.VALUE:.3f} ({r.THRESHOLD})"
+                   for r in review.itertuples()))
+
+    out = build_rows(shown_history, shown_fc, model, monthly_wape, bands, seasonal_index(history["CLAIMS_COST"]))
     path = FACTS_DIR / "fact_forecast_seasonal.csv"
     out.to_csv(path, index=False, encoding="utf-8")
     _log(f"wrote {path} ({len(out)} rows: {len(history)} actual months, forecast {fc.index[0]} to {fc.index[-1]})")
 
-    write_chart(history, fc, rel_sd)
+    write_chart(history, fc, band(band_ratios(bt, model, history, False), "CLAIMS"))
     write_report(history, fc, scores, model, checks, dev, data_end)
     _log("Done.")
 

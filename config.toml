@@ -8,7 +8,7 @@
 # or set it here once:               [run] source = "oracle"
 
 [run]
-source = "synthetic"          # "synthetic" (demo Excel files) or "oracle" (company warehouse)
+source = "oracle"             # "oracle" (company warehouse) or "synthetic" (demo Excel files)
 
 # Where each source writes its results. Power BI's DataFolder parameter must point at
 # <output_root>\ (the folder that contains 02_facts and 03_dims).
