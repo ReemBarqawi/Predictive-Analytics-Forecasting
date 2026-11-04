@@ -92,3 +92,83 @@ use_nationality = false
 # [ASSUMPTIONS — confirm with the manager; see docs/TASK_PLAN.md Task 1]
 admin_expense_rate = 0.10     # admin expense as share of premium
 risk_margin_rate   = 0.05     # prudence loading on expected claims (break-even)
+target_combined_ratio = 0.95  # [decision 1] the one target: levers, optimizer, and the report's default
+
+[credibility]
+# [ASSUMPTIONS] docs/CREDIBILITY.md
+full_claims = 30              # segment flag: Full at this many claims
+partial_claims = 10           # segment flag: Partial
+full_policies = 300           # pricing report: Full at this many policies
+partial_policies = 50         # pricing report: Partial
+full_standard_claims = 1082   # classical full-credibility standard, default of the report's slider
+reliability_high = 0.70       # report wording: "You can rely on this result" at or above
+reliability_low = 0.30        # below this a segment is a small book: at most a Warning
+
+[safe_zone]
+# Combined ratio bands of SAFE_ZONE_STATUS
+green = 0.90
+yellow = 1.00
+red = 1.10
+
+[levers]
+# [ASSUMPTIONS] Path to Profitability sizes, share of premium or claims each lever can recover
+reprice_cap = 0.50            # largest repricing lever
+bonus_malus_share = 0.15      # share of claim frequency recoverable by surcharges
+bonus_malus_cap = 0.05
+uw_severity_reduction = 0.15  # preferred garages: reduction in repair cost
+uw_realisation = 0.50         # share of it realised
+claims_mgmt_recovery = 0.05   # share of claims recoverable by faster settlement
+mix_share_of_gap = 0.10       # share of a Loss segment's gap closed by mix shift
+glide_uw_share_month_9 = 0.60 # share of the UW lever reached by month 9 of the timeline
+
+[optimizer]
+# [ASSUMPTIONS] Retention is hand-set until a stable renewal link exists (docs/TASK_PLAN.md)
+baseline_renewal = 0.90       # chance of renewal at an unchanged price
+risk_gamma = 0.5              # low-risk customers react more to price, high-risk less; 0 = off
+target_margin = 0.05          # profit loading in the technical price
+tech_tolerance = 0.05         # may price up to this many points above the technical change
+retention_floor = 0.80        # segment
+portfolio_retention_floor = 0.85
+premium_change_min = -0.20
+premium_change_max = 0.50
+min_profit_improvement = 0.0
+contraction_flag_threshold = 0.10
+min_segment_policies = 30     # smaller segments take the price of their parent group
+floor_sensitivity = [0.80, 0.82, 0.85, 0.88]
+
+[optimizer.sensitivity_cases]
+# Logit slope per +100% price change: bigger = customers more price sensitive
+low = 3.0
+base = 5.0
+high = 8.0
+
+[forecast]
+annual_growth_default = 0.04  # default of the Forecast page's growth slider
+
+[report_tiers]
+# Wording tiers of the lever pages' action columns
+reprice_urgent = -0.13        # pricing gap at or below: "Urgent reprice"
+reprice_renewal = -0.03       # below: "Reprice at renewal"
+reprice_over = 0.10           # at or above: "Overpriced"
+bm_urgent = 0.20              # frequency above average by more than: "Urgent"
+bm_renewal = 0.10
+bm_reward = -0.05             # at or below: "Reward"
+uw_mandatory = 0.20           # severity above average by more than: "Mandatory garage list"
+uw_preferred = 0.05
+uw_low = -0.10
+cm_ibnr_high = 0.30
+cm_ibnr = 0.15
+cm_open_high = 0.50
+cm_open = 0.30
+high_severity_claim = 10000   # SAR: a "high-cost" claim
+
+[variance]
+# Underwriting P&L bridge: a variance is material if either threshold is exceeded
+pct = 0.05                    # share of the No-change line
+share_of_premium = 0.01       # share of No-change portfolio premium
+ratio_pts = 1.0               # points, for ratio lines
+
+[reconcile]
+# Step 13: two amounts agree within the larger of these
+tolerance_sar = 1.0
+tolerance_share = 0.00001     # 0.001% of the amount

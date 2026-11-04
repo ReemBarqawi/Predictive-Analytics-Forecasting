@@ -505,9 +505,7 @@ def build_rows(history: pd.DataFrame, fc: pd.DataFrame, model: str, model_wape: 
             "FORECAST_PREMIUM", "FORECAST_LOSS_RATIO", "CI_LOWER_90", "CI_UPPER_90",
             "FORECAST_CLAIM_COUNT", "FORECAST_AVG_SEVERITY", "SEASONAL_INDEX", "MODEL_TYPE",
             "MODEL_WAPE", "BIAS_CORRECTION"]
-    return out[cols].round({"FORECAST_CLAIMS": 2, "FORECAST_PREMIUM": 2, "FORECAST_LOSS_RATIO": 4,
-                            "CI_LOWER_90": 4, "CI_UPPER_90": 4, "FORECAST_CLAIM_COUNT": 1,
-                            "FORECAST_AVG_SEVERITY": 2, "SEASONAL_INDEX": 4, "MODEL_WAPE": 4})
+    return out[cols]
 
 
 LABEL = {"timesfm": "TimesFM", "seasonal_naive": "Seasonal naive"}

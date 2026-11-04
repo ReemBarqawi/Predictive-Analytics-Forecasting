@@ -37,36 +37,33 @@ BASE = str(S.facts_dir)
 if len(sys.argv) > 1:               # allows: python pipeline/09_profit_optimizer.py <folder>
     BASE = sys.argv[1]
 
+_o = S.config["optimizer"]
 ASSUMPTIONS = {
     "model_version": "proto-0.3",
     "policy_year": None,            # None = latest complete POLICY_YEAR (see complete_years)
-    # C. 1% steps from -10% to +50%
+    # C. 1% steps from -10% to +50% (method constant)
     "premium_grid": [round(x, 2) for x in np.arange(-0.10, 0.5001, 0.01)],
-    "baseline_renewal": 0.90,       # P(renewal) at 0% change.            [Assumption]
-    # logit slope per +100% premium change  (bigger = customers more price sensitive)
-    "sensitivity_cases": {"low": 3.0, "base": 5.0, "high": 8.0},   # [Assumption]
-    # risk heterogeneity: low-risk policies react more (1+gamma), high-risk less (1-gamma)
-    "risk_gamma": 0.5,              # 0 switches the risk-mix effect OFF. [Assumption]
-    "admin_rate_of_baseline_premium": 0.10,   # matches 01_build_synthetic_data.py. Fixed PER POLICY.
-    # external shocks (independent of pricing decision)                 [External]
+    "baseline_renewal": _o["baseline_renewal"],
+    "sensitivity_cases": _o["sensitivity_cases"],
+    "risk_gamma": _o["risk_gamma"],
+    "admin_rate_of_baseline_premium": S.config["business"]["admin_expense_rate"],   # fixed PER POLICY
+    # external shocks (independent of pricing decision): expected claims already carry the trend
     "ext_freq_trend": 0.0,
     "ext_severity_inflation": 0.0,
-    # D. technical-price anchor                                          [Assumption]
-    "target_margin": 0.05,          # profit loading in the technical premium
-    "tech_tolerance": 0.05,         # may price up to 5 pts above the technical change
-    # constraints (management parameters)
-    "retention_floor": 0.80,        # segment exposure-weighted retention
-    "portfolio_retention_floor": 0.85,
-    "premium_change_min": -0.20,
-    "premium_change_max": 0.50,
-    "min_profit_improvement": 0.0,  # vs. 0%-change scenario, same retention basis
-    "contraction_flag_threshold": 0.10,   # flag if retained exposure falls >10% vs. 0% scenario
-    "min_segment_policies": 30,     # skip tiny segments (credibility)
-    "target_combined_ratio": 0.95,
+    "target_margin": _o["target_margin"],
+    "tech_tolerance": _o["tech_tolerance"],
+    "retention_floor": _o["retention_floor"],
+    "portfolio_retention_floor": _o["portfolio_retention_floor"],
+    "premium_change_min": _o["premium_change_min"],
+    "premium_change_max": _o["premium_change_max"],
+    "min_profit_improvement": _o["min_profit_improvement"],
+    "contraction_flag_threshold": _o["contraction_flag_threshold"],
+    "min_segment_policies": _o["min_segment_policies"],
+    "target_combined_ratio": S.config["business"]["target_combined_ratio"],
     # H. [pricing] selection_rule in config.toml; decided for the demo, needs manager review
     "selection_rule": S.config.get("pricing", {}).get("selection_rule", "max_profit"),
     # F. portfolio floors to compare (the selected one is portfolio_retention_floor)
-    "floor_sensitivity": [0.80, 0.82, 0.85, 0.88],
+    "floor_sensitivity": _o["floor_sensitivity"],
 }
 SEG = ["ZONE", "CLASS_DESC", "POLICY_TYPE_DESC"]
 

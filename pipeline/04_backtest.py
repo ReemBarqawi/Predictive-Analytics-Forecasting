@@ -78,7 +78,7 @@ HORIZONS = [
 ]
 
 # Segments reported at segment level (only those meeting credibility threshold)
-FULL_CREDIBILITY_MIN_POLICIES = 300
+FULL_CREDIBILITY_MIN_POLICIES = S.config["credibility"]["full_policies"]
 
 
 # Report labels, in column order

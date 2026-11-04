@@ -258,7 +258,7 @@ def make_alert(rule_id: str, severity: str, title: str, issue: str, impact: str,
         "policy_type_desc": "All",
         "category": category,
         "metric_name": metric_name,
-        "metric_value": round(metric_value, 4),
+        "metric_value": metric_value,
         "requires_action": requires_action,
     }
 

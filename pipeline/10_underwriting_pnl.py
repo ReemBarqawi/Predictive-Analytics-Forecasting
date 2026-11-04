@@ -23,11 +23,7 @@ BASE = str(S.facts_dir)
 if len(sys.argv) > 1:
     BASE = sys.argv[1]
 
-MATERIALITY = {            # a variance is material if EITHER threshold is exceeded
-    "pct": 0.05,           # 5% of the No-change line
-    "share_of_premium": 0.01,   # 1% of No-change portfolio premium (scales with the book)
-    "ratio_pts": 1.0,      # 1 pt for ratio lines
-}
+MATERIALITY = S.config["variance"]    # a variance is material if EITHER threshold is exceeded
 ID = ["segment_id", "sensitivity_case"]
 AMOUNTS = ["scenario_premium", "expected_claims", "expected_commission",
            "expected_admin_expense", "expected_total_expenses", "underwriting_profit",

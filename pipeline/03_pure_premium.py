@@ -50,8 +50,8 @@ OUTPUTS_DIR = S.reports_dir
 SEGMENT_KEYS = ["ZONE", "CLASS_DESC", "POLICY_TYPE_DESC"]
 
 # Credibility thresholds (based on policy count in the segment)
-FULL_CREDIBILITY_MIN_POLICIES = 300
-PARTIAL_CREDIBILITY_MIN_POLICIES = 50
+FULL_CREDIBILITY_MIN_POLICIES = S.config["credibility"]["full_policies"]
+PARTIAL_CREDIBILITY_MIN_POLICIES = S.config["credibility"]["partial_policies"]
 
 
 def _log(msg: str) -> None:

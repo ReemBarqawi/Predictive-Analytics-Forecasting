@@ -26,7 +26,8 @@ FACTS_DIR  = str(S.facts_dir)
 INPUT_PATH  = os.path.join(FACTS_DIR, "fact_segment_performance_by_year.csv")
 OUTPUT_PATH = os.path.join(FACTS_DIR, "fact_lever_allocation.csv")
 
-TARGET_CR = 0.85  # target combined ratio
+TARGET_CR = S.config["business"]["target_combined_ratio"]
+L = S.config["levers"]
 
 
 def aggregate_segments(df):
@@ -114,16 +115,16 @@ def build_lever_allocation(seg_perf_df):
                 'lever_uw_controls_cr_pts': 0,'lever_uw_controls_sar': 0,
                 'lever_claims_mgmt_cr_pts': 0,'lever_claims_mgmt_sar': 0,
                 'lever_distribution_cr_pts': 0,'lever_distribution_sar': 0,
-                'after_actions_cr': round(cr, 4),
+                'after_actions_cr': cr,
                 'after_actions_sar': 0,
-                'baseline_cr': round(cr, 4),
-                'baseline_earned_premium': round(ep, 2),
-                'baseline_ultimate_claims': round(uc, 2),
+                'baseline_cr': cr,
+                'baseline_earned_premium': ep,
+                'baseline_ultimate_claims': uc,
                 'baseline_claim_count': int(cc),
-                'baseline_exposure_years': round(exp_yrs, 2),
-                'baseline_avg_severity': round(uc / cc if cc > 0 else 0, 2),
-                'baseline_frequency': round(cc / exp_yrs if exp_yrs > 0 else 0, 4),
-                'pricing_adequacy': round(avg_prem / pp if pp > 0 else 999, 4),
+                'baseline_exposure_years': exp_yrs,
+                'baseline_avg_severity': uc / cc if cc > 0 else 0,
+                'baseline_frequency': cc / exp_yrs if exp_yrs > 0 else 0,
+                'pricing_adequacy': avg_prem / pp if pp > 0 else 999,
                 'safe_zone_status': seg['SAFE_ZONE_STATUS'],
                 'credibility_flag': seg['CREDIBILITY_FLAG'],
             })
@@ -134,7 +135,7 @@ def build_lever_allocation(seg_perf_df):
         # If avg charged < pure premium needed → segment is underpriced
         adequacy = avg_prem / pp if pp > 0 else 999
         if adequacy < 1.0:
-            reprice_pct = min((1.0 / adequacy) - 1.0, 0.50)  # cap at +50%
+            reprice_pct = min((1.0 / adequacy) - 1.0, L["reprice_cap"])
             reprice_sar = ep * reprice_pct
             reprice_cr_pts = reprice_pct          # = reprice_sar / ep
         else:
@@ -144,26 +145,26 @@ def build_lever_allocation(seg_perf_df):
         # Source: claim frequency (CLAIM_COUNT / EXPOSURE_YEARS)
         # High-frequency segments have more repeat claimants to surcharge
         freq = cc / exp_yrs if exp_yrs > 0 else 0
-        bm_pct = min(freq * 0.15, 0.05)          # 15% of freq, cap 5%
+        bm_pct = min(freq * L["bonus_malus_share"], L["bonus_malus_cap"])
         bm_sar = ep * bm_pct
         bm_cr_pts = bm_pct
 
         # ── LEVER 3: UW Controls ─────────────────────────────────────
         # Source: average severity (ULTIMATE_CLAIMS / CLAIM_COUNT)
-        # Preferred garage routing → 15% severity reduction, 50% realization
+        # Preferred garage routing: severity reduction x realisation
         avg_sev = uc / cc if cc > 0 else 0
-        uw_sar = uc * 0.15 * 0.50
+        uw_sar = uc * L["uw_severity_reduction"] * L["uw_realisation"]
         uw_cr_pts = uw_sar / ep if ep > 0 else 0
 
         # ── LEVER 4: Claims Management ───────────────────────────────
-        # Source: ULTIMATE_CLAIMS (5% recoverable via faster settlement)
-        cm_sar = uc * 0.05
+        # Source: ULTIMATE_CLAIMS (share recoverable via faster settlement)
+        cm_sar = uc * L["claims_mgmt_recovery"]
         cm_cr_pts = cm_sar / ep if ep > 0 else 0
 
         # ── LEVER 5: Distribution & Mix ──────────────────────────────
-        # Source: SAFE_ZONE_STATUS — Loss segments shrink 20% exposure
+        # Source: SAFE_ZONE_STATUS — Loss segments close part of their gap by mix shift
         if seg['SAFE_ZONE_STATUS'] == 'Loss':
-            mix_sar = gap_sar * 0.10              # 10% of gap from mix shift
+            mix_sar = gap_sar * L["mix_share_of_gap"]
             mix_cr_pts = mix_sar / ep if ep > 0 else 0
         else:
             mix_sar, mix_cr_pts = 0.0, 0.0
@@ -179,28 +180,28 @@ def build_lever_allocation(seg_perf_df):
 
         rows.append({
             'ZONE': zone, 'CLASS_DESC': cls, 'POLICY_TYPE_DESC': pol,
-            'gap_cr_pts': round(gap_cr, 4),
-            'gap_sar': round(gap_sar, 2),
-            'lever_repricing_cr_pts': round(reprice_cr_pts, 4),
-            'lever_repricing_sar': round(reprice_sar, 2),
-            'lever_bonusmalus_cr_pts': round(bm_cr_pts, 4),
-            'lever_bonusmalus_sar': round(bm_sar, 2),
-            'lever_uw_controls_cr_pts': round(uw_cr_pts, 4),
-            'lever_uw_controls_sar': round(uw_sar, 2),
-            'lever_claims_mgmt_cr_pts': round(cm_cr_pts, 4),
-            'lever_claims_mgmt_sar': round(cm_sar, 2),
-            'lever_distribution_cr_pts': round(mix_cr_pts, 4),
-            'lever_distribution_sar': round(mix_sar, 2),
-            'after_actions_cr': round(cr, 4),
+            'gap_cr_pts': gap_cr,
+            'gap_sar': gap_sar,
+            'lever_repricing_cr_pts': reprice_cr_pts,
+            'lever_repricing_sar': reprice_sar,
+            'lever_bonusmalus_cr_pts': bm_cr_pts,
+            'lever_bonusmalus_sar': bm_sar,
+            'lever_uw_controls_cr_pts': uw_cr_pts,
+            'lever_uw_controls_sar': uw_sar,
+            'lever_claims_mgmt_cr_pts': cm_cr_pts,
+            'lever_claims_mgmt_sar': cm_sar,
+            'lever_distribution_cr_pts': mix_cr_pts,
+            'lever_distribution_sar': mix_sar,
+            'after_actions_cr': cr,
             'after_actions_sar': 0,
-            'baseline_cr': round(cr, 4),
-            'baseline_earned_premium': round(ep, 2),
-            'baseline_ultimate_claims': round(uc, 2),
+            'baseline_cr': cr,
+            'baseline_earned_premium': ep,
+            'baseline_ultimate_claims': uc,
             'baseline_claim_count': int(cc),
-            'baseline_exposure_years': round(exp_yrs, 2),
-            'baseline_avg_severity': round(avg_sev, 2),
-            'baseline_frequency': round(freq, 4),
-            'pricing_adequacy': round(adequacy, 4),
+            'baseline_exposure_years': exp_yrs,
+            'baseline_avg_severity': avg_sev,
+            'baseline_frequency': freq,
+            'pricing_adequacy': adequacy,
             'safe_zone_status': seg['SAFE_ZONE_STATUS'],
             'credibility_flag': seg['CREDIBILITY_FLAG'],
         })

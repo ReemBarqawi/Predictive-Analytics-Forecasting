@@ -38,6 +38,7 @@ MODEL_STEPS = [
     (10, "10_underwriting_pnl.py"),
     (12, "12_report_window.py"),
 ]
+GATE = (13, "13_reconcile.py")      # always closes a run: a failure means do not refresh the report
 STEPS = {
     "synthetic": [(1, "01_build_synthetic_data.py")] + MODEL_STEPS,
     "oracle": [(0, "00_extract_oracle.py"), (1, "01_prepare_real.py")] + MODEL_STEPS,
@@ -109,6 +110,8 @@ def main():
     steps = [s for s in STEPS[source] if (s[0] in args.only if args.only else s[0] >= args.start)]
     if args.skip_extract:
         steps = [s for s in steps if s[0] != 0]
+    if GATE not in steps:
+        steps.append(GATE)
     print(f"Source: {source}   steps: {' '.join(str(n) for n, _ in steps)}")
 
     total_start, status = time.time(), "ok"

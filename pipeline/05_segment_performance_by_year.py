@@ -12,13 +12,13 @@ Inputs (already produced by the pipeline, nothing is regenerated):
 Output:
     02_facts/fact_segment_performance_by_year.csv
 
-Rules are the same as the current fact_segment_performance:
-    admin expense      = 10% of earned premium
-    break-even premium = (claims x 1.05 risk margin + commission) / (1 - 10% admin)
-    safe zone          = Green CR <= 90%, Yellow <= 100%, Red <= 110%, else Loss
-    credibility        = Full >= 30 claims, Partial >= 10, else Low
+Rates and bands come from config.toml ([business], [safe_zone], [credibility]):
+    admin expense      = admin rate x earned premium
+    break-even premium = (claims x (1 + risk margin) + commission) / (1 - admin rate)
+    safe zone          = Green, Yellow, Red by combined ratio, else Loss
+    credibility        = Full, Partial by claim count, else Low
 
-Immature years: policy years after LATEST_MATURE_YEAR have too few reported
+Immature years: policy years from the current year on (settings.current_year) have too few reported
 claims (2024: 41 claims on 1,779 policies). For those years the claims used are
 the GLM expected claims from fact_policy_pricing, and CLAIMS_BASIS says so.
 The actual figure is kept in ACTUAL_ULTIMATE_CLAIMS.
@@ -33,12 +33,13 @@ import numpy as np
 import pandas as pd
 
 # ---- settings -------------------------------------------------------------
-from settings import S, is_motor, expected_claims_basis  # folders + motor classes for the active data source
+from settings import S, is_motor, expected_claims_basis, current_year  # folders + motor classes for the active data source
 FACTS = Path(sys.argv[1]) if len(sys.argv) > 1 else S.facts_dir
-LATEST_MATURE_YEAR = 2023      # years after this use model-expected claims
-ADMIN_RATE = 0.10
-RISK_MARGIN = 0.05
-FULL_CRED_CLAIMS, PARTIAL_CRED_CLAIMS = 30, 10
+LATEST_MATURE_YEAR = current_year()[1] - 1      # years after this use model-expected claims
+ADMIN_RATE = S.config["business"]["admin_expense_rate"]
+RISK_MARGIN = S.config["business"]["risk_margin_rate"]
+FULL_CRED_CLAIMS, PARTIAL_CRED_CLAIMS = S.config["credibility"]["full_claims"], S.config["credibility"]["partial_claims"]
+ZONE_BANDS = S.config["safe_zone"]
 KEYS = ["ZONE", "CLASS_DESC", "POLICY_TYPE_DESC", "POLICY_YEAR"]
 
 # ---- load -----------------------------------------------------------------
@@ -110,7 +111,7 @@ df["BREAK_EVEN_TOTAL"] = (df.ULTIMATE_CLAIMS * (1 + RISK_MARGIN) + df.COMMISSION
 df["BREAK_EVEN_PER_EXPOSURE"] = div(df.BREAK_EVEN_TOTAL, df.EXPOSURE_YEARS)
 df["MAX_SAFE_DISCOUNT"] = 1 - div(df.BREAK_EVEN_TOTAL, P)
 cr = df.COMBINED_RATIO
-df["SAFE_ZONE_STATUS"] = np.select([cr <= 0.90, cr <= 1.00, cr <= 1.10, cr > 1.10],
+df["SAFE_ZONE_STATUS"] = np.select([cr <= ZONE_BANDS["green"], cr <= ZONE_BANDS["yellow"], cr <= ZONE_BANDS["red"], cr > ZONE_BANDS["red"]],
                                    ["Green", "Yellow", "Red", "Loss"], default="No premium")
 df["CREDIBILITY_FLAG"] = np.select([df.CLAIM_COUNT >= FULL_CRED_CLAIMS, df.CLAIM_COUNT >= PARTIAL_CRED_CLAIMS],
                                    ["Full", "Partial"], default="Low")

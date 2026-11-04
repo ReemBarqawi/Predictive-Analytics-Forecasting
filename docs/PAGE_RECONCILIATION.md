@@ -218,8 +218,8 @@ or last month), so the 12 months add up to the policy-year figures. Forecast 202
 
 ## 9. Alert to price: decided for the demo, needs manager review (2026-11-04)
 
-The manager opens a flagged segment, drills through to Optimal Price, and sees **Today** (exactly the alert), **If we do
-nothing**, and **Recommended**. All of it runs on one expected-claims figure. Every choice below was made for the demo and
+The manager opens a flagged segment, drills through to Optimal Price, and sees **Today** (the same as the alert and Profitability), **If we do
+nothing**, and **Recommended**, on whole policies. All of it runs on one expected-claims figure. Every choice below was made for the demo and
 is flagged on screen (`Alert Period`, the card, `Manager Review Flag`). It replaces the severity rules in
 `docs/ALERTS_METHOD.md` §2 for the demo.
 
@@ -230,7 +230,7 @@ is flagged on screen (`Alert Period`, the card, `Manager Review Flag`). It repla
 | Trend factor | **1.039**: the forecast's 1.200 less its average error on 9 past forecast dates (+13.5 pts), recalculated every run | The raw forecast's error barely beat "no change" (16.4 vs 18.3 pts) and got the direction right 5 of 9 times. Corrected error: 12.3 pts, but that correction is measured on the same 9 dates, so it flatters the result | Step 07 |
 | Price rule | No increase if under target; otherwise the smallest increase reaching the target; if unreachable, the highest the retention floors allow, showing the remaining gap | "Highest profit" always ran to a limit instead of aiming at the target | `selection_rule = "max_profit"` |
 | 2024 on Profitability, Path, Forecast and pricing Today | Same estimate: whole premium × reliable loss ratio | One story across pages | `expected_claims = "model"` |
-| Card's riyal amounts | All three columns on the alert's book (172.5M), so they compare and Today matches the alert exactly | The whole-policy book (358.9M) has no actual claims yet | Card measures |
+| One Today | Whole premium of the current policy year on expected claims (`Today Premium`, `Today Claims`, `Today Expenses`, `Today Result`, `Today Combined Ratio`), read from Profitability's table. The card, the alert's combined ratio and its riyal gap all use it. Actual results inside the year stay as a supporting line in both | Drilling from Profitability or an alert must show the same Today; the whole-policy book has no actual claims yet | Card and alert measures |
 
 **Result, base customer reaction**
 
@@ -252,3 +252,27 @@ Forecast 2025: 382.9M premium, loss ratio 91.8%, underwriting result −25.7M. A
 - 2024 reliable results come from claims so far with no allowance for late-reported claims; 2022 shows the in-year view can run 16 points above the whole-policy result.
 
 **Desktop steps.** Add `POLICY_TYPE_DESC` to Optimal Price's drill-through fields, add a card with `Manager Review Flag` on the pages without one, and save.
+
+## 10. Test: adding claim development to expected claims (2026-11-04) — not applied
+
+A side test only; the demo's prices and figures did not change. Expected claims so far have no allowance for late-reported
+claims or growing reserves. The test multiplies each segment's expected claims by its development factor, corrected with the
+look-back check (actual / expected development): 0.921 for the newest accident quarter, 0.981 for the others. For 2024
+policies inside 2024: reported 152.4M, corrected 173.9M (×1.141), full 182.7M (×1.198). The trend factor stays 1.039.
+
+| Base customer reaction | Current demo | Development, corrected | Development, full |
+|---|---|---|---|
+| Average price change | +9.0% | +9.0% | +9.0% |
+| If we do nothing: combined ratio | 106.7% | 119.8% | 125.2% |
+| If we do nothing: result | −21.7M | −64.0M | −81.3M |
+| Recommended: combined ratio | 97.3% | 109.1% | 114.0% |
+| Recommended: result | +9.0M | −30.5M | −46.6M |
+| Segments reaching 95% | 7 of 22 | 0 of 22 | 0 of 22 |
+
+**Finding.** Development moves the result, not the price: the retention floors already hold prices. With low customer
+sensitivity, the corrected version reaches +15.1%, 103.0%, −10.7M, and 3 of 22 segments reach the target.
+
+**Limits.** The correction is measured on 8 past valuations and an actuary has not reviewed it. Development factors are
+portfolio-wide by accident quarter; segments differ only through their claims' timing. The renewal assumptions decide where the floors stop the price.
+
+Segment detail: `docs/manager/Price_Test_Claim_Development.csv`. Related: decision #6 in `docs/TASK_PLAN.md`.

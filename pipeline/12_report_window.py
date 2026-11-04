@@ -69,6 +69,16 @@ out = pd.DataFrame([{
     "METHOD_REVIEW_STATUS": S.config.get("report", {}).get("method_review_status", ""),
     "EXPECTED_CLAIMS": expected_claims_basis(),
     "TREND_FACTOR": float(pd.read_csv(trend_path)["TREND_FACTOR"].iloc[0]) if trend_path.exists() else 1.0,
+    # Settings the report's measures read, so no threshold is typed in DAX
+    "TARGET_COMBINED_RATIO": S.config["business"]["target_combined_ratio"],
+    "FULL_STANDARD_CLAIMS": S.config["credibility"]["full_standard_claims"],
+    "RELIABILITY_HIGH": S.config["credibility"]["reliability_high"],
+    "RELIABILITY_LOW": S.config["credibility"]["reliability_low"],
+    "REPRICE_CAP": S.config["levers"]["reprice_cap"],
+    "UW_SEVERITY_REDUCTION": S.config["levers"]["uw_severity_reduction"],
+    "GLIDE_UW_SHARE_MONTH_9": S.config["levers"]["glide_uw_share_month_9"],
+    "ANNUAL_GROWTH_DEFAULT": S.config["forecast"]["annual_growth_default"],
+    **{key.upper(): value for key, value in S.config["report_tiers"].items()},
 }])
 path = S.dims_dir / "dim_report_window.csv"
 out.to_csv(path, index=False, encoding="utf-8")
