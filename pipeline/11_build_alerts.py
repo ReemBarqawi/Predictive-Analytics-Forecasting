@@ -25,7 +25,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from settings import S
+from settings import S, year_basis
 
 
 # ---------------------------------------------------------------------
@@ -87,11 +87,12 @@ def window_totals(ep: pd.DataFrame, claims: pd.DataFrame, first: pd.Period, last
     return pd.concat([e, c], axis=1).fillna(0)
 
 
-def earned_share(ep: pd.DataFrame, pp: pd.DataFrame, first: pd.Period, last: pd.Period) -> pd.DataFrame:
+def earned_share(ep: pd.DataFrame, pp: pd.DataFrame, first: pd.Period, last: pd.Period,
+                 term_ep: pd.DataFrame) -> pd.DataFrame:
     """Model expected cost and commission earned over the window. Both are written per policy for the
     whole term, so each segment x policy year contributes in proportion to the premium it earned
     inside the window."""
-    full = ep.groupby(SEG + ["POLICY_YEAR"]).EARNED_PREMIUM.sum()
+    full = term_ep.groupby(SEG + ["POLICY_YEAR"]).EARNED_PREMIUM.sum()
     win = ep[(ep["MONTH"] >= first) & (ep["MONTH"] <= last)].groupby(SEG + ["POLICY_YEAR"]).EARNED_PREMIUM.sum()
     term = pp.groupby(SEG + ["POLICY_YEAR"])[["pure_premium_period", "COMMISSION"]].sum()
     share = (win / full.replace(0, np.nan)).rename("share")
@@ -101,20 +102,20 @@ def earned_share(ep: pd.DataFrame, pp: pd.DataFrame, first: pd.Period, last: pd.
                                                   "COMMISSION": "COMMISSION"})
 
 
-def model_claims(ep, pp, claims, history_first, l_first, last) -> pd.DataFrame:
+def model_claims(ep, pp, claims, history_first, l_first, last, term_ep) -> pd.DataFrame:
     """The GLM's expected cost over the window, re-based to each class's actual level.
     The GLM is not calibrated by class (on 2022-23 policy years it gives 3.6-5.1x actual for Motor
     Commercial Comprehensive and 0.3-0.6x for Motor Commercial Third Party), so it is scaled per
     class by actual / model over the history before the window. What remains is the model's view of
     how each segment differs from its class."""
     hist_last = l_first - 1
-    hist_model = earned_share(ep, pp, history_first, hist_last).MODEL_CLAIMS
+    hist_model = earned_share(ep, pp, history_first, hist_last, term_ep).MODEL_CLAIMS
     hist_actual = window_totals(ep, claims, history_first, hist_last).CLAIMS
     h = pd.concat([hist_model.rename("model"), hist_actual.rename("actual")], axis=1).fillna(0)
     h = h.groupby(CLASS).sum()
     factor = (h.actual / h.model.replace(0, np.nan)).rename("CLASS_MODEL_FACTOR")
 
-    win = earned_share(ep, pp, l_first, last).reset_index()
+    win = earned_share(ep, pp, l_first, last, term_ep).reset_index()
     win = win.merge(factor.reset_index(), on=CLASS, how="left")
     win["MODEL_CLAIMS_L12"] = win.MODEL_CLAIMS * win.CLASS_MODEL_FACTOR
     return win.set_index(SEG)[["MODEL_CLAIMS_L12", "COMMISSION", "CLASS_MODEL_FACTOR"]].rename(
@@ -178,6 +179,14 @@ def build_alert_basis(facts: Path) -> pd.DataFrame:
     claims = matched.merge(keys, on=["POLICY_NO", "POLICY_YEAR"], how="inner").dropna(subset=["ACC_DATE"])
     claims["ACC_MONTH"] = claims["ACC_DATE"].dt.to_period("M")
 
+    term_ep = ep
+    if year_basis() == "written_year":
+        # Alerts judge actual results, so the same policies are followed only as far as they have run:
+        # each year's policies, earned and claimed inside that year. The year's continuing premium has
+        # no claims yet, and comparing year against year stays like for like.
+        ep = ep[ep["MONTH"].dt.year == ep["POLICY_YEAR"]]
+        claims = claims[claims["ACC_MONTH"].dt.year == claims["POLICY_YEAR"]]
+
     last = last_reported_month(claims, ep.groupby("MONTH").EARNED_PREMIUM.sum())
     l_first, p_last = last - (WINDOW_MONTHS - 1), last - WINDOW_MONTHS
     p_first = p_last - (WINDOW_MONTHS - 1)
@@ -186,7 +195,7 @@ def build_alert_basis(facts: Path) -> pd.DataFrame:
 
     cur = window_totals(ep, claims, l_first, last).add_suffix("_L12")
     pri = window_totals(ep, claims, p_first, p_last).add_suffix("_P12")
-    model = model_claims(ep, pp, claims, ep["MONTH"].min(), l_first, last)
+    model = model_claims(ep, pp, claims, ep["MONTH"].min(), l_first, last, term_ep)
     df = cur.join(pri, how="left").join(model, how="left").fillna(0)
     df = df[df.EP_L12 > 0]
 
@@ -361,6 +370,12 @@ def main():
     out = facts / "fact_alert_basis.csv"
     basis.to_csv(out, index=False, encoding="utf-8")
     print(f"  {len(basis)} segments written to {out}")
+
+    # Each segment's reliable loss ratio: the same blend the alerts use. Steps 5 and 9 read it.
+    expected = basis[SEG].copy()
+    expected["RELIABLE_LR"] = (basis.CRED_Z * basis.CLAIMS_L12 / basis.EP_L12.replace(0, np.nan)
+                               + (1 - basis.CRED_Z) * basis.CLASS_LR_L12)
+    expected.to_csv(facts / "fact_expected_claims.csv", index=False, encoding="utf-8")
 
     alerts = []
     for rule in ALERT_RULES:

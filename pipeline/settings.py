@@ -109,6 +109,22 @@ def current_year():
     return cutoff, cutoff.year if (cutoff.month, cutoff.day) == (12, 31) else cutoff.year - 1
 
 
+def year_basis() -> str:
+    """[report] year_basis: "written_year" or "calendar" (see config.toml)."""
+    basis = S.config.get("report", {}).get("year_basis", "calendar")
+    if basis not in ("written_year", "calendar"):
+        raise SystemExit(f"[report] year_basis = '{basis}': use written_year or calendar")
+    return basis
+
+
+def expected_claims_basis() -> str:
+    """[pricing] expected_claims: "experience" or "model" (see config.toml)."""
+    basis = S.config.get("pricing", {}).get("expected_claims", "model")
+    if basis not in ("experience", "model"):
+        raise SystemExit(f"[pricing] expected_claims = '{basis}': use experience or model")
+    return basis
+
+
 def is_motor(series):
     """Boolean mask for motor business; keeps every row when no class list is configured."""
     return series.isin(S.motor_classes) if S.motor_classes else series.notna() | series.isna()

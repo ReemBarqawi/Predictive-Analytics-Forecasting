@@ -52,7 +52,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from settings import S
+from settings import S, year_basis, expected_claims_basis
 import timesfm_model
 
 warnings.filterwarnings("ignore")
@@ -396,6 +396,80 @@ def seasonal_index(claims: pd.Series) -> pd.Series:
 # =========================================================================
 # Output
 # =========================================================================
+def written_month_view(history: pd.DataFrame, fc: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    [report] year_basis = "written_year": each policy's whole premium and claims sit in the month it
+    starts, so a year's 12 months add up to the policy-year figures on Profitability. Claims follow
+    step 05: actual for mature years, model-expected on priced policies for the others. A policy whose
+    start falls outside its POLICY_YEAR goes to that year's first or last month. The models still run
+    on the whole book; this only changes what the page shows. Forecast: written premium at the
+    forecast claim rates.
+    """
+    pp = pd.read_csv(FACTS_DIR / "fact_policy_pricing.csv",
+                     usecols=["POLICY_NO", "POLICY_YEAR", "POLICY_EFFECTIVE_DATE", "TOTAL_PREMIUM", "charged_premium",
+                              "EXPOSURE_YEARS", "pure_premium_period", "expected_frequency_period"],
+                     parse_dates=["POLICY_EFFECTIVE_DATE"], low_memory=False)
+    eff = pp["POLICY_EFFECTIVE_DATE"]
+    number = np.where(eff.dt.year == pp["POLICY_YEAR"], eff.dt.month, np.where(eff.dt.year < pp["POLICY_YEAR"], 1, 12))
+    pp["M"] = pd.PeriodIndex(year=pp["POLICY_YEAR"], month=number, freq="M")
+    priced = (pp["charged_premium"] > 0) & (pp["EXPOSURE_YEARS"] > 0)
+
+    cl = pd.read_csv(FACTS_DIR / "fact_claim.csv", usecols=["POLICY_NO", "POLICY_YEAR", "CLM_NO", "POLICY_MATCHED", "ULTIMATE_CLAIM"])
+    cl = cl[cl["POLICY_MATCHED"].astype(str).str.lower() == "true"]
+    cl = cl.merge(pp[["POLICY_NO", "POLICY_YEAR", "M"]].drop_duplicates(["POLICY_NO", "POLICY_YEAR"]), on=["POLICY_NO", "POLICY_YEAR"])
+
+    basis = pd.read_csv(FACTS_DIR / "fact_segment_performance_by_year.csv",
+                        usecols=["POLICY_YEAR", "CLAIMS_BASIS", "ULTIMATE_CLAIMS", "CLAIM_COUNT"])
+    mature = set(basis.loc[basis["CLAIMS_BASIS"].str.startswith("Actual"), "POLICY_YEAR"])
+    year_totals = basis.groupby("POLICY_YEAR")[["ULTIMATE_CLAIMS", "CLAIM_COUNT"]].sum()
+    is_mature = pd.Series(history.index.year.isin(mature), index=history.index)
+
+    h = history.copy()
+    h["EARNED_PREMIUM"] = pp.groupby("M")["TOTAL_PREMIUM"].sum().reindex(h.index, fill_value=0.0)
+    h["CLAIMS_COST"] = cl.groupby("M")["ULTIMATE_CLAIM"].sum().reindex(h.index, fill_value=0.0).where(
+        is_mature, pp[priced].groupby("M")["pure_premium_period"].sum().reindex(h.index, fill_value=0.0))
+    h["CLAIM_COUNT"] = cl.groupby("M")["CLM_NO"].size().reindex(h.index, fill_value=0).astype(float).where(
+        is_mature, pp[priced].groupby("M")["expected_frequency_period"].sum().reindex(h.index, fill_value=0.0))
+
+    # Years on an estimate: spread that year's total over its months by the model's monthly shape
+    for col, total in (("CLAIMS_COST", "ULTIMATE_CLAIMS"), ("CLAIM_COUNT", "CLAIM_COUNT")):
+        for year, g in h[~is_mature].groupby(h[~is_mature].index.year):
+            if year in year_totals.index and g[col].sum() > 0:
+                h.loc[g.index, col] = g[col] * year_totals.at[year, total] / g[col].sum()
+
+    f = fc.copy()
+    f["EARNED_PREMIUM"] = fc["WRITTEN_PREMIUM"]
+    f["CLAIM_COUNT"] = fc["CLAIM_RATE"] * f["EARNED_PREMIUM"]
+    f["CLAIMS_COST"] = fc["COST_RATE"] * f["EARNED_PREMIUM"]
+    return h, f
+
+
+def trend_factor(history: pd.DataFrame, fc: pd.DataFrame, bt: pd.DataFrame, model: str) -> dict:
+    """
+    Expected change in claims per riyal of premium, next 12 months vs the last 12: the forecast's, less
+    its average error on past years. The raw forecast ran high on past origins, so it does not drive
+    prices directly. Also records how it compared with assuming no change.
+    """
+    rows = []
+    for origin, g in bt[bt["MODEL"] == model].groupby("ORIGIN"):
+        if len(g) < 12:
+            continue
+        prior = history.loc[origin - 11:origin]
+        rows.append({"BEFORE": prior["CLAIMS_COST"].sum() / prior["EARNED_PREMIUM"].sum(),
+                     "PRED": g["PRED_CLAIMS_COST"].sum() / g["PRED_EARNED_PREMIUM"].sum(),
+                     "ACT": g["ACT_CLAIMS_COST"].sum() / g["ACT_EARNED_PREMIUM"].sum()})
+    t = pd.DataFrame(rows)
+    bias = (t["PRED"] - t["ACT"]).mean()
+    last12 = history.iloc[-12:]
+    before = last12["CLAIMS_COST"].sum() / last12["EARNED_PREMIUM"].sum()
+    raw = fc.head(12)["CLAIMS_COST"].sum() / fc.head(12)["EARNED_PREMIUM"].sum()
+    return {"TREND_FACTOR": (raw - bias) / before, "TREND_FACTOR_RAW": raw / before, "BIAS_PTS": bias * 100,
+            "N_ORIGINS": len(t), "ERROR_FORECAST_PTS": (t["PRED"] - t["ACT"]).abs().mean() * 100,
+            "ERROR_CORRECTED_PTS": (t["PRED"] - bias - t["ACT"]).abs().mean() * 100,
+            "ERROR_NO_CHANGE_PTS": (t["BEFORE"] - t["ACT"]).abs().mean() * 100,
+            "DIRECTION_RIGHT": int((np.sign(t["PRED"] - t["BEFORE"]) == np.sign(t["ACT"] - t["BEFORE"])).sum())}
+
+
 def build_rows(history: pd.DataFrame, fc: pd.DataFrame, model: str, model_wape: float,
                rel_sd: float, season: pd.Series) -> pd.DataFrame:
     z = NormalDist().inv_cdf(0.5 + CI_LEVEL / 2)
@@ -638,7 +712,20 @@ def main() -> None:
                    for r in review.itertuples()))
 
     fc = forecast(model, history, cohorts, max(FORECAST_HORIZONS))
-    out = build_rows(history, fc, model, monthly_wape, rel_sd, seasonal_index(history["CLAIMS_COST"]))
+    trend = trend_factor(history, fc, bt, model)
+    pd.DataFrame([trend]).to_csv(FACTS_DIR / "fact_trend_factor.csv", index=False, encoding="utf-8")
+    _log(f"trend factor {trend['TREND_FACTOR']:.3f} (forecast {trend['TREND_FACTOR_RAW']:.3f}, past bias "
+         f"{trend['BIAS_PTS']:+.1f} pts; error {trend['ERROR_CORRECTED_PTS']:.1f} vs no change "
+         f"{trend['ERROR_NO_CHANGE_PTS']:.1f} pts over {trend['N_ORIGINS']} origins)")
+    shown_history, shown_fc = written_month_view(history, fc) if year_basis() == "written_year" else (history, fc)
+    if year_basis() == "written_year" and expected_claims_basis() == "experience":
+        # The page's forecast year is the current year's loss ratio times the trend factor; months keep their shape.
+        recent = shown_history.iloc[-12:]
+        wanted = trend["TREND_FACTOR"] * recent["CLAIMS_COST"].sum() / recent["EARNED_PREMIUM"].sum()
+        head = shown_fc.head(12)
+        scale = wanted / (head["CLAIMS_COST"].sum() / head["EARNED_PREMIUM"].sum())
+        shown_fc = shown_fc.assign(CLAIMS_COST=shown_fc["CLAIMS_COST"] * scale, CLAIM_COUNT=shown_fc["CLAIM_COUNT"] * scale)
+    out = build_rows(shown_history, shown_fc, model, monthly_wape, rel_sd, seasonal_index(history["CLAIMS_COST"]))
     path = FACTS_DIR / "fact_forecast_seasonal.csv"
     out.to_csv(path, index=False, encoding="utf-8")
     _log(f"wrote {path} ({len(out)} rows: {len(history)} actual months, forecast {fc.index[0]} to {fc.index[-1]})")

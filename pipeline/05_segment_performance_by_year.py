@@ -22,6 +22,10 @@ Immature years: policy years after LATEST_MATURE_YEAR have too few reported
 claims (2024: 41 claims on 1,779 policies). For those years the claims used are
 the GLM expected claims from fact_policy_pricing, and CLAIMS_BASIS says so.
 The actual figure is kept in ACTUAL_ULTIMATE_CLAIMS.
+
+[pricing] expected_claims = "experience" (config.toml, needs manager review): those years use their
+whole premium times the segment's reliable loss ratio from step 11, the same estimate as the alerts,
+because the model runs below actual on the current year. Segments without one keep the model.
 """
 from pathlib import Path
 import sys
@@ -29,7 +33,7 @@ import numpy as np
 import pandas as pd
 
 # ---- settings -------------------------------------------------------------
-from settings import S, is_motor  # folders + motor classes for the active data source
+from settings import S, is_motor, expected_claims_basis  # folders + motor classes for the active data source
 FACTS = Path(sys.argv[1]) if len(sys.argv) > 1 else S.facts_dir
 LATEST_MATURE_YEAR = 2023      # years after this use model-expected claims
 ADMIN_RATE = 0.10
@@ -82,6 +86,14 @@ mature = df.POLICY_YEAR <= LATEST_MATURE_YEAR
 df["CLAIMS_BASIS"] = np.where(mature, "Actual developed", "Model expected")
 df["ULTIMATE_CLAIMS"] = np.where(mature, df.ACTUAL_ULTIMATE_CLAIMS, df.MODEL_EXPECTED_CLAIMS)
 df["CLAIM_COUNT"] = np.where(mature, df.ACTUAL_CLAIM_COUNT, df.MODEL_EXPECTED_CLAIM_COUNT.round()).astype(int)
+reliable_path = FACTS / "fact_expected_claims.csv"
+if expected_claims_basis() == "experience" and reliable_path.exists():
+    lr = df[["ZONE", "CLASS_DESC", "POLICY_TYPE_DESC"]].merge(pd.read_csv(reliable_path), how="left").RELIABLE_LR
+    estimate = (~mature) & lr.notna() & (df.EARNED_PREMIUM > 0)
+    ratio = (df.EARNED_PREMIUM * lr / df.MODEL_EXPECTED_CLAIMS.replace(0, np.nan)).fillna(1.0)
+    df.loc[estimate, "ULTIMATE_CLAIMS"] = (df.EARNED_PREMIUM * lr)[estimate]
+    df.loc[estimate, "CLAIM_COUNT"] = (df.MODEL_EXPECTED_CLAIM_COUNT * ratio)[estimate].round().astype(int)
+    df.loc[estimate, "CLAIMS_BASIS"] = "Experience estimate"
 
 # ---- derived columns (same formulas as the current table) -----------------
 P = df.EARNED_PREMIUM

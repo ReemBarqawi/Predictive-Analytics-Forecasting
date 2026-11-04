@@ -32,14 +32,14 @@ import numpy as np
 import pandas as pd
 
 # ------------------------------------------------------------------ CONFIG
-from settings import S, is_motor  # folders + motor classes for the active data source
+from settings import S, is_motor, expected_claims_basis  # folders + motor classes for the active data source
 BASE = str(S.facts_dir)
 if len(sys.argv) > 1:               # allows: python pipeline/09_profit_optimizer.py <folder>
     BASE = sys.argv[1]
 
 ASSUMPTIONS = {
     "model_version": "proto-0.3",
-    "policy_year": None,            # None = latest POLICY_YEAR in the file
+    "policy_year": None,            # None = latest complete POLICY_YEAR (see complete_years)
     # C. 1% steps from -10% to +50%
     "premium_grid": [round(x, 2) for x in np.arange(-0.10, 0.5001, 0.01)],
     "baseline_renewal": 0.90,       # P(renewal) at 0% change.            [Assumption]
@@ -63,6 +63,8 @@ ASSUMPTIONS = {
     "contraction_flag_threshold": 0.10,   # flag if retained exposure falls >10% vs. 0% scenario
     "min_segment_policies": 30,     # skip tiny segments (credibility)
     "target_combined_ratio": 0.95,
+    # H. [pricing] selection_rule in config.toml; decided for the demo, needs manager review
+    "selection_rule": S.config.get("pricing", {}).get("selection_rule", "max_profit"),
     # F. portfolio floors to compare (the selected one is portfolio_retention_floor)
     "floor_sensitivity": [0.80, 0.82, 0.85, 0.88],
 }
@@ -70,11 +72,51 @@ SEG = ["ZONE", "CLASS_DESC", "POLICY_TYPE_DESC"]
 
 
 # ------------------------------------------------------------------ DATA
+def apply_expected_claims(df):
+    """[pricing] expected_claims = "experience": scale each segment's policy costs so its claims equal its
+    reliable loss ratio (step 11) times the trend factor (step 07). The model keeps setting how cost splits
+    between policies inside a segment; a segment without a reliable loss ratio keeps the model's level."""
+    reliable = os.path.join(BASE, "fact_expected_claims.csv")
+    trend = os.path.join(BASE, "fact_trend_factor.csv")
+    if expected_claims_basis() != "experience" or not (os.path.exists(reliable) and os.path.exists(trend)):
+        return df
+    factor_trend = float(pd.read_csv(trend)["TREND_FACTOR"].iloc[0])
+    model = df["EXPOSURE_YEARS"] * df["expected_frequency_per_year"] * df["expected_severity"]
+    totals = pd.DataFrame({"MODEL": model.groupby([df[c] for c in SEG]).sum(),
+                           "PREMIUM": df.groupby(SEG)["base_premium"].sum()}).reset_index()
+    totals = totals.merge(pd.read_csv(reliable), on=SEG, how="left")
+    totals["SCALE"] = (totals["PREMIUM"] * totals["RELIABLE_LR"] * factor_trend / totals["MODEL"].replace(0, np.nan)).fillna(1.0)
+    scale = df[SEG].merge(totals[SEG + ["SCALE"]], on=SEG, how="left")["SCALE"].to_numpy()
+    print(f"Expected claims: {model.sum():,.0f} from the model -> {(model.to_numpy() * scale).sum():,.0f} on experience "
+          f"(trend factor {factor_trend:.3f})")
+    return df.assign(expected_severity=df["expected_severity"] * scale,
+                     pure_premium_per_year=df["pure_premium_per_year"] * scale)
+
+
+def complete_years(df):
+    """Policy years whose policies were written across the whole calendar year: effective dates
+    inside that year reach both January and December. The latest year of an extract is usually a
+    stub (the data stops part-way through it), and future-dated policies can create a later one;
+    neither is a fair renewal book."""
+    eff = pd.to_datetime(df["POLICY_EFFECTIVE_DATE"], errors="coerce")
+    inside = eff.dt.year == df["POLICY_YEAR"]
+    months = eff[inside].dt.month.groupby(df.loc[inside, "POLICY_YEAR"]).agg(["min", "max"])
+    return sorted(int(y) for y, m in months.iterrows() if m["min"] == 1 and m["max"] == 12)
+
+
 def load_policies(a):
-    df = pd.read_csv(os.path.join(BASE, "fact_policy_pricing.csv"))
+    df = pd.read_csv(os.path.join(BASE, "fact_policy_pricing.csv"), low_memory=False)
     years = sorted(df["POLICY_YEAR"].dropna().unique().astype(int))
-    yr = a["policy_year"] or years[-1]
-    print(f"Policy years in file: {years[0]}-{years[-1]}  -> using {yr}")
+    complete = complete_years(df) if "POLICY_EFFECTIVE_DATE" in df else []
+    if a["policy_year"]:
+        yr = a["policy_year"]
+    elif complete:
+        yr = complete[-1]
+    else:
+        yr = years[-1]
+        print("WARNING: no policy year written across a full calendar year; using the latest year")
+    print(f"Policy years in file: {years[0]}-{years[-1]}, complete: "
+          f"{', '.join(map(str, complete)) or 'none'}  -> using {yr}")
     df = df[df["POLICY_YEAR"] == yr].copy()
     n_raw = len(df)
     # drop cancellations / negative premium / zero exposure (same logic as 'Total Charged Premium')
@@ -85,6 +127,7 @@ def load_policies(a):
     df["base_premium"] = df["charged_premium"]
     df["commission_rate"] = (df["COMMISSION"] / df["TOTAL_PREMIUM"]).clip(0, 0.5).fillna(0)
     df["admin_per_policy"] = a["admin_rate_of_baseline_premium"] * df["base_premium"]  # fixed per policy
+    df = apply_expected_claims(df)
     # model claims: exposure x frequency x severity (+ external shocks)
     df["claims_if_retained"] = (df["EXPOSURE_YEARS"] * df["expected_frequency_per_year"]
                                 * (1 + a["ext_freq_trend"])
@@ -169,6 +212,8 @@ def run_segment(g, seg_key, case, k, a):
     res["pass_profit"] = res["profit_change"] >= a["min_profit_improvement"]
     res["is_feasible"] = (res["pass_retention"] & res["pass_range"]
                           & res["pass_technical"] & res["pass_profit"])
+    if a["selection_rule"] == "reach_target":   # the price aims at the target: only retention and range bind
+        res["is_feasible"] = res["pass_retention"] & res["pass_range"]
     res["contraction_flag"] = res["exposure_change_vs_base"] < -a["contraction_flag_threshold"]
     res["technical_change"] = tech_change
     for col, v in zip(SEG, seg_key):
@@ -201,7 +246,32 @@ def binding_reason(res, r):
     return "profit peak"          # next step is allowed but earns less
 
 
+def pick_reach_target(res):
+    """H. Smallest increase that reaches the target inside the retention floor; none when already under
+    target; the highest the floor allows when it cannot be reached."""
+    target = ASSUMPTIONS["target_combined_ratio"]
+    feas = res[res["is_feasible"] & (res["premium_change"] > -1e-9)]
+    if feas.empty:
+        r = res.loc[np.isclose(res["premium_change"], 0.0)].iloc[0].copy()
+        r["selection_note"] = "NO FEASIBLE SCENARIO - holding current price"
+        r["binding_constraint"] = "none feasible"
+        return r
+    reach = feas[feas["combined_ratio"] <= target]
+    if not reach.empty:
+        r = reach.iloc[reach["premium_change"].argmin()].copy()
+        held = np.isclose(r["premium_change"], 0.0)
+        r["selection_note"] = "under target - no increase needed" if held else "smallest increase reaching target"
+        r["binding_constraint"] = "under target" if held else "reaches target"
+        return r
+    r = feas.iloc[feas["premium_change"].argmax()].copy()
+    r["selection_note"] = "target out of reach - highest allowed"
+    r["binding_constraint"] = "price cap" if np.isclose(r["premium_change"], ASSUMPTIONS["premium_change_max"]) else "retention floor"
+    return r
+
+
 def pick_optimal(res):
+    if ASSUMPTIONS["selection_rule"] == "reach_target":
+        return pick_reach_target(res)
     feas = res[res["is_feasible"]]
     if feas.empty:                      # nothing passes -> fall back to 0% and say so
         r = res.loc[np.isclose(res["premium_change"], 0.0)].iloc[0].copy()
@@ -383,7 +453,7 @@ def main():
                   "model_version", "optimization_date"]
     opt = opt[keep]
 
-    run = pd.DataFrame([{**{k: str(v) for k, v in a.items()}, "policy_year": yr,
+    run = pd.DataFrame([{**{k: str(v) for k, v in a.items() if k != "selection_rule"}, "policy_year": yr,
                          "run_ts": pd.Timestamp.now()}])
     results.to_csv(os.path.join(BASE, "fact_scenario_results.csv"), index=False, encoding="utf-8")
     opt.to_csv(os.path.join(BASE, "fact_optimal_scenarios.csv"), index=False, encoding="utf-8")

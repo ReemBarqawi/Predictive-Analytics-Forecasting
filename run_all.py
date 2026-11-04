@@ -29,13 +29,13 @@ MODEL_STEPS = [
     (2, "02_glm_refit.py"),
     (3, "03_pure_premium.py"),
     (4, "04_backtest.py"),
+    (11, "11_build_alerts.py"),      # first: steps 5 and 9 read its reliable loss ratios
     (5, "05_segment_performance_by_year.py"),
     (6, "06_lever_allocation.py"),
     (7, "07_forecast_seasonal.py"),
     (8, "08_forecast_kpi_cards.py"),
     (9, "09_profit_optimizer.py"),
     (10, "10_underwriting_pnl.py"),
-    (11, "11_build_alerts.py"),
     (12, "12_report_window.py"),
 ]
 STEPS = {

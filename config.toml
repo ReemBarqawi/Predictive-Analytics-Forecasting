@@ -36,6 +36,16 @@ motor_classes = ["Motor Private", "Motor Commercial", "Motor Rent a Car"]
 # from the data (the last calendar year the claims reach to its end), so it moves forward on its own.
 # The models always use the full history; only the dashboard is limited. Forecast months are kept.
 years = 5
+# What counts towards a year's figures.
+#   "written_year" = only policies written in the year, their whole premium including what continues
+#                    after the year; earlier policies still running are left out
+#   "calendar"     = Forecast and Alerts use premium earned in the calendar months, from every policy
+# [MANAGER DIRECTION, docs/TASK_PLAN.md decision 8] written_year is shown in the demo until the finance
+# manager decides. year_basis_status is the flag the report shows; empty once approved.
+year_basis = "written_year"
+year_basis_status = "Needs finance manager approval"
+# Flag shown on the alerts panel and the Optimal Price card for the method in [pricing] below; empty once approved.
+method_review_status = "Needs manager review"
 
 [zones]
 # Offices whose name carries no city (online aggregators, e-commerce, telesales, outlets) are
@@ -60,6 +70,17 @@ ultimate_method = "incurred"
 as_of_date = ""               # valuation date "YYYY-MM-DD"; empty = date of the extract
 
 [pricing]
+# [DECIDED FOR THE DEMO, NEEDS MANAGER REVIEW: docs/TASK_PLAN.md decision 9]
+# Expected claims for the current year and for pricing.
+#   "experience" = each segment's actual results, blended toward its class by credibility, times the
+#                  bias-corrected trend factor from the forecast backtest
+#   "model"      = the GLM's expected claims as they are
+expected_claims = "experience"
+# How the optimizer picks a price.
+#   "reach_target" = smallest increase that reaches the target within the retention floor; no increase
+#                    when already under target; the highest the floor allows when it cannot be reached
+#   "max_profit"   = highest profit inside the retention floor and the technical price limit
+selection_rule = "reach_target"
 # Protected rating factors. [MANAGER DECISION — docs/TASK_PLAN.md decision 7] Whether gender and
 # nationality may be used in pricing (regulation and fairness). Until decided, pricing uses the
 # general rating factors only. Switching one on needs a GENDER / NATIONALITY column in the
