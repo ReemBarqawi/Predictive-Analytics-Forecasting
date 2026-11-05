@@ -106,11 +106,16 @@ actual = forecast[forecast["PERIOD_TYPE"] == "actual"]
 ahead = forecast[(forecast["PERIOD_TYPE"] == "forecast") & (forecast["FORECAST_HORIZON"] == "12M")]
 check_true("forecast", "Forecast has 12 months", len(ahead) == 12, f"{len(ahead)} months")
 if written_year:
+    known = pd.read_csv(F / "fact_forecast_known.csv", parse_dates=["MONTH_DATE"])
     for year, g in actual.groupby(actual["MONTH_DATE"].dt.year):
         if len(g) == 12 and year in report_years:
             row = by_year[by_year["POLICY_YEAR"] == year]
             check("forecast", f"{year}: 12 months of premium = segment results", g["FORECAST_PREMIUM"].sum(), row["EARNED_PREMIUM"].sum())
             check("forecast", f"{year}: 12 months of claims = segment results", g["FORECAST_CLAIMS"].sum(), row["ULTIMATE_CLAIMS"].sum())
+            check("forecast", f"{year}: 12 months of recorded claims = reported claims", known.loc[known["MONTH_DATE"].dt.year == year, "RECORDED_CLAIMS"].sum(), row["ACTUAL_ULTIMATE_CLAIMS"].sum())
+    months = actual.merge(known, on="MONTH_DATE")
+    below = months[months["FORECAST_CLAIMS"] < months["RECORDED_CLAIMS"] - TOL_SAR]
+    check_true("forecast", "No month's claims sit below its recorded claims", below.empty, f"{len(below)} months below")
     last = actual["MONTH_DATE"].max()
     if experience and last.year == current and last.month == 12:
         recent = actual[actual["MONTH_DATE"].dt.year == current]

@@ -1,0 +1,200 @@
+{
+  "$schema": "https://vega.github.io/schema/vega/v5.json",
+  "description": "Forecast chart tooltip card. Provider: Vega. Goes on a Tooltip page of 320 x 210 with the visual filling the page. Fields, all measures from 03 Forecast\\Tooltip plus two chart measures: Tip Month, Tip View, Tip State, Tip Value, Tip Recorded, Tip Known Share, Tip Term Run, Tip Prior Year, Chart CI Lower, Chart CI Upper, Chart Target. The 24-block meter is the same in every state: how much of the number is already recorded. Below it: Actual = last year; Estimate = recorded, estimated, policy time run; Forecast = P10-P90 range, or the gap to target in the Loss Ratio view. For the sharpest text set Deneb's render mode to SVG.",
+  "width": {"signal": "boxW"},
+  "height": {"signal": "boxH"},
+  "padding": 0,
+  "autosize": {"type": "none"},
+  "background": "#080D32",
+  "config": {"text": {"font": "Segoe UI", "baseline": "top"}},
+  "signals": [
+    {"name": "boxW", "init": "containerSize()[0] || 320", "on": [{"events": "window:resize", "update": "containerSize()[0] || boxW"}]},
+    {"name": "boxH", "init": "containerSize()[1] || 210", "on": [{"events": "window:resize", "update": "containerSize()[1] || boxH"}]},
+    {"name": "pad", "value": 18},
+    {"name": "inner", "update": "boxW - 2 * pad"},
+    {"name": "hasRow", "update": "length(data('dataset')) > 0 && isValid(data('dataset')[0]['Tip State'])"},
+    {"name": "r", "update": "hasRow ? data('dataset')[0] : {}"},
+    {"name": "state", "update": "hasRow ? r['Tip State'] : ''"},
+    {"name": "view", "update": "hasRow ? r['Tip View'] : ''"},
+    {"name": "isActual", "update": "state == 'Actual'"},
+    {"name": "isEstimate", "update": "state == 'Estimate'"},
+    {"name": "isForecast", "update": "state == 'Forecast'"},
+    {"name": "isRatio", "update": "view == 'Loss Ratio'"},
+    {"name": "value", "update": "hasRow ? r['Tip Value'] : null"},
+    {"name": "recorded", "update": "hasRow && isValid(r['Tip Recorded']) ? r['Tip Recorded'] : 0"},
+    {"name": "known", "update": "hasRow && isValid(r['Tip Known Share']) ? r['Tip Known Share'] : 0"},
+    {"name": "prior", "update": "hasRow && isValid(r['Tip Prior Year']) ? r['Tip Prior Year'] : null"},
+    {"name": "low", "update": "hasRow && isValid(r['Chart CI Lower']) ? r['Chart CI Lower'] : null"},
+    {"name": "high", "update": "hasRow && isValid(r['Chart CI Upper']) ? r['Chart CI Upper'] : null"},
+    {"name": "target", "update": "hasRow && isValid(r['Chart Target']) ? r['Chart Target'] : null"},
+    {"name": "showRange", "update": "isForecast && low !== null && high !== null"},
+    {"name": "showTarget", "update": "isForecast && isRatio && target !== null"},
+    {"name": "accent", "update": "isActual ? '#5EEAA8' : isEstimate ? '#FFB84D' : '#6EC1FF'"},
+    {"name": "ink", "value": "#F5F7FF"},
+    {"name": "muted", "value": "#A3ABC9"},
+    {"name": "valueText", "update": "value === null ? '' : isRatio ? format(value, '.1%') : format(value / 1e6, '.1f') + 'M'"},
+    {"name": "stateText", "update": "upper(state)"},
+    {"name": "pillW", "update": "length(stateText) * 7 + 20"},
+    {"name": "headText", "update": "hasRow ? r['Tip Month'] + '  ·  ' + view : ''"},
+    {"name": "knownPct", "update": "round(known * 100)"},
+    {"name": "knownText", "update": "knownPct + '% recorded'"},
+    {"name": "restText", "update": "isActual ? '' : (100 - knownPct) + (isForecast ? '% forecast' : '% estimated')"},
+    {"name": "blockCount", "value": 24},
+    {"name": "blockGap", "value": 2},
+    {"name": "blockW", "update": "(inner - (blockCount - 1) * blockGap) / blockCount"},
+    {"name": "blocksOn", "update": "known <= 0 ? 0 : known >= 1 ? blockCount : clamp(round(known * blockCount), 1, blockCount - 1)"},
+    {"name": "statLabels", "update": "isActual ? (prior === null ? ['Last year'] : ['Last year', 'Change']) : isEstimate ? ['Recorded', 'Estimated', 'Policy time run'] : []"},
+    {"name": "statValues", "update": "isActual ? (prior === null ? ['n/a'] : [isRatio ? format(prior, '.1%') : format(prior / 1e6, '.1f') + 'M', isRatio ? format((value - prior) * 100, '+.1f') + ' pts' : format(value / prior - 1, '+.1%')]) : isEstimate ? [isRatio ? format(recorded, '.1%') : format(recorded / 1e6, '.1f') + 'M', isRatio ? format(max(0, value - recorded), '.1%') : format(max(0, value - recorded) / 1e6, '.1f') + 'M', format(r['Tip Term Run'], '.0%')] : []"},
+    {"name": "statCount", "update": "length(statLabels)"},
+    {"name": "bandFrom", "value": 172},
+    {"name": "rangePos", "update": "showRange ? pad + inner * clamp((value - low) / (high - low), 0, 1) : pad"},
+    {"name": "gapPts", "update": "showTarget ? (value - target) * 100 : 0"},
+    {"name": "gapText", "update": "showTarget ? format(gapPts, '+.1f') + ' pts' : ''"},
+    {"name": "gapColor", "update": "gapPts > 0 ? '#FF7A8A' : '#5EEAA8'"},
+    {"name": "trackLow", "update": "showTarget ? min(value, target) - 0.06 : 0"},
+    {"name": "trackHigh", "update": "showTarget ? max(value, target) + 0.06 : 1"},
+    {"name": "valueX", "update": "showTarget ? pad + inner * (value - trackLow) / (trackHigh - trackLow) : pad"},
+    {"name": "targetX", "update": "showTarget ? pad + inner * (target - trackLow) / (trackHigh - trackLow) : pad"}
+  ],
+  "data": [
+    {"name": "dataset"},
+    {
+      "name": "blocks",
+      "transform": [
+        {"type": "sequence", "start": 0, "stop": 24, "as": "i"},
+        {"type": "formula", "as": "x", "expr": "pad + datum.i * (blockW + blockGap)"},
+        {"type": "formula", "as": "on", "expr": "datum.i < blocksOn"}
+      ]
+    },
+    {
+      "name": "stats",
+      "transform": [
+        {"type": "sequence", "start": 0, "stop": 3, "as": "i"},
+        {"type": "filter", "expr": "datum.i < statCount"},
+        {"type": "formula", "as": "x", "expr": "pad + datum.i * inner / statCount"},
+        {"type": "formula", "as": "label", "expr": "statLabels[datum.i]"},
+        {"type": "formula", "as": "text", "expr": "statValues[datum.i]"}
+      ]
+    }
+  ],
+  "marks": [
+    {
+      "type": "rect",
+      "interactive": false,
+      "encode": {"update": {"x": {"value": 0}, "y": {"value": 0}, "width": {"signal": "boxW"}, "height": {"value": 4}, "fill": {"signal": "accent"}}}
+    },
+    {
+      "type": "text",
+      "interactive": false,
+      "encode": {"update": {"x": {"signal": "pad"}, "y": {"value": 20}, "text": {"signal": "headText"}, "fontSize": {"value": 12}, "fill": {"signal": "muted"}}}
+    },
+    {
+      "type": "rect",
+      "interactive": false,
+      "encode": {"update": {"x": {"signal": "boxW - pad - pillW"}, "y": {"value": 17}, "width": {"signal": "pillW"}, "height": {"value": 21}, "cornerRadius": {"value": 11}, "fill": {"signal": "accent"}, "opacity": {"signal": "hasRow ? 0.16 : 0"}}}
+    },
+    {
+      "type": "text",
+      "interactive": false,
+      "encode": {"update": {"x": {"signal": "boxW - pad - pillW / 2"}, "y": {"value": 21}, "align": {"value": "center"}, "text": {"signal": "stateText"}, "font": {"value": "Segoe UI Semibold"}, "fontSize": {"value": 10.5}, "fill": {"signal": "accent"}}}
+    },
+    {
+      "type": "text",
+      "interactive": false,
+      "encode": {"update": {"x": {"signal": "pad"}, "y": {"value": 42}, "text": {"signal": "valueText"}, "font": {"value": "Segoe UI Semibold"}, "fontSize": {"value": 38}, "fill": {"signal": "ink"}}}
+    },
+    {
+      "type": "text",
+      "interactive": false,
+      "encode": {"update": {"x": {"signal": "pad"}, "y": {"value": 98}, "text": {"signal": "knownText"}, "font": {"value": "Segoe UI Semibold"}, "fontSize": {"value": 12}, "fill": {"signal": "isForecast ? muted : accent"}, "opacity": {"signal": "hasRow ? 1 : 0"}}}
+    },
+    {
+      "type": "text",
+      "interactive": false,
+      "encode": {"update": {"x": {"signal": "boxW - pad"}, "y": {"value": 98}, "align": {"value": "right"}, "text": {"signal": "restText"}, "font": {"signal": "isForecast ? 'Segoe UI Semibold' : 'Segoe UI'"}, "fontSize": {"value": 12}, "fill": {"signal": "isForecast ? accent : muted"}}}
+    },
+    {
+      "type": "rect",
+      "interactive": false,
+      "from": {"data": "blocks"},
+      "encode": {"update": {"x": {"field": "x"}, "y": {"value": 117}, "width": {"signal": "blockW"}, "height": {"value": 11}, "cornerRadius": {"value": 1.5}, "fill": {"signal": "accent"}, "opacity": {"signal": "hasRow ? (datum.on ? 1 : 0.22) : 0"}}}
+    },
+    {
+      "type": "text",
+      "interactive": false,
+      "from": {"data": "stats"},
+      "encode": {"update": {"x": {"field": "x"}, "y": {"value": 145}, "text": {"field": "label"}, "fontSize": {"value": 11}, "fill": {"signal": "muted"}}}
+    },
+    {
+      "type": "text",
+      "interactive": false,
+      "from": {"data": "stats"},
+      "encode": {"update": {"x": {"field": "x"}, "y": {"value": 162}, "text": {"field": "text"}, "font": {"value": "Segoe UI Semibold"}, "fontSize": {"value": 18}, "fill": {"signal": "ink"}}}
+    },
+    {
+      "type": "text",
+      "interactive": false,
+      "encode": {"update": {"x": {"signal": "pad"}, "y": {"value": 143}, "text": {"signal": "showRange ? 'P10 - P90 range' : ''"}, "fontSize": {"value": 11}, "fill": {"signal": "muted"}}}
+    },
+    {
+      "type": "rect",
+      "interactive": false,
+      "encode": {"update": {"x": {"signal": "pad"}, "y": {"value": 166}, "width": {"signal": "inner"}, "height": {"value": 6}, "cornerRadius": {"value": 3}, "fill": {"signal": "accent"}, "opacity": {"signal": "showRange ? 0.32 : 0"}}}
+    },
+    {
+      "type": "symbol",
+      "interactive": false,
+      "encode": {"update": {"x": {"signal": "rangePos"}, "y": {"value": 169}, "size": {"value": 130}, "shape": {"value": "circle"}, "fill": {"signal": "ink"}, "stroke": {"signal": "accent"}, "strokeWidth": {"value": 3}, "opacity": {"signal": "showRange ? 1 : 0"}}}
+    },
+    {
+      "type": "text",
+      "interactive": false,
+      "encode": {"update": {"x": {"signal": "pad"}, "y": {"value": 181}, "text": {"signal": "showRange ? format(low / 1e6, '.1f') + 'M' : ''"}, "font": {"value": "Segoe UI Semibold"}, "fontSize": {"value": 13}, "fill": {"signal": "ink"}}}
+    },
+    {
+      "type": "text",
+      "interactive": false,
+      "encode": {"update": {"x": {"signal": "boxW - pad"}, "y": {"value": 181}, "align": {"value": "right"}, "text": {"signal": "showRange ? format(high / 1e6, '.1f') + 'M' : ''"}, "font": {"value": "Segoe UI Semibold"}, "fontSize": {"value": 13}, "fill": {"signal": "ink"}}}
+    },
+    {
+      "type": "text",
+      "interactive": false,
+      "encode": {"update": {"x": {"signal": "pad"}, "y": {"value": 143}, "text": {"signal": "showTarget ? (gapPts > 0 ? 'Above target' : 'Below target') : ''"}, "fontSize": {"value": 11}, "fill": {"signal": "muted"}}}
+    },
+    {
+      "type": "text",
+      "interactive": false,
+      "encode": {"update": {"x": {"signal": "boxW - pad"}, "y": {"value": 138}, "align": {"value": "right"}, "text": {"signal": "gapText"}, "font": {"value": "Segoe UI Semibold"}, "fontSize": {"value": 18}, "fill": {"signal": "gapColor"}}}
+    },
+    {
+      "type": "rect",
+      "interactive": false,
+      "encode": {"update": {"x": {"signal": "pad"}, "y": {"value": 169}, "width": {"signal": "inner"}, "height": {"value": 6}, "cornerRadius": {"value": 3}, "fill": {"signal": "muted"}, "opacity": {"signal": "showTarget ? 0.22 : 0"}}}
+    },
+    {
+      "type": "rect",
+      "interactive": false,
+      "encode": {"update": {"x": {"signal": "min(valueX, targetX)"}, "y": {"value": 169}, "width": {"signal": "abs(valueX - targetX)"}, "height": {"value": 6}, "fill": {"signal": "gapColor"}, "opacity": {"signal": "showTarget ? 1 : 0"}}}
+    },
+    {
+      "type": "rect",
+      "interactive": false,
+      "encode": {"update": {"x": {"signal": "targetX - 1"}, "y": {"value": 163}, "width": {"value": 2}, "height": {"value": 18}, "fill": {"signal": "ink"}, "opacity": {"signal": "showTarget ? 1 : 0"}}}
+    },
+    {
+      "type": "symbol",
+      "interactive": false,
+      "encode": {"update": {"x": {"signal": "valueX"}, "y": {"value": 172}, "size": {"value": 130}, "shape": {"value": "circle"}, "fill": {"signal": "ink"}, "stroke": {"signal": "gapColor"}, "strokeWidth": {"value": 3}, "opacity": {"signal": "showTarget ? 1 : 0"}}}
+    },
+    {
+      "type": "text",
+      "interactive": false,
+      "encode": {"update": {"x": {"signal": "targetX"}, "y": {"value": 186}, "align": {"signal": "targetX < boxW / 2 ? 'left' : 'right'"}, "text": {"signal": "showTarget ? 'Target ' + format(target, '.1%') : ''"}, "fontSize": {"value": 11.5}, "fill": {"signal": "ink"}}}
+    },
+    {
+      "type": "text",
+      "interactive": false,
+      "encode": {"update": {"x": {"signal": "pad"}, "y": {"value": 70}, "text": {"signal": "hasRow ? '' : 'Add the Tip measures to this visual.'"}, "fontSize": {"value": 13}, "fill": {"signal": "ink"}}}
+    }
+  ]
+}

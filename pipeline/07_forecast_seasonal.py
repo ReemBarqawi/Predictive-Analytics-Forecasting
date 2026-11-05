@@ -38,6 +38,7 @@ Outputs
 -------
   <facts>/fact_forecast_seasonal.csv   actual + forecast months (3M / 6M / 12M horizons)
   <facts>/fact_forecast_validation.csv every check: value, rule, PASS / REVIEW
+  <facts>/fact_forecast_known.csv      claims recorded so far and policy time run, by month (chart tooltip)
   <reports>/seasonal_forecast_report.md
   <reports>/forecast_validation.png
 """
@@ -445,17 +446,56 @@ def written_month_view(history: pd.DataFrame, fc: pd.DataFrame) -> tuple[pd.Data
     h["CLAIM_COUNT"] = cl.groupby("M")["CLM_NO"].size().reindex(h.index, fill_value=0).astype(float).where(
         is_mature, pp[priced].groupby("M")["expected_frequency_period"].sum().reindex(h.index, fill_value=0.0))
 
-    # Years on an estimate: spread that year's total over its months by the model's monthly shape
+    # Years on an estimate: each month starts from what is recorded, so none sits below it. The rest of the
+    # year's total goes to the months whose share by the model's monthly shape is above their recorded figure.
+    recorded = {"CLAIMS_COST": cl.groupby("M")["ULTIMATE_CLAIM"].sum(), "CLAIM_COUNT": cl.groupby("M")["CLM_NO"].size()}
     for col, total in (("CLAIMS_COST", "ULTIMATE_CLAIMS"), ("CLAIM_COUNT", "CLAIM_COUNT")):
         for year, g in h[~is_mature].groupby(h[~is_mature].index.year):
             if year in year_totals.index and g[col].sum() > 0:
-                h.loc[g.index, col] = g[col] * year_totals.at[year, total] / g[col].sum()
+                year_total = year_totals.at[year, total]
+                known = recorded[col].reindex(g.index, fill_value=0).astype(float)
+                rest = (g[col] * year_total / g[col].sum() - known).clip(lower=0.0)
+                h.loc[g.index, col] = known + rest * (year_total - known.sum()) / rest.sum()
 
     f = fc.copy()
     f["EARNED_PREMIUM"] = fc["WRITTEN_PREMIUM"]
     f["CLAIM_COUNT"] = fc["CLAIM_RATE"] * f["EARNED_PREMIUM"]
     f["CLAIMS_COST"] = fc["COST_RATE"] * f["EARNED_PREMIUM"]
     return h, f
+
+
+def known_share(months: pd.PeriodIndex, data_end: pd.Timestamp) -> pd.DataFrame:
+    """
+    [report] year_basis = "written_year": how much of each month's claims figure is known, for the Forecast
+    chart's tooltip. RECORDED_CLAIMS = claims recorded so far on the policies that started in the month, in
+    the same month as written_month_view. TERM_RUN_SHARE = share of their premium whose policy time had run
+    by the data end. CLAIMS_BASIS = "Estimate" for the months written_month_view takes from the year's estimate.
+    """
+    pp = pd.read_csv(FACTS_DIR / "fact_policy_pricing.csv",
+                     usecols=["POLICY_NO", "POLICY_YEAR", "POLICY_EFFECTIVE_DATE", "POLICY_EXPIRY_DATE", "TOTAL_PREMIUM"],
+                     parse_dates=["POLICY_EFFECTIVE_DATE", "POLICY_EXPIRY_DATE"], low_memory=False)
+    eff = pp["POLICY_EFFECTIVE_DATE"]
+    number = np.where(eff.dt.year == pp["POLICY_YEAR"], eff.dt.month, np.where(eff.dt.year < pp["POLICY_YEAR"], 1, 12))
+    pp["M"] = pd.PeriodIndex(year=pp["POLICY_YEAR"], month=number, freq="M")
+
+    cl = pd.read_csv(FACTS_DIR / "fact_claim.csv", usecols=["POLICY_NO", "POLICY_YEAR", "POLICY_MATCHED", "ULTIMATE_CLAIM"])
+    cl = cl[cl["POLICY_MATCHED"].astype(str).str.lower() == "true"]
+    cl = cl.merge(pp[["POLICY_NO", "POLICY_YEAR", "M"]].drop_duplicates(["POLICY_NO", "POLICY_YEAR"]), on=["POLICY_NO", "POLICY_YEAR"])
+
+    term = (pp["POLICY_EXPIRY_DATE"] - eff).dt.days
+    dated = pp[term > 0]
+    run = ((data_end - eff).dt.days.clip(lower=0) / term[term > 0]).clip(upper=1)
+    premium = dated.groupby("M")["TOTAL_PREMIUM"].sum()
+    premium_run = (dated["TOTAL_PREMIUM"] * run.reindex(dated.index)).groupby(dated["M"]).sum()
+
+    basis = pd.read_csv(FACTS_DIR / "fact_segment_performance_by_year.csv", usecols=["POLICY_YEAR", "CLAIMS_BASIS"])
+    mature = set(basis.loc[basis["CLAIMS_BASIS"].str.startswith("Actual"), "POLICY_YEAR"])
+    return pd.DataFrame({
+        "MONTH_DATE": months.to_timestamp().strftime("%Y-%m-%d"),
+        "CLAIMS_BASIS": np.where(months.year.isin(mature), "Actual", "Estimate"),
+        "RECORDED_CLAIMS": cl.groupby("M")["ULTIMATE_CLAIM"].sum().reindex(months, fill_value=0.0).to_numpy(),
+        "TERM_RUN_SHARE": (premium_run / premium).reindex(months).to_numpy(),
+    })
 
 
 def trend_factor(history: pd.DataFrame, fc: pd.DataFrame, bt: pd.DataFrame, model: str) -> dict:
@@ -718,6 +758,8 @@ def main() -> None:
          f"{trend['BIAS_PTS']:+.1f} pts; error {trend['ERROR_CORRECTED_PTS']:.1f} vs no change "
          f"{trend['ERROR_NO_CHANGE_PTS']:.1f} pts over {trend['N_ORIGINS']} origins)")
     shown_history, shown_fc = written_month_view(history, fc) if year_basis() == "written_year" else (history, fc)
+    known_months = shown_history.index if year_basis() == "written_year" else shown_history.index[:0]
+    known_share(known_months, data_end).to_csv(FACTS_DIR / "fact_forecast_known.csv", index=False, encoding="utf-8")
     scale = 1.0
     if year_basis() == "written_year" and expected_claims_basis() == "experience":
         # The page's forecast year is the current year's loss ratio times the trend factor; months keep their shape.
