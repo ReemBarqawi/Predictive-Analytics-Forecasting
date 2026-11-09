@@ -1,0 +1,86 @@
+{
+  "$schema": "https://vega.github.io/schema/vega/v5.json",
+  "description": "What-if profit bridge (What-If page). Provider: Vega. Fields: WI Bridge Step, WI Bridge Step Order, WI Bridge Step Type, then the measure WI Bridge Value. Steps with no effect (under 1 currency unit) are hidden so the chart only shows what moved profit.",
+  "width": {"signal": "max(320, boxW - 70)"},
+  "height": {"signal": "max(180, boxH - 70)"},
+  "padding": {"left": 4, "right": 8, "top": 8, "bottom": 4},
+  "autosize": {"type": "pad", "resize": false},
+  "background": "transparent",
+  "config": {
+    "text": {"font": "Segoe UI"},
+    "axis": {"labelFont": "Segoe UI", "labelColor": "#555B60", "labelFontSize": 11, "domain": false, "ticks": false}
+  },
+  "signals": [
+    {"name": "boxW", "init": "containerSize()[0] || 700", "on": [{"events": "window:resize", "update": "containerSize()[0] || boxW"}]},
+    {"name": "boxH", "init": "containerSize()[1] || 320", "on": [{"events": "window:resize", "update": "containerSize()[1] || boxH"}]},
+    {"name": "nRows", "update": "length(data('dataset'))"},
+    {"name": "hasFields", "update": "nRows > 0 && isDefined(data('dataset')[0]['Step Order']) && isDefined(data('dataset')[0]['WI Bridge Value'])"},
+    {"name": "problem", "update": "nRows == 0 ? 'No rows reached this visual. Add WI Bridge[Step], WI Bridge[Step Order], WI Bridge[Step Type] and the measure WI Bridge Value.' : !hasFields ? 'Rows arrived without Step Order or WI Bridge Value. Check the field names in the Values well.' : ''"}
+  ],
+  "data": [
+    {"name": "dataset"},
+    {
+      "name": "bars",
+      "source": "dataset",
+      "transform": [
+        {"type": "filter", "expr": "hasFields && isValid(datum['WI Bridge Value'])"},
+        {"type": "formula", "as": "isTotal", "expr": "datum['Step Type'] == 'total'"},
+        {"type": "formula", "as": "v", "expr": "datum['WI Bridge Value']"},
+        {"type": "filter", "expr": "datum.isTotal || abs(datum.v) >= 1"},
+        {"type": "formula", "as": "delta", "expr": "datum.isTotal ? (datum['Step Order'] == 1 ? datum.v : 0) : datum.v"},
+        {"type": "window", "sort": {"field": "Step Order"}, "ops": ["sum", "lead"], "fields": ["delta", "Step"], "as": ["cum", "nextStep"]},
+        {"type": "formula", "as": "y0", "expr": "datum.isTotal ? 0 : datum.cum - datum.v"},
+        {"type": "formula", "as": "y1", "expr": "datum.isTotal ? datum.v : datum.cum"},
+        {"type": "formula", "as": "level", "expr": "datum.isTotal ? datum.v : datum.cum"},
+        {"type": "formula", "as": "fill", "expr": "datum.isTotal ? (datum.v < 0 ? '#A13C35' : '#202124') : (datum.v >= 0 ? '#2E7D32' : '#DB0032')"},
+        {"type": "formula", "as": "label", "expr": "datum.isTotal ? format(datum.v, ',.0f') : format(datum.v, '+,.0f')"}      ]
+    },
+    {"name": "links", "source": "bars", "transform": [{"type": "filter", "expr": "datum.nextStep"}]}
+  ],
+  "scales": [
+    {"name": "x", "type": "band", "domain": {"data": "bars", "field": "Step", "sort": {"field": "Step Order", "op": "min"}}, "range": "width", "paddingInner": 0.28, "paddingOuter": 0.12},
+    {"name": "y", "type": "linear", "domain": {"data": "bars", "fields": ["y0", "y1"]}, "range": "height", "nice": true, "zero": true}
+  ],
+  "axes": [
+    {"orient": "left", "scale": "y", "grid": true, "gridColor": "#EEF1F5", "tickCount": 5, "format": "~s", "labelPadding": 6},
+    {"orient": "bottom", "scale": "x", "labelPadding": 6, "encode": {"labels": {"update": {"text": {"signal": "split(datum.value, ' ')"}, "lineHeight": {"value": 13}}}}}
+  ],
+  "marks": [
+    {"type": "rule", "encode": {"update": {"x": {"value": 0}, "x2": {"signal": "width"}, "y": {"scale": "y", "value": 0}, "stroke": {"value": "#9AA0A6"}, "strokeWidth": {"value": 1}}}},
+    {
+      "type": "rule", "from": {"data": "links"},
+      "encode": {"update": {
+        "x": {"scale": "x", "field": "Step", "offset": {"scale": "x", "band": 1}},
+        "x2": {"scale": "x", "field": "nextStep"},
+        "y": {"scale": "y", "field": "level"},
+        "stroke": {"value": "#9AA0A6"}, "strokeDash": {"value": [3, 3]}
+      }}
+    },
+    {
+      "type": "rect", "from": {"data": "bars"},
+      "encode": {"update": {
+        "x": {"scale": "x", "field": "Step"}, "width": {"scale": "x", "band": 1},
+        "y": {"scale": "y", "field": "y0"}, "y2": {"scale": "y", "field": "y1"},
+        "fill": {"field": "fill"}, "cornerRadius": {"value": 2},
+        "tooltip": {"signal": "{'Step': datum.Step, 'Amount': format(datum.v, ',.0f')}"}
+      }}
+    },
+    {
+      "type": "text", "from": {"data": "bars"},
+      "encode": {"update": {
+        "x": {"scale": "x", "field": "Step", "band": 0.5}, "align": {"value": "center"},
+        "y": {"scale": "y", "signal": "max(datum.y0, datum.y1)", "offset": -5},
+        "baseline": {"value": "bottom"},
+        "text": {"field": "label"}, "fontSize": {"value": 11}, "fontWeight": {"value": 600},
+        "fill": {"field": "fill"}
+      }}
+    },
+    {
+      "type": "text",
+      "encode": {"update": {
+        "x": {"signal": "width / 2"}, "y": {"signal": "height / 2"}, "align": {"value": "center"},
+        "text": {"signal": "problem"}, "limit": {"signal": "width"}, "fill": {"value": "#A13C35"}, "fontSize": {"value": 12}
+      }}
+    }
+  ]
+}

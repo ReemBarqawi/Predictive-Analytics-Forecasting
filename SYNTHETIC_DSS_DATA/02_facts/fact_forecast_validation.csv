@@ -1,21 +1,22 @@
 CHECK_GROUP,CHECK,MEASURE,HORIZON,MODEL,VALUE,BENCHMARK,THRESHOLD,STATUS,DATA_TO
-accuracy,"Error (WAPE) over 7 forecast origins, vs seasonal naive",Earned premium,3M,Seasonal naive,0.01844105611684633,0.01844105611684633,at or below seasonal naive,INFO,2025-01-12
-accuracy,Bias over 7 forecast origins,Earned premium,3M,Seasonal naive,-0.0058583415048250875,,within ±10%,PASS,2025-01-12
-accuracy,"Error (WAPE) over 7 forecast origins, vs seasonal naive",Claim count,3M,Seasonal naive,0.27815585024651857,0.27815585024651857,at or below seasonal naive,INFO,2025-01-12
-accuracy,Bias over 7 forecast origins,Claim count,3M,Seasonal naive,0.042026827613185797,,within ±10%,PASS,2025-01-12
-accuracy,"Error (WAPE) over 7 forecast origins, vs seasonal naive",Claims cost,3M,Seasonal naive,0.3313864983588658,0.3313864983588658,at or below seasonal naive,INFO,2025-01-12
-accuracy,Bias over 7 forecast origins,Claims cost,3M,Seasonal naive,-0.1787115813840036,,within ±10%,REVIEW,2025-01-12
-accuracy,"Error (WAPE) over 6 forecast origins, vs seasonal naive",Earned premium,6M,Seasonal naive,0.02120523510427663,0.02120523510427663,at or below seasonal naive,INFO,2025-01-12
-accuracy,Bias over 6 forecast origins,Earned premium,6M,Seasonal naive,-0.01879692892717353,,within ±10%,PASS,2025-01-12
-accuracy,"Error (WAPE) over 6 forecast origins, vs seasonal naive",Claim count,6M,Seasonal naive,0.23599810343466443,0.23599810343466443,at or below seasonal naive,INFO,2025-01-12
-accuracy,Bias over 6 forecast origins,Claim count,6M,Seasonal naive,-0.0073913896480055676,,within ±10%,PASS,2025-01-12
-accuracy,"Error (WAPE) over 6 forecast origins, vs seasonal naive",Claims cost,6M,Seasonal naive,0.3020163439105968,0.3020163439105968,at or below seasonal naive,INFO,2025-01-12
-accuracy,Bias over 6 forecast origins,Claims cost,6M,Seasonal naive,-0.20449715090864087,,within ±10%,REVIEW,2025-01-12
-accuracy,"Error (WAPE) over 4 forecast origins, vs seasonal naive",Earned premium,12M,Seasonal naive,0.05356364695346101,0.05356364695346101,at or below seasonal naive,INFO,2025-01-12
-accuracy,Bias over 4 forecast origins,Earned premium,12M,Seasonal naive,-0.05356364695346101,,within ±10%,PASS,2025-01-12
-accuracy,"Error (WAPE) over 4 forecast origins, vs seasonal naive",Claim count,12M,Seasonal naive,0.10614787300018418,0.10614787300018418,at or below seasonal naive,INFO,2025-01-12
-accuracy,Bias over 4 forecast origins,Claim count,12M,Seasonal naive,-0.10614787300018418,,within ±10%,REVIEW,2025-01-12
-accuracy,"Error (WAPE) over 4 forecast origins, vs seasonal naive",Claims cost,12M,Seasonal naive,0.28047011770436775,0.28047011770436775,at or below seasonal naive,INFO,2025-01-12
-accuracy,Bias over 4 forecast origins,Claims cost,12M,Seasonal naive,-0.28047011770436775,,within ±10%,REVIEW,2025-01-12
-band,Months inside the 90% band (each origin tested on a band from the others),Claims cost,,Seasonal naive,0.9545454545454546,,80% to 97%,PASS,2025-01-12
-inputs,Earned premium rebuilt from policy dates / fact_earned_premium,Earned premium,,Seasonal naive,1.0000000106922904,,within ±1%,PASS,2025-01-12
+accuracy,"Error (WAPE) over 7 forecast origins, vs seasonal naive",Earned premium,3M,Seasonal naive,0.01844104709297326,0.01844104709297326,at or below seasonal naive,INFO,2025-01-12
+accuracy,Bias over 7 forecast origins,Earned premium,3M,Seasonal naive,-0.005858345949348292,,within ±10%,PASS,2025-01-12
+accuracy,"Error (WAPE) over 7 forecast origins, vs seasonal naive",Claim count,3M,Seasonal naive,0.2781558495136201,0.2781558495136201,at or below seasonal naive,INFO,2025-01-12
+accuracy,Bias over 7 forecast origins,Claim count,3M,Seasonal naive,0.0420268323718978,,within ±10%,PASS,2025-01-12
+accuracy,"Error (WAPE) over 7 forecast origins, vs seasonal naive",Claims cost,3M,Seasonal naive,0.3313864946639856,0.3313864946639856,at or below seasonal naive,INFO,2025-01-12
+accuracy,Bias over 7 forecast origins,Claims cost,3M,Seasonal naive,-0.1787115771501713,,within ±10%,REVIEW,2025-01-12
+accuracy,"Error (WAPE) over 6 forecast origins, vs seasonal naive",Earned premium,6M,Seasonal naive,0.02120523245089612,0.02120523245089612,at or below seasonal naive,INFO,2025-01-12
+accuracy,Bias over 6 forecast origins,Earned premium,6M,Seasonal naive,-0.018796931476617134,,within ±10%,PASS,2025-01-12
+accuracy,"Error (WAPE) over 6 forecast origins, vs seasonal naive",Claim count,6M,Seasonal naive,0.23599810117430234,0.23599810117430234,at or below seasonal naive,INFO,2025-01-12
+accuracy,Bias over 6 forecast origins,Claim count,6M,Seasonal naive,-0.00739138666540294,,within ±10%,PASS,2025-01-12
+accuracy,"Error (WAPE) over 6 forecast origins, vs seasonal naive",Claims cost,6M,Seasonal naive,0.3020163416038718,0.3020163416038718,at or below seasonal naive,INFO,2025-01-12
+accuracy,Bias over 6 forecast origins,Claims cost,6M,Seasonal naive,-0.20449714756367524,,within ±10%,REVIEW,2025-01-12
+accuracy,"Error (WAPE) over 4 forecast origins, vs seasonal naive",Earned premium,12M,Seasonal naive,0.053563646494618686,0.053563646494618686,at or below seasonal naive,INFO,2025-01-12
+accuracy,Bias over 4 forecast origins,Earned premium,12M,Seasonal naive,-0.053563646494618686,,within ±10%,PASS,2025-01-12
+accuracy,"Error (WAPE) over 4 forecast origins, vs seasonal naive",Claim count,12M,Seasonal naive,0.1061478690915554,0.1061478690915554,at or below seasonal naive,INFO,2025-01-12
+accuracy,Bias over 4 forecast origins,Claim count,12M,Seasonal naive,-0.1061478690915554,,within ±10%,REVIEW,2025-01-12
+accuracy,"Error (WAPE) over 4 forecast origins, vs seasonal naive",Claims cost,12M,Seasonal naive,0.28047011371327624,0.28047011371327624,at or below seasonal naive,INFO,2025-01-12
+accuracy,Bias over 4 forecast origins,Claims cost,12M,Seasonal naive,-0.28047011371327624,,within ±10%,REVIEW,2025-01-12
+band,Months inside the P10-P90 band (each origin tested on a band from the others),Premium,,Seasonal naive,0.7575757575757576,,70% to 90%,PASS,2025-01-12
+band,Months inside the P10-P90 band (each origin tested on a band from the others),Claims,,Seasonal naive,0.7424242424242424,,70% to 90%,PASS,2025-01-12
+inputs,Earned premium rebuilt from policy dates / fact_earned_premium,Earned premium,,Seasonal naive,1.0000000112781557,,within ±1%,PASS,2025-01-12

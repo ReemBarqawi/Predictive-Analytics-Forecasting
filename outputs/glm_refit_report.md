@@ -15,15 +15,15 @@ _Refit on the synthetic DSS dataset. In-sample metrics only — real validation 
 
 ## Frequency model
 
-- Family: NegativeBinomial (log link, offset = log(EXPOSURE_YEARS))
+- Family: Poisson (log link, offset = log(EXPOSURE_YEARS))
 - Features: POLICY_TYPE_DESC, CLASS_DESC, SOURCE_DESC, ZONE, SUM_INSURED_BAND
-- Training rows: 20,871
-- Total coefficients (incl. intercept): 18
-- Significant at 5%: 7
-- AIC: 21,232
-- In-sample predicted claim count: 4,969.0
+- Training rows: 25,000
+- Total coefficients (incl. intercept): 19
+- Significant at 5%: 19
+- AIC: 1,038,241
+- In-sample predicted claim count: 0.0
 - Observed claim count: 4,850
-- In-sample bias: +2.45%
+- In-sample bias: -100.00%
 
 ## Severity model
 
@@ -31,18 +31,18 @@ _Refit on the synthetic DSS dataset. In-sample metrics only — real validation 
 - Target: ULTIMATE_CLAIM
 - Features: POLICY_TYPE_DESC, CLASS_DESC, SOURCE_DESC, ZONE, SUM_INSURED_BAND
 - Training rows: 4,521
-- Total coefficients (incl. intercept): 17
+- Total coefficients (incl. intercept): 15
 - Significant at 5%: 2
-- AIC: 96,597
-- In-sample predicted ultimate total: SAR 45,282,472
+- AIC: 96,645
+- In-sample predicted ultimate total: SAR 45,293,548
 - Observed ultimate total: SAR 45,327,394
-- In-sample bias: -0.10%
+- In-sample bias: -0.07%
 
 ## Definition-of-done check
 
 | Check | Target | Result |
 |---|---|---|
-| Frequency in-sample bias | within ±10% | PASS (2.5%) |
+| Frequency in-sample bias | within ±10% | FAIL (100.0%) |
 | Severity in-sample bias | within ±10% | PASS (0.1%) |
 | No ACC_TYPE_DESC in features | required | PASS |
 | Zone included | required | PASS |

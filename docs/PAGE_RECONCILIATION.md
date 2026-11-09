@@ -42,7 +42,8 @@ How it was made one number (2026-11-03, second pass):
   (retention)* step now includes the lapse, and the steps still add up to the scenario profit.
 - The What-If and Safe Zone cards' first column is titled **Today** (was *No change*); the profit rule
   reads *"Profit at least the no-price-change level"*, which is what the optimizer tests. Done by
-  wrapper measures `WI Impact HTML` / `Safe Zone Card HTML` over the hidden `… Body` originals.
+  wrapper measures `WI Impact HTML` / `Safe Zone Card HTML` over the hidden `… Body` originals. The Safe Zone
+  card's second column is titled **Next year** (was *Scenario*; changed 2026-11-09).
 - **Claims.** 49 policy-year-2024 records with **zero premium** (fleet headers, flat cancellations)
   had model frequencies of ~12.7 claims a year each: 2.09M of claims with no premium. The optimizer
   already dropped them; `05_segment_performance_by_year.py` now does the same (model claims only on
@@ -220,7 +221,7 @@ or last month), so the 12 months add up to the policy-year figures. Forecast 202
 
 The manager opens a flagged segment, drills through to Optimal Price, and sees **Today** (the same as the alert and Profitability), **If we do
 nothing**, and **Recommended**, on whole policies. All of it runs on one expected-claims figure. Every choice below was made for the demo and
-is flagged on screen (`Alert Period`, the card, `Manager Review Flag`). It replaces the severity rules in
+is tracked here and in `docs/TASK_PLAN.md`, not shown on report pages. It replaces the severity rules in
 `docs/ALERTS_METHOD.md` §2 for the demo.
 
 | Decision | What was chosen | Why | To reverse |
@@ -248,10 +249,10 @@ Forecast 2025: 382.9M premium, loss ratio 91.8%, underwriting result −25.7M. A
 - Only 7 of 22 segments reach the target within the retention floors, and the portfolio stays above 95%.
 - The 90% renewal and the price sensitivity are still assumptions, and they decide where the floors stop the price.
 - The target for the price is fixed at 95% in the optimizer; the report's target slider does not reprice.
-- The Safe Zone map's "Today" cell is the 0% / 0% scenario, so it shows next year's expected ratio, not today's.
+- The Safe Zone map's 0% / 0% cell is next year's renewal book with no price change (base lapse and claims trend), not today's book. **Relabelled 2026-11-09:** the cell reads *NO CHANGE*, the legend *No price change (next year)*, and the card's second column *Next year* (`Safe Zone Card HTML`); the card's *Today* column stays today's book.
 - 2024 reliable results come from claims so far with no allowance for late-reported claims; 2022 shows the in-year view can run 16 points above the whole-policy result.
 
-**Desktop steps.** Add `POLICY_TYPE_DESC` to Optimal Price's drill-through fields, add a card with `Manager Review Flag` on the pages without one, and save.
+**Desktop steps.** Add `POLICY_TYPE_DESC` to Optimal Price's drill-through fields, remove any card that shows `Manager Review Flag` (the measure is now blank), and save.
 
 ## 10. Test: adding claim development to expected claims (2026-11-04) — not applied
 

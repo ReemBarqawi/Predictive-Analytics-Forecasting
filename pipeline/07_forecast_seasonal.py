@@ -39,6 +39,7 @@ Outputs
   <facts>/fact_forecast_seasonal.csv   actual + forecast months (3M / 6M / 12M horizons)
   <facts>/fact_forecast_validation.csv every check: value, rule, PASS / REVIEW
   <facts>/fact_forecast_known.csv      claims recorded so far and policy time run, by month (chart tooltip)
+  <facts>/fact_forecast_total_miss.csv actual / forecast of each origin's horizon totals (card P10-P90 ranges)
   <reports>/seasonal_forecast_report.md
   <reports>/forecast_validation.png
 """
@@ -399,6 +400,38 @@ def band(ratios: pd.DataFrame, series: str) -> tuple[float, float, float]:
         inside.extend(r[own].dropna().between(low, high).tolist())
     low, high = r.quantile(BAND_QUANTILES)
     return float(low), float(high), float(np.mean(inside))
+
+
+def total_misses(bt: pd.DataFrame, model: str, shown: pd.DataFrame, written: bool,
+                 claims_scale: float = 1.0) -> pd.DataFrame:
+    """
+    Actual / forecast of each origin's 3 / 6 / 12-month totals, on the basis the page shows, for the
+    Forecast cards' P10-P90 ranges. Monthly bands cannot be added up: months do not all miss the same
+    way. Each measure is divided by its own median per horizon, so a range shows how far totals have
+    missed around the card's figure; the median itself is the past bias (kept in the RAW_MEDIAN_ columns).
+    Premium and claims stay paired by origin, so the page can derive the underwriting result per origin.
+    """
+    b = bt[bt["MODEL"] == model]
+    prem = (b["PRED_WRITTEN_PREMIUM"] if written else b["PRED_EARNED_PREMIUM"]).to_numpy()
+    actual = shown.reindex(b["MONTH"])
+    months = pd.DataFrame({
+        "ORIGIN": b["ORIGIN"].to_numpy(), "STEP": b["STEP"].to_numpy(),
+        "F_PREMIUM": prem, "F_CLAIMS": b["PRED_COST_RATE"].to_numpy() * prem * claims_scale,
+        "F_COUNT": (b["PRED_CLAIM_COUNT"] / b["PRED_EARNED_PREMIUM"]).to_numpy() * prem * claims_scale,
+        "A_PREMIUM": actual["EARNED_PREMIUM"].to_numpy(), "A_CLAIMS": actual["CLAIMS_COST"].to_numpy(),
+        "A_COUNT": actual["CLAIM_COUNT"].to_numpy()})
+    rows = []
+    for h in FORECAST_HORIZONS:
+        full = months[months["STEP"] <= h].groupby("ORIGIN").filter(lambda g: len(g) == h)
+        tot = full.drop(columns="STEP").groupby("ORIGIN").sum()
+        raw = pd.DataFrame({s: tot[f"A_{s}"] / tot[f"F_{s}"] for s in ("PREMIUM", "CLAIMS", "COUNT")})
+        raw["LOSS_RATIO"] = raw["CLAIMS"] / raw["PREMIUM"]
+        raw["SEVERITY"] = raw["CLAIMS"] / raw["COUNT"]
+        rows.append((raw / raw.median()).assign(HORIZON=f"{h}M", N_ORIGINS=len(raw),
+                                                **{f"RAW_MEDIAN_{c}": raw[c].median() for c in raw}).reset_index())
+    out = pd.concat(rows, ignore_index=True)
+    out["ORIGIN"] = out["ORIGIN"].astype(str)
+    return out
 
 
 def seasonal_index(claims: pd.Series) -> pd.Series:
@@ -772,6 +805,9 @@ def main() -> None:
     bands = {s: band(ratios, s) for s in ("PREMIUM", "CLAIMS")}
     for s, (low, high, coverage) in bands.items():
         _log(f"{s.lower()} band: x{low:.2f} to x{high:.2f} of the forecast; {coverage:.0%} of months inside, out of sample")
+    misses = total_misses(bt, model, shown_history, year_basis() == "written_year", scale)
+    misses.to_csv(FACTS_DIR / "fact_forecast_total_miss.csv", index=False, encoding="utf-8")
+    _log(f"card ranges: {misses.groupby('HORIZON')['ORIGIN'].nunique().to_dict()} origins by horizon")
 
     # Input check: the premium rebuilt from policy dates must equal fact_earned_premium
     premium_check = float(cohorts.sum().reindex(history.index, fill_value=0.0).sum()

@@ -1,0 +1,988 @@
+{
+  "$schema": "https://vega.github.io/schema/vega/v5.json",
+  "description": "Break-even sensitivity map (Safe Zone page). Provider: Vega. Fields: SZ Price Change[Price change], SZ Claims Change[Claims change] (both 'Don't summarize'), then the measures SZ Combined Ratio, SZ Profit, SZ Retention, Target Combined Ratio Value, Rec Portfolio Floor, Rec Price Change, Rec Combined Ratio, Rec Profit, Rec Retention and Rec Segments Priced. Each cell is the repricing engine's combined ratio (fact_scenario_results: retention response of the selected sensitivity case, commission, admin) after a price change (columns) and a claims cost change (rows). Cell colour follows the band (within target / above target but profitable / loss-making) and darkens with distance from the band edge, using the extremes actually in the grid; break-even (100%) is the only constant. A solid line traces the break-even edge, a dashed line the target edge, the no-price-change cell (0% / 0%: next year's renewal book with the base lapse and the claims trend, not today's book) is outlined, a small triangle marks prices where portfolio retention falls below the engine floor, and a star marks the optimizer's recommended price for the segments in context (fact_optimal_scenarios, same sensitivity case) in the top-right corner of the 0% claims cell nearest that price (the tooltip gives the exact figure); with several segments it is their exposure-weighted blend. Selection: click a cell to cross-filter the page (the Safe Zone Card HTML follows it), Ctrl+click adds cells, click empty space to clear. Turn on Deneb's Cross-filtering (Advanced) setting.",
+  "width": {
+    "signal": "boxW"
+  },
+  "height": {
+    "signal": "boxH"
+  },
+  "padding": {
+    "left": 6,
+    "right": 10,
+    "top": 6,
+    "bottom": 6
+  },
+  "autosize": {
+    "type": "fit",
+    "contains": "padding",
+    "resize": false
+  },
+  "background": "transparent",
+  "config": {
+    "text": {
+      "font": "Segoe UI"
+    },
+    "axis": {
+      "labelFont": "Segoe UI",
+      "titleFont": "Segoe UI",
+      "domain": false,
+      "ticks": false,
+      "labelColor": "#344054",
+      "titleColor": "#475467",
+      "labelFontSize": 12,
+      "titleFontSize": 12,
+      "titleFontWeight": 600,
+      "labelFontWeight": 600
+    },
+    "legend": {
+      "labelFont": "Segoe UI",
+      "titleFont": "Segoe UI",
+      "labelColor": "#344054",
+      "labelFontSize": 11.5,
+      "titleColor": "#475467",
+      "titleFontSize": 11,
+      "titleFontWeight": 600,
+      "layout": {
+        "bottom": {
+          "anchor": "start",
+          "direction": "vertical",
+          "margin": 8
+        }
+      },
+      "labelLimit": 220
+    },
+    "title": {
+      "font": "Segoe UI",
+      "subtitleFont": "Segoe UI"
+    }
+  },
+  "title": {
+    "text": "Break-even sensitivity map",
+    "subtitle": {
+      "signal": "subtitleLines"
+    },
+    "anchor": "start",
+    "frame": "group",
+    "offset": 10,
+    "fontSize": 16,
+    "fontWeight": 700,
+    "color": "#101828",
+    "subtitleFontSize": 12,
+    "subtitleColor": "#475467",
+    "subtitlePadding": 3
+  },
+  "signals": [
+    {
+      "name": "boxW",
+      "init": "containerSize()[0] || 700",
+      "on": [
+        {
+          "events": "window:resize",
+          "update": "containerSize()[0] || boxW"
+        }
+      ]
+    },
+    {
+      "name": "boxH",
+      "init": "containerSize()[1] || 480",
+      "on": [
+        {
+          "events": "window:resize",
+          "update": "containerSize()[1] || boxH"
+        }
+      ]
+    },
+    {
+      "name": "nRows",
+      "update": "length(data('dataset'))"
+    },
+    {
+      "name": "hasFields",
+      "update": "nRows > 0 && isDefined(data('dataset')[0]['Price change']) && isDefined(data('dataset')[0]['Claims change']) && isDefined(data('dataset')[0]['SZ Combined Ratio'])"
+    },
+    {
+      "name": "problem",
+      "update": "nRows == 0 ? 'No rows reached this visual. Add Price change, Claims change and the measures listed in the spec description.' : !hasFields ? 'Rows arrived without Price change, Claims change or SZ Combined Ratio. Check the field names in the Values well.' : ''"
+    },
+    {
+      "name": "target",
+      "update": "nRows > 0 && isValid(data('dataset')[0]['Target Combined Ratio Value']) ? data('dataset')[0]['Target Combined Ratio Value'] : 1"
+    },
+    {
+      "name": "crMin",
+      "update": "length(data('cells')) ? extent(pluck(data('cells'), 'cr'))[0] : 0.8"
+    },
+    {
+      "name": "crMax",
+      "update": "length(data('cells')) ? extent(pluck(data('cells'), 'cr'))[1] : 1.2"
+    },
+    {
+      "name": "subtitleLines",
+      "update": "boxW < 560 ? ['Combined ratio after a price change and a claims cost change.', 'Target ' + format(target, '.0%') + ' · break-even 100%' + (optShow ? ' · ★ optimal ' + format(optPrice, '+.0%') : '')] : ['Combined ratio after a price change (columns) and a claims cost change (rows).', 'Target ' + format(target, '.0%') + ' · break-even 100%' + (optShow ? ' · ★ optimal price ' + format(optPrice, '+.1%') + ' → combined ratio ' + format(optCr, '.1%') : '')]"
+    },
+    {
+      "name": "cellFont",
+      "update": "clamp(min(bandwidth('x') / 4.2, bandwidth('y') / 2.4), 10, 18)"
+    },
+    {
+      "name": "portFloor",
+      "update": "nRows > 0 && isValid(data('dataset')[0]['Rec Portfolio Floor']) ? data('dataset')[0]['Rec Portfolio Floor'] : 0"
+    },
+    {
+      "name": "optPrice",
+      "update": "nRows > 0 && isValid(data('dataset')[0]['Rec Price Change']) ? data('dataset')[0]['Rec Price Change'] : null"
+    },
+    {
+      "name": "optCr",
+      "update": "nRows > 0 && isValid(data('dataset')[0]['Rec Combined Ratio']) ? data('dataset')[0]['Rec Combined Ratio'] : null"
+    },
+    {
+      "name": "optProfit",
+      "update": "nRows > 0 && isValid(data('dataset')[0]['Rec Profit']) ? data('dataset')[0]['Rec Profit'] : null"
+    },
+    {
+      "name": "optRet",
+      "update": "nRows > 0 && isValid(data('dataset')[0]['Rec Retention']) ? data('dataset')[0]['Rec Retention'] : null"
+    },
+    {
+      "name": "optSegs",
+      "update": "nRows > 0 && isValid(data('dataset')[0]['Rec Segments Priced']) ? data('dataset')[0]['Rec Segments Priced'] : null"
+    },
+    {
+      "name": "pMin",
+      "update": "length(data('pcs')) ? extent(pluck(data('pcs'), 'Price change'))[0] : 0"
+    },
+    {
+      "name": "pMax",
+      "update": "length(data('pcs')) ? extent(pluck(data('pcs'), 'Price change'))[1] : 0"
+    },
+    {
+      "name": "optShow",
+      "update": "isValid(optPrice) && length(data('pcs')) > 1 && pMax > pMin && optPrice >= pMin - 1e-9 && optPrice <= pMax + 1e-9"
+    },
+    {
+      "name": "optNear",
+      "update": "optShow ? pMin + round((optPrice - pMin) / (pMax - pMin) * (length(data('pcs')) - 1)) * (pMax - pMin) / (length(data('pcs')) - 1) : null"
+    },
+    {
+      "name": "pickCell",
+      "value": null,
+      "on": [
+        {
+          "events": {
+            "type": "click",
+            "markname": "cell"
+          },
+          "update": "pbiCrossFilterApply(event)"
+        },
+        {
+          "events": "click[!event.item || !event.item.mark || (event.item.mark.name !== 'cell' && event.item.mark.name !== 'optMark')]",
+          "update": "pbiCrossFilterClear()"
+        }
+      ]
+    }
+  ],
+  "data": [
+    {
+      "name": "dataset"
+    },
+    {
+      "name": "cells",
+      "source": "dataset",
+      "transform": [
+        {
+          "type": "filter",
+          "expr": "isValid(datum['SZ Combined Ratio']) && isValid(datum['Price change']) && isValid(datum['Claims change'])"
+        },
+        {
+          "type": "formula",
+          "as": "cr",
+          "expr": "datum['SZ Combined Ratio']"
+        },
+        {
+          "type": "formula",
+          "as": "band",
+          "expr": "datum.cr <= target ? 'in' : datum.cr <= 1 ? 'watch' : 'loss'"
+        },
+        {
+          "type": "formula",
+          "as": "isNoChange",
+          "expr": "abs(datum['Price change']) < 1e-9 && abs(datum['Claims change']) < 1e-9"
+        },
+        {
+          "type": "formula",
+          "as": "lowRet",
+          "expr": "portFloor > 0 && isValid(datum['SZ Retention']) && datum['SZ Retention'] < portFloor - 1e-6"
+        },
+        {
+          "type": "formula",
+          "as": "dim",
+          "expr": "datum.__selected__ === 'off' ? 0.6 : 1"
+        }
+      ]
+    },
+    {
+      "name": "pcs",
+      "source": "cells",
+      "transform": [
+        {
+          "type": "aggregate",
+          "groupby": [
+            "Price change"
+          ]
+        },
+        {
+          "type": "window",
+          "sort": {
+            "field": "Price change"
+          },
+          "ops": [
+            "row_number"
+          ],
+          "as": [
+            "pi"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ccs",
+      "source": "cells",
+      "transform": [
+        {
+          "type": "aggregate",
+          "groupby": [
+            "Claims change"
+          ]
+        },
+        {
+          "type": "window",
+          "sort": {
+            "field": "Claims change"
+          },
+          "ops": [
+            "row_number"
+          ],
+          "as": [
+            "ci"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "grid",
+      "source": "cells",
+      "transform": [
+        {
+          "type": "project",
+          "fields": [
+            "Price change",
+            "Claims change",
+            "cr"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "pcs",
+          "key": "Price change",
+          "fields": [
+            "Price change"
+          ],
+          "values": [
+            "pi"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ccs",
+          "key": "Claims change",
+          "fields": [
+            "Claims change"
+          ],
+          "values": [
+            "ci"
+          ]
+        },
+        {
+          "type": "formula",
+          "as": "key",
+          "expr": "datum.pi + '|' + datum.ci"
+        },
+        {
+          "type": "formula",
+          "as": "rKey",
+          "expr": "(datum.pi + 1) + '|' + datum.ci"
+        },
+        {
+          "type": "formula",
+          "as": "dKey",
+          "expr": "datum.pi + '|' + (datum.ci + 1)"
+        }
+      ]
+    },
+    {
+      "name": "vEdges",
+      "source": "grid",
+      "transform": [
+        {
+          "type": "lookup",
+          "from": "grid",
+          "key": "key",
+          "fields": [
+            "rKey"
+          ],
+          "values": [
+            "cr"
+          ],
+          "as": [
+            "nCr"
+          ]
+        },
+        {
+          "type": "filter",
+          "expr": "isValid(datum.nCr)"
+        },
+        {
+          "type": "formula",
+          "as": "be",
+          "expr": "(datum.cr <= 1) !== (datum.nCr <= 1)"
+        },
+        {
+          "type": "formula",
+          "as": "tg",
+          "expr": "target < 1 && (datum.cr <= target) !== (datum.nCr <= target)"
+        }
+      ]
+    },
+    {
+      "name": "hEdges",
+      "source": "grid",
+      "transform": [
+        {
+          "type": "lookup",
+          "from": "grid",
+          "key": "key",
+          "fields": [
+            "dKey"
+          ],
+          "values": [
+            "cr"
+          ],
+          "as": [
+            "nCr"
+          ]
+        },
+        {
+          "type": "filter",
+          "expr": "isValid(datum.nCr)"
+        },
+        {
+          "type": "formula",
+          "as": "be",
+          "expr": "(datum.cr <= 1) !== (datum.nCr <= 1)"
+        },
+        {
+          "type": "formula",
+          "as": "tg",
+          "expr": "target < 1 && (datum.cr <= target) !== (datum.nCr <= target)"
+        }
+      ]
+    },
+    {
+      "name": "problemRows",
+      "values": [
+        {}
+      ],
+      "transform": [
+        {
+          "type": "filter",
+          "expr": "problem != ''"
+        }
+      ]
+    },
+    {
+      "name": "optRows",
+      "transform": [
+        {
+          "type": "filter",
+          "expr": "optShow && abs(datum['Claims change']) < 1e-9 && abs(datum['Price change'] - optNear) < 1e-6"
+        }
+      ],
+      "source": "cells"
+    }
+  ],
+  "scales": [
+    {
+      "name": "x",
+      "type": "band",
+      "domain": {
+        "data": "cells",
+        "field": "Price change",
+        "sort": true
+      },
+      "range": "width",
+      "paddingInner": 0.06
+    },
+    {
+      "name": "y",
+      "type": "band",
+      "domain": {
+        "data": "cells",
+        "field": "Claims change",
+        "sort": true
+      },
+      "range": "height",
+      "paddingInner": 0.08
+    },
+    {
+      "name": "inFill",
+      "type": "linear",
+      "domain": {
+        "signal": "[target, min(crMin, target - 0.0001)]"
+      },
+      "range": [
+        "#E3F4E8",
+        "#7CC995"
+      ],
+      "clamp": true
+    },
+    {
+      "name": "watchFill",
+      "type": "linear",
+      "domain": {
+        "signal": "[min(target, 1), 1]"
+      },
+      "range": [
+        "#FEF0C7",
+        "#FDD97A"
+      ],
+      "clamp": true
+    },
+    {
+      "name": "lossFill",
+      "type": "linear",
+      "domain": {
+        "signal": "[1, max(crMax, 1.0001)]"
+      },
+      "range": [
+        "#FEE4E2",
+        "#F97066"
+      ],
+      "clamp": true
+    },
+    {
+      "name": "bandLegend",
+      "type": "ordinal",
+      "domain": {
+        "signal": "boxW < 560 ? ['Within target (≤ ' + format(target, '.0%') + ')', 'Above target', 'Loss (> 100%)'] : ['Within target (≤ ' + format(target, '.0%') + ')', 'Profitable, above target', 'Loss-making (> 100%)']"
+      },
+      "range": [
+        "#A6E1BC",
+        "#FEDF89",
+        "#FDA29B"
+      ]
+    },
+    {
+      "name": "markLegend",
+      "type": "ordinal",
+      "domain": [
+        "Break-even edge",
+        "Target edge",
+        "No price change (next year)",
+        "Below retention floor",
+        "Optimal price"
+      ],
+      "range": [
+        "#101828",
+        "#067647",
+        "#101828",
+        "#344054",
+        "#101828"
+      ]
+    },
+    {
+      "name": "markDash",
+      "type": "ordinal",
+      "domain": [
+        "Break-even edge",
+        "Target edge",
+        "No price change (next year)",
+        "Below retention floor",
+        "Optimal price"
+      ],
+      "range": [
+        [],
+        [
+          5,
+          3
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "name": "markShape",
+      "type": "ordinal",
+      "domain": [
+        "Break-even edge",
+        "Target edge",
+        "No price change (next year)",
+        "Below retention floor",
+        "Optimal price"
+      ],
+      "range": [
+        "stroke",
+        "stroke",
+        "square",
+        "triangle-down",
+        "M0,-1L0.2245,-0.309L0.951,-0.309L0.363,0.118L0.588,0.809L0,0.382L-0.588,0.809L-0.363,0.118L-0.951,-0.309L-0.2245,-0.309Z"
+      ]
+    }
+  ],
+  "axes": [
+    {
+      "orient": "top",
+      "scale": "x",
+      "title": "Price change",
+      "titlePadding": 8,
+      "labelPadding": 6,
+      "encode": {
+        "labels": {
+          "update": {
+            "text": {
+              "signal": "abs(datum.value) < 1e-9 ? '0%' : format(datum.value, '+.0%')"
+            }
+          }
+        }
+      }
+    },
+    {
+      "orient": "left",
+      "scale": "y",
+      "title": "Claims cost change",
+      "titlePadding": 10,
+      "labelPadding": 8,
+      "encode": {
+        "labels": {
+          "update": {
+            "text": {
+              "signal": "abs(datum.value) < 1e-9 ? '0%' : format(datum.value, '+.0%')"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "legends": [
+    {
+      "fill": "bandLegend",
+      "title": "Combined ratio",
+      "orient": "bottom",
+      "direction": "horizontal",
+      "symbolType": "square",
+      "symbolSize": 140,
+      "columnPadding": 16,
+      "symbolStrokeWidth": 0,
+      "columns": {
+        "signal": "boxW < 560 ? 2 : 0"
+      },
+      "titleOrient": "left",
+      "titleLimit": 110,
+      "titleAnchor": "start",
+      "offset": 14
+    },
+    {
+      "stroke": "markLegend",
+      "strokeDash": "markDash",
+      "shape": "markShape",
+      "title": "Markers",
+      "orient": "bottom",
+      "direction": "horizontal",
+      "symbolSize": 160,
+      "symbolStrokeWidth": 2.5,
+      "columnPadding": 16,
+      "encode": {
+        "symbols": {
+          "update": {
+            "fill": {
+              "signal": "datum.label === 'Below retention floor' || datum.label === 'Optimal price' ? (datum.label === 'Optimal price' ? '#101828' : '#344054') : 'transparent'"
+            },
+            "strokeWidth": {
+              "signal": "datum.label === 'Below retention floor' ? 0 : datum.label === 'Optimal price' ? 0 : 2.5"
+            }
+          }
+        }
+      },
+      "columns": {
+        "signal": "boxW < 560 ? 2 : boxW < 780 ? 3 : 0"
+      },
+      "titleOrient": "left",
+      "titleLimit": 110,
+      "titleAnchor": "start",
+      "offset": 14
+    }
+  ],
+  "marks": [
+    {
+      "type": "rect",
+      "name": "cell",
+      "from": {
+        "data": "cells"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "scale": "x",
+            "field": "Price change"
+          },
+          "width": {
+            "scale": "x",
+            "band": 1
+          },
+          "y": {
+            "scale": "y",
+            "field": "Claims change"
+          },
+          "height": {
+            "scale": "y",
+            "band": 1
+          },
+          "cornerRadius": {
+            "value": 3
+          },
+          "cursor": {
+            "value": "pointer"
+          },
+          "fill": {
+            "signal": "datum.band === 'in' ? scale('inFill', datum.cr) : datum.band === 'watch' ? scale('watchFill', datum.cr) : scale('lossFill', datum.cr)"
+          },
+          "opacity": {
+            "field": "dim"
+          },
+          "stroke": {
+            "signal": "datum.__selected__ === 'on' ? '#2E90FA' : datum.isNoChange ? '#101828' : null"
+          },
+          "strokeWidth": {
+            "signal": "datum.__selected__ === 'on' ? 3.5 : datum.isNoChange ? 2.5 : 0"
+          },
+          "tooltip": {
+            "signal": "{'Price change': format(datum['Price change'], '+.0%'), 'Claims cost change': format(datum['Claims change'], '+.0%'), 'Combined ratio': format(datum.cr, '.1%'), 'Buffer to break-even': format((1 - datum.cr) * 100, '+.1f') + ' pts', 'UW profit': isValid(datum['SZ Profit']) ? format(datum['SZ Profit'], ',.0f') : '-', 'Customers kept': isValid(datum['SZ Retention']) ? format(datum['SZ Retention'], '.1%') : '-', 'Zone': datum.band === 'in' ? 'Within target' : datum.band === 'watch' ? 'Profitable, above target' : 'Loss-making'}"
+          }
+        },
+        "hover": {
+          "stroke": {
+            "signal": "datum.__selected__ === 'on' ? '#2E90FA' : '#475467'"
+          },
+          "strokeWidth": {
+            "signal": "datum.__selected__ === 'on' ? 3.5 : 2"
+          }
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {
+        "data": "cell"
+      },
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "datum.x + datum.width / 2"
+          },
+          "y": {
+            "signal": "datum.y + datum.height / 2"
+          },
+          "align": {
+            "value": "center"
+          },
+          "baseline": {
+            "value": "middle"
+          },
+          "fontSize": {
+            "signal": "cellFont"
+          },
+          "fontWeight": {
+            "signal": "datum.datum.isNoChange ? 800 : 600"
+          },
+          "fill": {
+            "signal": "datum.datum.band === 'in' ? '#054F31' : datum.datum.band === 'watch' ? '#7A2E0E' : '#7A271A'"
+          },
+          "opacity": {
+            "signal": "datum.datum.dim"
+          },
+          "text": {
+            "signal": "format(datum.datum.cr * 100, '.1f')"
+          }
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {
+        "data": "cell"
+      },
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "datum.x + 5"
+          },
+          "y": {
+            "signal": "datum.y + 4"
+          },
+          "baseline": {
+            "value": "top"
+          },
+          "fontSize": {
+            "signal": "max(7, min(cellFont * 0.6, (datum.width - 10) / 6.2))"
+          },
+          "limit": {
+            "signal": "datum.width - 6"
+          },
+          "fontWeight": {
+            "value": 700
+          },
+          "fill": {
+            "value": "#101828"
+          },
+          "text": {
+            "signal": "datum.datum.isNoChange && datum.height > 44 ? 'NO CHANGE' : ''"
+          }
+        }
+      }
+    },
+    {
+      "type": "symbol",
+      "from": {
+        "data": "cell"
+      },
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "datum.x + datum.width - 8"
+          },
+          "y": {
+            "signal": "datum.y + 8"
+          },
+          "shape": {
+            "value": "triangle-down"
+          },
+          "size": {
+            "signal": "clamp(cellFont * 4, 30, 70)"
+          },
+          "fill": {
+            "value": "#344054"
+          },
+          "opacity": {
+            "signal": "datum.datum.lowRet ? datum.datum.dim : 0"
+          }
+        }
+      }
+    },
+    {
+      "type": "rule",
+      "from": {
+        "data": "vEdges"
+      },
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "scale('x', datum['Price change']) + bandwidth('x') * (1 + 0.06 / 0.94 / 2)"
+          },
+          "y": {
+            "signal": "scale('y', datum['Claims change']) - 2"
+          },
+          "y2": {
+            "signal": "scale('y', datum['Claims change']) + bandwidth('y') + 2"
+          },
+          "stroke": {
+            "value": "#067647"
+          },
+          "strokeWidth": {
+            "value": 2.5
+          },
+          "strokeDash": {
+            "value": [
+              5,
+              3
+            ]
+          },
+          "strokeOpacity": {
+            "signal": "datum.tg ? 1 : 0"
+          }
+        }
+      }
+    },
+    {
+      "type": "rule",
+      "from": {
+        "data": "hEdges"
+      },
+      "interactive": false,
+      "encode": {
+        "update": {
+          "y": {
+            "signal": "scale('y', datum['Claims change']) + bandwidth('y') * (1 + 0.08 / 0.92 / 2)"
+          },
+          "x": {
+            "signal": "scale('x', datum['Price change']) - 2"
+          },
+          "x2": {
+            "signal": "scale('x', datum['Price change']) + bandwidth('x') + 2"
+          },
+          "stroke": {
+            "value": "#067647"
+          },
+          "strokeWidth": {
+            "value": 2.5
+          },
+          "strokeDash": {
+            "value": [
+              5,
+              3
+            ]
+          },
+          "strokeOpacity": {
+            "signal": "datum.tg ? 1 : 0"
+          }
+        }
+      }
+    },
+    {
+      "type": "rule",
+      "from": {
+        "data": "vEdges"
+      },
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "scale('x', datum['Price change']) + bandwidth('x') * (1 + 0.06 / 0.94 / 2)"
+          },
+          "y": {
+            "signal": "scale('y', datum['Claims change']) - 2"
+          },
+          "y2": {
+            "signal": "scale('y', datum['Claims change']) + bandwidth('y') + 2"
+          },
+          "stroke": {
+            "value": "#101828"
+          },
+          "strokeWidth": {
+            "value": 3
+          },
+          "strokeCap": {
+            "value": "round"
+          },
+          "strokeOpacity": {
+            "signal": "datum.be ? 1 : 0"
+          }
+        }
+      }
+    },
+    {
+      "type": "rule",
+      "from": {
+        "data": "hEdges"
+      },
+      "interactive": false,
+      "encode": {
+        "update": {
+          "y": {
+            "signal": "scale('y', datum['Claims change']) + bandwidth('y') * (1 + 0.08 / 0.92 / 2)"
+          },
+          "x": {
+            "signal": "scale('x', datum['Price change']) - 2"
+          },
+          "x2": {
+            "signal": "scale('x', datum['Price change']) + bandwidth('x') + 2"
+          },
+          "stroke": {
+            "value": "#101828"
+          },
+          "strokeWidth": {
+            "value": 3
+          },
+          "strokeCap": {
+            "value": "round"
+          },
+          "strokeOpacity": {
+            "signal": "datum.be ? 1 : 0"
+          }
+        }
+      }
+    },
+    {
+      "type": "symbol",
+      "name": "optMark",
+      "from": {
+        "data": "optRows"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "scale('x', datum['Price change']) + bandwidth('x') - (datum.lowRet ? 22 : 9)"
+          },
+          "y": {
+            "signal": "scale('y', datum['Claims change']) + 9"
+          },
+          "shape": {
+            "value": "M0,-1L0.2245,-0.309L0.951,-0.309L0.363,0.118L0.588,0.809L0,0.382L-0.588,0.809L-0.363,0.118L-0.951,-0.309L-0.2245,-0.309Z"
+          },
+          "size": {
+            "signal": "clamp(cellFont * 14, 120, 220)"
+          },
+          "fill": {
+            "value": "#101828"
+          },
+          "stroke": {
+            "value": "#FFFFFF"
+          },
+          "strokeWidth": {
+            "value": 1
+          },
+          "tooltip": {
+            "signal": "{'title': 'Optimal price (engine recommendation)', 'Price change': format(optPrice, '+.1%'), 'Combined ratio': format(optCr, '.1%'), 'UW profit': isValid(optProfit) ? format(optProfit, ',.0f') : '-', 'Customers kept': isValid(optRet) ? format(optRet, '.1%') : '-', 'Basis': isValid(optSegs) && optSegs > 1 ? 'Exposure-weighted blend of ' + format(optSegs, ',.0f') + ' segments, each at its own optimum' : 'Selected segment, current claims cost'}"
+          },
+          "opacity": {
+            "field": "dim"
+          }
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {
+        "data": "problemRows"
+      },
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "width / 2"
+          },
+          "y": {
+            "signal": "height / 2"
+          },
+          "align": {
+            "value": "center"
+          },
+          "fontSize": {
+            "value": 13
+          },
+          "fill": {
+            "value": "#B42318"
+          },
+          "text": {
+            "signal": "problem"
+          }
+        }
+      }
+    }
+  ]
+}

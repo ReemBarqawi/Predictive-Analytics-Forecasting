@@ -1,0 +1,141 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "data": { "name": "dataset" },
+  "width": 180,
+  "height": 150,
+  "padding": 0,
+  "autosize": { "type": "none" },
+
+  "transform": [
+    { "calculate": "datum['Curve Rec Marker'] != null ? 1 : 0", "as": "_isRec" },
+    {
+      "aggregate": [
+        { "op": "max", "field": "premium_change", "as": "pc" },
+        { "op": "max", "field": "_isRec", "as": "isRec" },
+        { "op": "max", "field": "Curve Is Feasible", "as": "feasible" },
+        { "op": "max", "field": "Curve Profit", "as": "profit" },
+        { "op": "max", "field": "Curve Profit Delta", "as": "delta" },
+        { "op": "max", "field": "Curve Retained Pct", "as": "retained" },
+        { "op": "max", "field": "Curve Floor", "as": "floor" },
+        { "op": "max", "field": "Curve Status Label", "as": "statusLabel" },
+        { "op": "max", "field": "Curve Status Badge", "as": "statusBadge" },
+        { "op": "max", "field": "Segment Label", "as": "segment" }
+      ]
+    },
+    { "calculate": "datum.isRec == 1 ? '★ Best pick' : (datum.feasible == 1 ? '✓ Safe' : '✗ At risk')", "as": "status" },
+    { "calculate": "datum.statusLabel", "as": "context" },
+    { "calculate": "datum.isRec == 1 ? '#ECFDF3' : (datum.feasible == 1 ? '#F2F4F7' : '#FEF3F2')", "as": "pillBg" },
+    { "calculate": "datum.isRec == 1 ? '#067647' : (datum.feasible == 1 ? '#344054' : '#B42318')", "as": "pillFg" },
+    { "calculate": "format(datum.pc, '+.0%')", "as": "pcTxt" },
+    { "calculate": "'SAR ' + format(datum.profit, ',.0f')", "as": "profitTxt" },
+    { "calculate": "(datum.delta >= 0 ? '+' : '') + format(datum.delta, ',.0f')", "as": "deltaTxt" },
+    { "calculate": "datum.delta >= 0 ? '#067647' : '#B42318'", "as": "deltaColor" },
+    { "calculate": "format(datum.retained, '.1%')", "as": "retTxt" },
+    { "calculate": "datum.retained >= datum.floor ? '#101828' : '#B42318'", "as": "retColor" },
+    { "calculate": "format(datum.floor, '.0%')", "as": "floorTxt" }
+  ],
+
+  "layer": [
+    {
+      "description": "card background",
+      "mark": { "type": "rect", "fill": "#FFFFFF", "stroke": "#EAECF0", "strokeWidth": 1, "cornerRadius": 8 },
+      "encoding": {
+        "x": { "value": 0.5 }, "x2": { "value": 179.5 },
+        "y": { "value": 0.5 }, "y2": { "value": 149.5 }
+      }
+    },
+
+    {
+      "description": "segment in context (Segment Label measure), cut with an ellipsis if it is too long",
+      "mark": { "type": "text", "align": "left", "baseline": "middle", "fontSize": 7.5, "fontWeight": 600, "color": "#667085", "limit": 162 },
+      "encoding": { "x": { "value": 10 }, "y": { "value": 13 }, "text": { "field": "segment" } }
+    },
+    {
+      "mark": { "type": "text", "align": "left", "baseline": "middle", "fontSize": 15, "fontWeight": 700, "color": "#101828" },
+      "encoding": { "x": { "value": 10 }, "y": { "value": 30 }, "text": { "field": "pcTxt" } }
+    },
+
+    {
+      "description": "status pill",
+      "mark": { "type": "rect", "cornerRadius": 7 },
+      "encoding": {
+        "x": { "value": 104 }, "x2": { "value": 170 },
+        "y": { "value": 22 }, "y2": { "value": 38 },
+        "fill": { "field": "pillBg", "type": "nominal", "scale": null }
+      }
+    },
+    {
+      "mark": { "type": "text", "align": "center", "baseline": "middle", "fontSize": 8, "fontWeight": 600 },
+      "encoding": {
+        "x": { "value": 137 }, "y": { "value": 30 },
+        "text": { "field": "status" },
+        "color": { "field": "pillFg", "type": "nominal", "scale": null }
+      }
+    },
+
+    {
+      "description": "reason: two lines from Curve Status Label, split on the line break",
+      "mark": { "type": "text", "align": "left", "baseline": "top", "fontSize": 7.5, "lineBreak": "\n", "lineHeight": 10, "limit": 162 },
+      "encoding": {
+        "x": { "value": 10 }, "y": { "value": 43 },
+        "text": { "field": "context" },
+        "color": { "field": "pillFg", "type": "nominal", "scale": null }
+      }
+    },
+
+    {
+      "mark": { "type": "rule", "stroke": "#EAECF0", "strokeWidth": 1 },
+      "encoding": { "x": { "value": 10 }, "x2": { "value": 170 }, "y": { "value": 68 } }
+    },
+
+    {
+      "mark": { "type": "text", "align": "left", "baseline": "middle", "fontSize": 8.5, "color": "#667085" },
+      "encoding": { "x": { "value": 10 }, "y": { "value": 82 }, "text": { "value": "Profit" } }
+    },
+    {
+      "mark": { "type": "text", "align": "right", "baseline": "middle", "fontSize": 9, "fontWeight": 600, "color": "#101828" },
+      "encoding": { "x": { "value": 170 }, "y": { "value": 82 }, "text": { "field": "profitTxt" } }
+    },
+
+    {
+      "mark": { "type": "text", "align": "left", "baseline": "middle", "fontSize": 8.5, "color": "#667085" },
+      "encoding": { "x": { "value": 10 }, "y": { "value": 99 }, "text": { "value": "Extra profit vs today" } }
+    },
+    {
+      "mark": { "type": "text", "align": "right", "baseline": "middle", "fontSize": 9, "fontWeight": 600 },
+      "encoding": {
+        "x": { "value": 170 }, "y": { "value": 99 },
+        "text": { "field": "deltaTxt" },
+        "color": { "field": "deltaColor", "type": "nominal", "scale": null }
+      }
+    },
+
+    {
+      "mark": { "type": "text", "align": "left", "baseline": "middle", "fontSize": 8.5, "color": "#667085" },
+      "encoding": { "x": { "value": 10 }, "y": { "value": 116 }, "text": { "value": "Customers retained" } }
+    },
+    {
+      "mark": { "type": "text", "align": "right", "baseline": "middle", "fontSize": 9, "fontWeight": 600 },
+      "encoding": {
+        "x": { "value": 170 }, "y": { "value": 116 },
+        "text": { "field": "retTxt" },
+        "color": { "field": "retColor", "type": "nominal", "scale": null }
+      }
+    },
+
+    {
+      "mark": { "type": "text", "align": "left", "baseline": "middle", "fontSize": 8.5, "color": "#667085" },
+      "encoding": { "x": { "value": 10 }, "y": { "value": 133 }, "text": { "value": "Keep at least" } }
+    },
+    {
+      "mark": { "type": "text", "align": "right", "baseline": "middle", "fontSize": 9, "fontWeight": 600, "color": "#101828" },
+      "encoding": { "x": { "value": 170 }, "y": { "value": 133 }, "text": { "field": "floorTxt" } }
+    }
+  ],
+
+  "config": {
+    "font": "Segoe UI, system-ui, sans-serif",
+    "view": { "stroke": null, "fill": null },
+    "background": null
+  }
+}

@@ -1,0 +1,352 @@
+{
+  "$schema": "https://vega.github.io/schema/vega/v5.json",
+  "description": "Underwriting performance by segment (Profitability page). Provider: Vega. Fields: dim_zone_summary[ZONE], dim_business_class[CLASS_DESC], then the measures Profit Margin, Loss Ratio, Combined Ratio, Credible Margin, Total Earned Premium, Total UW Profit, Perf Status, Perf Status Color, Perf Data Tag, and optionally Perf Color Rule Text (footnote) and a Currency Label measure (amounts show without a currency when it is absent or blank). Every colour comes from the Perf measures, so the cards follow the Target Combined Ratio setting; nothing here is a threshold. Cards show actual ratios so they always agree with the UW profit amount. Perf Data Tag is the same sentence as Alert Evidence ('High / Medium / Low confidence: based on N claims in <year>.'); Medium and Low cards are faded so trusted results stand out, and their credibility-blended margin appears in the tooltip. Zones and classes with no premium anywhere are left out; a zone/class pair with no premium inside the grid shows 'No business written'.",
+  "width": {"signal": "max(500, boxW - 150, nZones * minCardW)"},
+  "height": {"signal": "max(300, boxH - 88, nClasses * minCardH)"},
+  "padding": {"left": 4, "right": 10, "top": 6, "bottom": 30},
+  "autosize": {"type": "pad", "resize": false},
+  "background": "transparent",
+  "config": {
+    "text": {"font": "Segoe UI"},
+    "axis": {"labelFont": "Segoe UI", "domain": false, "ticks": false}
+  },
+  "signals": [
+    {"name": "boxW", "init": "containerSize()[0] || 1100", "on": [{"events": "window:resize", "update": "containerSize()[0] || boxW"}]},
+    {"name": "boxH", "init": "containerSize()[1] || 600", "on": [{"events": "window:resize", "update": "containerSize()[1] || boxH"}]},
+    {"name": "nRows", "update": "length(data('dataset'))"},
+    {"name": "hasFields", "update": "nRows > 0 && isDefined(data('dataset')[0]['Profit Margin']) && isDefined(data('dataset')[0]['Total Earned Premium']) && isDefined(data('dataset')[0]['Perf Status Color'])"},
+    {"name": "problem", "update": "nRows == 0 ? 'No rows reached this visual. Add ZONE, CLASS_DESC and the measures listed in the spec description.' : !hasFields ? 'Rows arrived without Profit Margin, Total Earned Premium or Perf Status Color. Check the field names in the Values well.' : ''"},
+    {"name": "ruleText", "update": "nRows > 0 && isDefined(data('dataset')[0]['Perf Color Rule Text']) ? data('dataset')[0]['Perf Color Rule Text'] : ''"},
+    {"name": "cur", "update": "nRows > 0 && isValid(data('dataset')[0]['Currency Label']) && data('dataset')[0]['Currency Label'] != '' ? data('dataset')[0]['Currency Label'] + ' ' : ''"},
+    {"name": "pad", "value": 14},
+    {"name": "minCardW", "value": 165, "description": "Narrowest column (card plus gap) the card text fits in; more zones than the visual can hold scroll sideways."},
+    {"name": "minCardH", "value": 185, "description": "Shortest row (card plus gap) the card text fits in; more classes than the visual can hold scroll down."},
+    {"name": "nZones", "update": "length(data('zoneList'))"},
+    {"name": "nClasses", "update": "length(data('classList'))"}
+  ],
+  "data": [
+    {"name": "dataset"},
+    {
+      "name": "bizRows",
+      "source": "dataset",
+      "transform": [{"type": "filter", "expr": "hasFields && isValid(datum['Total Earned Premium']) && datum['Total Earned Premium'] > 0"}]
+    },
+    {"name": "zoneList", "source": "bizRows", "transform": [{"type": "aggregate", "groupby": ["ZONE"]}]},
+    {"name": "classList", "source": "bizRows", "transform": [{"type": "aggregate", "groupby": ["CLASS_DESC"]}]},
+    {
+      "name": "cards",
+      "source": "dataset",
+      "transform": [
+        {"type": "filter", "expr": "hasFields && indata('zoneList', 'ZONE', datum.ZONE) && indata('classList', 'CLASS_DESC', datum.CLASS_DESC)"},
+        {"type": "formula", "as": "noBiz", "expr": "!isValid(datum['Total Earned Premium']) || datum['Total Earned Premium'] <= 0"},
+        {"type": "formula", "as": "col", "expr": "datum['Perf Status Color'] || '#475467'"},
+        {"type": "formula", "as": "sarPrem", "expr": "abs(datum['Total Earned Premium']) >= 1e9 ? format(datum['Total Earned Premium'] / 1e9, ',.2f') + 'B' : abs(datum['Total Earned Premium']) >= 1e6 ? format(datum['Total Earned Premium'] / 1e6, ',.1f') + 'M' : format(datum['Total Earned Premium'] / 1e3, ',.0f') + 'K'"},
+        {"type": "formula", "as": "sarProfit", "expr": "abs(datum['Total UW Profit']) >= 1e9 ? format(datum['Total UW Profit'] / 1e9, ',.2f') + 'B' : abs(datum['Total UW Profit']) >= 1e6 ? format(datum['Total UW Profit'] / 1e6, ',.1f') + 'M' : format(datum['Total UW Profit'] / 1e3, ',.0f') + 'K'"},
+        {"type": "formula", "as": "conf", "expr": "datum['Perf Data Tag'] ? split(datum['Perf Data Tag'], ' ')[0] : 'High'"},
+        {"type": "formula", "as": "confNote", "expr": "datum['Perf Data Tag'] ? replace(datum['Perf Data Tag'], regexp('^[A-Za-z]+ confidence: based on '), '') : ''"},
+        {"type": "formula", "as": "confCol", "expr": "datum.conf === 'Low' ? '#B54708' : datum.conf === 'Medium' ? '#667085' : '#027A48'"},
+        {"type": "formula", "as": "sel", "expr": "datum.__selected__ === 'off' ? 0.45 : 1"},
+        {"type": "formula", "as": "dim", "expr": "datum.sel * (datum.conf === 'Low' ? 0.65 : datum.conf === 'Medium' ? 0.85 : 1)"}
+      ]
+    },
+    {"name": "live", "source": "cards", "transform": [{"type": "filter", "expr": "!datum.noBiz"}]},
+    {"name": "empty", "source": "cards", "transform": [{"type": "filter", "expr": "datum.noBiz"}]}
+  ],
+  "scales": [
+    {"name": "x", "type": "band", "domain": {"data": "cards", "field": "ZONE", "sort": true}, "range": [0, {"signal": "width"}], "paddingInner": 0.06, "paddingOuter": 0},
+    {"name": "y", "type": "band", "domain": {"data": "cards", "field": "CLASS_DESC", "sort": true}, "range": [0, {"signal": "height"}], "paddingInner": 0.08, "paddingOuter": 0}
+  ],
+  "axes": [
+    {"scale": "x", "orient": "top", "labelFontSize": 13, "labelFontWeight": 600, "labelColor": "#101828", "labelPadding": 10},
+    {"scale": "y", "orient": "left", "labelFontSize": 12, "labelFontWeight": 600, "labelColor": "#101828", "labelPadding": 12, "labelLimit": 130}
+  ],
+  "marks": [
+    {
+      "name": "card",
+      "type": "rect",
+      "from": {"data": "cards"},
+      "encode": {
+        "update": {
+          "x": {"scale": "x", "field": "ZONE"},
+          "width": {"scale": "x", "band": 1},
+          "y": {"scale": "y", "field": "CLASS_DESC"},
+          "height": {"scale": "y", "band": 1},
+          "cornerRadius": {"value": 8},
+          "cursor": {"value": "pointer"},
+          "fill": {"signal": "datum.__selected__ === 'on' ? '#F4F8FB' : datum.noBiz || datum.conf !== 'High' ? '#FAFAFB' : '#FFFFFF'"},
+          "stroke": {"signal": "datum.__selected__ === 'on' ? '#263238' : '#E4E7EC'"},
+          "strokeWidth": {"signal": "datum.__selected__ === 'on' ? 2 : 1"},
+          "strokeDash": {"signal": "datum.noBiz ? [4, 3] : []"},
+          "opacity": {"field": "sel"},
+          "tooltip": {"signal": "datum.noBiz ? {'title': datum.CLASS_DESC + ' · ' + datum.ZONE, 'Status': 'No business written in this period'} : merge({'title': datum.CLASS_DESC + ' · ' + datum.ZONE, 'Status': datum['Perf Status'], 'UW margin': format(datum['Profit Margin'], '.1%'), 'Combined ratio': format(datum['Combined Ratio'], '.1%'), 'Loss ratio': format(datum['Loss Ratio'], '.1%'), 'Earned premium': cur + format(datum['Total Earned Premium'], ',.0f'), 'UW profit': cur + format(datum['Total UW Profit'], ',.0f'), 'How reliable is this?': datum['Perf Data Tag'] || ''}, datum.conf !== 'High' && isValid(datum['Credible Margin']) ? {'Expected margin': format(datum['Credible Margin'], '.1%') + ' (blended with the class average because the data is thin)'} : {}, {'Next step': 'Right-click › Drill through › Optimal Price'})"}
+        }
+      }
+    },
+    {
+      "type": "rect",
+      "from": {"data": "live"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "scale('x', datum.ZONE)"},
+          "width": {"value": 4},
+          "y": {"signal": "scale('y', datum.CLASS_DESC) + 8"},
+          "y2": {"signal": "scale('y', datum.CLASS_DESC) + bandwidth('y') - 8"},
+          "cornerRadius": {"value": 2},
+          "fill": {"field": "col"}, "opacity": {"field": "dim"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "live"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "scale('x', datum.ZONE) + pad"},
+          "y": {"signal": "scale('y', datum.CLASS_DESC) + 56"},
+          "text": {"value": "UW margin"},
+          "fontSize": {"value": 10}, "fill": {"value": "#667085"},
+          "baseline": {"value": "middle"}, "opacity": {"field": "dim"}
+        }
+      }
+    },
+    {
+      "type": "rect",
+      "from": {"data": "live"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x2": {"signal": "scale('x', datum.ZONE) + bandwidth('x') - pad + 6"},
+          "width": {"signal": "length(datum['Perf Status'] || '') * 5.6 + 12"},
+          "y": {"signal": "scale('y', datum.CLASS_DESC) + 8"},
+          "height": {"value": 16},
+          "cornerRadius": {"value": 8},
+          "fill": {"field": "col"}, "fillOpacity": {"value": 0.12}, "opacity": {"field": "dim"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "live"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "scale('x', datum.ZONE) + bandwidth('x') - pad"},
+          "y": {"signal": "scale('y', datum.CLASS_DESC) + 16"},
+          "text": {"field": "Perf Status"},
+          "fontSize": {"value": 10}, "fontWeight": {"value": 700}, "fill": {"field": "col"},
+          "align": {"value": "right"}, "baseline": {"value": "middle"}, "opacity": {"field": "dim"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "live"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "scale('x', datum.ZONE) + pad"},
+          "y": {"signal": "scale('y', datum.CLASS_DESC) + 36"},
+          "text": {"signal": "format(datum['Profit Margin'], '.1%')"},
+          "fontSize": {"value": 24}, "fontWeight": {"value": 700}, "fill": {"field": "col"},
+          "baseline": {"value": "middle"}, "opacity": {"field": "dim"}
+        }
+      }
+    },
+    {
+      "type": "rule",
+      "from": {"data": "live"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "scale('x', datum.ZONE) + pad"},
+          "x2": {"signal": "scale('x', datum.ZONE) + bandwidth('x') - pad"},
+          "y": {"signal": "scale('y', datum.CLASS_DESC) + 67"},
+          "stroke": {"value": "#EAECF0"}, "opacity": {"field": "dim"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "live"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "scale('x', datum.ZONE) + pad"},
+          "y": {"signal": "scale('y', datum.CLASS_DESC) + 79"},
+          "text": {"value": "Combined ratio"},
+          "fontSize": {"value": 10}, "fill": {"value": "#667085"},
+          "baseline": {"value": "middle"}, "opacity": {"field": "dim"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "live"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "scale('x', datum.ZONE) + bandwidth('x') / 2 + 12"},
+          "y": {"signal": "scale('y', datum.CLASS_DESC) + 79"},
+          "text": {"value": "Loss ratio"},
+          "fontSize": {"value": 10}, "fill": {"value": "#667085"},
+          "baseline": {"value": "middle"}, "opacity": {"field": "dim"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "live"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "scale('x', datum.ZONE) + pad"},
+          "y": {"signal": "scale('y', datum.CLASS_DESC) + 93"},
+          "text": {"signal": "format(datum['Combined Ratio'], '.1%')"},
+          "fontSize": {"value": 14}, "fontWeight": {"value": 700}, "fill": {"value": "#101828"},
+          "baseline": {"value": "middle"}, "opacity": {"field": "dim"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "live"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "scale('x', datum.ZONE) + bandwidth('x') / 2 + 12"},
+          "y": {"signal": "scale('y', datum.CLASS_DESC) + 93"},
+          "text": {"signal": "format(datum['Loss Ratio'], '.1%')"},
+          "fontSize": {"value": 14}, "fontWeight": {"value": 600}, "fill": {"value": "#344054"},
+          "baseline": {"value": "middle"}, "opacity": {"field": "dim"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "live"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "scale('x', datum.ZONE) + pad"},
+          "y": {"signal": "scale('y', datum.CLASS_DESC) + 109"},
+          "text": {"value": "Premium"},
+          "fontSize": {"value": 10}, "fill": {"value": "#667085"},
+          "baseline": {"value": "middle"}, "opacity": {"field": "dim"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "live"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "scale('x', datum.ZONE) + bandwidth('x') / 2 + 12"},
+          "y": {"signal": "scale('y', datum.CLASS_DESC) + 109"},
+          "text": {"value": "UW profit"},
+          "fontSize": {"value": 10}, "fill": {"value": "#667085"},
+          "baseline": {"value": "middle"}, "opacity": {"field": "dim"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "live"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "scale('x', datum.ZONE) + pad"},
+          "y": {"signal": "scale('y', datum.CLASS_DESC) + 123"},
+          "text": {"signal": "cur + datum.sarPrem"},
+          "fontSize": {"value": 13}, "fontWeight": {"value": 600}, "fill": {"value": "#344054"},
+          "baseline": {"value": "middle"}, "opacity": {"field": "dim"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "live"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "scale('x', datum.ZONE) + bandwidth('x') / 2 + 12"},
+          "y": {"signal": "scale('y', datum.CLASS_DESC) + 123"},
+          "text": {"signal": "cur + datum.sarProfit"},
+          "fontSize": {"value": 13}, "fontWeight": {"value": 700}, "fill": {"signal": "datum['Total UW Profit'] < 0 ? '#B42318' : '#027A48'"},
+          "baseline": {"value": "middle"}, "opacity": {"field": "dim"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "live"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "scale('x', datum.ZONE) + pad"},
+          "y": {"signal": "scale('y', datum.CLASS_DESC) + 140"},
+          "text": {"signal": "datum['Perf Data Tag'] ? '● ' + datum.conf + ' confidence' : ''"},
+          "fontSize": {"value": 10}, "fontWeight": {"value": 700}, "fill": {"field": "confCol"},
+          "baseline": {"value": "middle"}, "opacity": {"field": "sel"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "live"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "scale('x', datum.ZONE) + pad"},
+          "y": {"signal": "scale('y', datum.CLASS_DESC) + 153"},
+          "text": {"field": "confNote"},
+          "limit": {"signal": "bandwidth('x') - 2 * pad"},
+          "fontSize": {"value": 10}, "fill": {"value": "#667085"},
+          "baseline": {"value": "middle"}, "opacity": {"field": "sel"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "empty"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "scale('x', datum.ZONE) + bandwidth('x') / 2"},
+          "y": {"signal": "scale('y', datum.CLASS_DESC) + bandwidth('y') / 2"},
+          "text": {"value": "No business written"},
+          "fontSize": {"value": 11}, "fontStyle": {"value": "italic"}, "fill": {"value": "#98A2B3"},
+          "align": {"value": "center"}, "baseline": {"value": "middle"}, "opacity": {"field": "sel"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"value": 0},
+          "y": {"signal": "height + 20"},
+          "text": {"signal": "ruleText"},
+          "fontSize": {"value": 10.5}, "fill": {"value": "#475467"},
+          "baseline": {"value": "middle"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "width / 2"},
+          "y": {"signal": "height / 2"},
+          "text": {"signal": "problem"},
+          "fontSize": {"value": 12}, "fill": {"value": "#A13C35"},
+          "align": {"value": "center"}, "baseline": {"value": "middle"}
+        }
+      }
+    }
+  ]
+}

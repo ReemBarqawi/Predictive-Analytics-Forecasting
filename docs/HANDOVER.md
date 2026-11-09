@@ -123,7 +123,7 @@ Implemented as (real file names):
 - `pipeline/10_underwriting_pnl.py` (was `notebooks/09 underwriting pnl.py`).
 
 How the optimizer works:
-- Uses the latest policy year only (2024).
+- Uses one policy year: the latest **complete** one, meaning its policies were written from January through December (2024 on the current real extract). The extract's last year is usually a stub, and future-dated policies can add a later one.
 - Tests premium changes from −10% to +50% in 1% steps.
 - Retention is a logistic function of the price change: baseline renewal 0.90, slope k = 3 / 5 / 8 for the low / base / high sensitivity cases, and lower-risk policies react more (γ = 0.5).
 - Picks the highest-profit price that passes all of these: segment retention ≥ 80%, price within the technical-price cap + 5 pts, and profit ≥ the no-change profit.

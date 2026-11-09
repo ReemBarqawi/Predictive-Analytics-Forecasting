@@ -1,0 +1,26 @@
+ZONE,CLASS_DESC,POLICY_TYPE_DESC,RELIABLE_LR
+Central,Motor Commercial,Comprehensive,0.22896346755400712
+Central,Motor Commercial,Third Party,0.2538156767450416
+Central,Motor Private,Comprehensive,1.0346109213314743
+Central,Motor Private,Third Party,0.19012797685326566
+Central,Motor Rent a Car,Comprehensive,0.47603393943370753
+Eastern,Motor Commercial,Comprehensive,0.22994321992498304
+Eastern,Motor Commercial,Third Party,0.2548867136082971
+Eastern,Motor Private,Comprehensive,1.042035235799721
+Eastern,Motor Private,Third Party,0.1887558348339276
+Eastern,Motor Rent a Car,Comprehensive,0.473479767743477
+Northern,Motor Commercial,Comprehensive,0.23004303956735458
+Northern,Motor Commercial,Third Party,0.25481724621924906
+Northern,Motor Private,Comprehensive,1.0620336201369969
+Northern,Motor Private,Third Party,0.18876932008291622
+Northern,Motor Rent a Car,Comprehensive,0.47349088795926914
+Southern,Motor Commercial,Comprehensive,0.23351975850889675
+Southern,Motor Commercial,Third Party,0.25371716723861737
+Southern,Motor Private,Comprehensive,1.0484040198495608
+Southern,Motor Private,Third Party,0.18821186953962926
+Southern,Motor Rent a Car,Comprehensive,0.47691249437732575
+Western,Motor Commercial,Comprehensive,0.2293926904438639
+Western,Motor Commercial,Third Party,0.25749639440461036
+Western,Motor Private,Comprehensive,1.0345191514984486
+Western,Motor Private,Third Party,0.18852145996209624
+Western,Motor Rent a Car,Comprehensive,0.47142709971778024

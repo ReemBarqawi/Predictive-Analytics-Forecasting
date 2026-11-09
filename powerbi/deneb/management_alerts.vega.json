@@ -1,6 +1,6 @@
 {
   "$schema": "https://vega.github.io/schema/vega/v5.json",
-  "description": "Management alerts panel (Forecast page). Provider: Vega. Method: docs/ALERTS_METHOD.md. Fields: dim_zone_summary ZONE, dim_business_class CLASS_DESC, dim_product POLICY_TYPE_DESC (drill-through keys), then measures Alert Severity, Alert Headline, Alert Issue, Alert Evidence, Alert Action, Alert Period, Alert Sort. Right-click an alert > Drill through.",
+  "description": "Management alerts panel (Forecast page). Provider: Vega. Method: docs/ALERTS_METHOD.md. Fields: dim_zone_summary ZONE, dim_business_class CLASS_DESC, dim_product POLICY_TYPE_DESC (drill-through keys), then measures Alert Severity, Alert Headline, Alert Issue, Alert Evidence, Alert Action, Alert Period, Alert Sort. Card: severity + Alert Headline, bold segment name, 'Risk:' + Alert Issue, 'Action:' + Alert Action, then Alert Evidence (how reliable). Right-click an alert > Drill through.",
   "width": {"signal": "max(240, boxW - 24)"},
   "height": {"signal": "boxH"},
   "padding": {"left": 2, "right": 2, "top": 2, "bottom": 8},
@@ -18,13 +18,19 @@
     {"name": "hasFields", "update": "nRows > 0 && isDefined(data('dataset')[0]['Alert Severity']) && isDefined(data('dataset')[0]['Alert Sort'])"},
     {"name": "period", "update": "nRows > 0 ? (data('dataset')[0]['Alert Period'] || '') : ''"},
     {"name": "problem", "update": "nRows == 0 ? 'No rows reached this visual. Check that the fields are ZONE, CLASS_DESC, POLICY_TYPE_DESC (from the dim tables) and the Alert measures, and that no visual-level filter removes them.' : !hasFields ? 'Rows arrived, but not the fields Alert Severity and Alert Sort. Remove the old fact_alerts fields and add the measures from 12 Management Alerts.' : nCards == 0 ? 'No Critical or Warning alerts in what this visual received: ' + nRows + ' rows, first row ' + data('dataset')[0].ZONE + ' / ' + data('dataset')[0].CLASS_DESC + ' / ' + data('dataset')[0].POLICY_TYPE_DESC + ', Alert Severity = ' + (data('dataset')[0]['Alert Severity'] || '(blank)') + '. If you expected alerts: keep only the 3 dim fields and the 7 Alert measures, and check the page slicers and visual filters.' : ''"},
-    {"name": "gap", "value": 10},
-    {"name": "textX", "value": 38},
-    {"name": "titleChars", "update": "max(20, floor((width - textX - 16) / 7.6))"},
-    {"name": "bodyChars", "update": "max(24, floor((width - textX - 16) / 6.6))"},
-    {"name": "smallChars", "update": "max(28, floor((width - textX - 16) / 5.9))"},
-    {"name": "periodLines", "update": "period ? slice(split(replace(period, regexp('(.{1,' + smallChars + '})( +|$)', 'g'), '$1\\n'), '\\n'), 0, -1) : []"},
-    {"name": "headerH", "update": "44 + length(periodLines) * 14 + 12"}
+    {"name": "gap", "value": 12},
+    {"name": "padX", "value": 18},
+    {"name": "lh", "value": 19},
+    {"name": "riskW", "value": 33},
+    {"name": "actionW", "value": 47},
+    {"name": "riskPad", "value": "~~~~~~"},
+    {"name": "actionPad", "value": "~~~~~~~~"},
+    {"name": "bodyChars", "update": "max(24, floor((width - 2 * padX) / 6.6))"},
+    {"name": "smallChars", "update": "max(28, floor((width - 2 * padX) / 5.6))"},
+    {"name": "headChars", "update": "max(28, floor((width - 16) / 5.9))"},
+    {"name": "periodKeep", "update": "replace(replace(period, regexp(' ', 'g'), ' '), regexp(' · ', 'g'), ' · ')"},
+    {"name": "periodLines", "update": "period ? slice(split(replace(periodKeep, regexp('(.{1,' + headChars + '})( +|$)', 'g'), '$1\\n'), '\\n'), 0, -1) : []"},
+    {"name": "headerH", "update": "44 + length(periodLines) * 14 + 14"}
   ],
   "data": [
     {"name": "dataset"},
@@ -35,29 +41,27 @@
         {"type": "filter", "expr": "datum['Alert Severity']"},
         {"type": "formula", "as": "critical", "expr": "datum['Alert Severity'] == 'Critical'"},
         {"type": "formula", "as": "accent", "expr": "datum.critical ? '#DB0032' : '#F2A900'"},
+        {"type": "formula", "as": "accentText", "expr": "datum.critical ? '#DB0032' : '#9A6A00'"},
         {"type": "window", "sort": {"field": "Alert Sort", "order": "descending"}, "ops": ["row_number"], "as": ["rn"]},
-        {"type": "formula", "as": "titleText", "expr": "(datum.rn < 10 ? '0' : '') + datum.rn + ' · ' + datum['Alert Headline']"},
+        {"type": "formula", "as": "tag", "expr": "upper(datum['Alert Severity'])"},
         {"type": "formula", "as": "segment", "expr": "datum.ZONE + ' · ' + datum.CLASS_DESC + ' · ' + datum.POLICY_TYPE_DESC"},
-        {"type": "formula", "as": "actionText", "expr": "datum['Alert Action']"},
-        {"type": "formula", "as": "outlookText", "expr": "split(datum['Alert Evidence'], ' || ')[0]"},
-        {"type": "formula", "as": "reliability", "expr": "split(datum['Alert Evidence'], ' || ')[1] || ''"},
-        {"type": "formula", "as": "tLines", "expr": "split(replace(datum.titleText, regexp('(.{1,' + titleChars + '})( +|$)', 'g'), '$1\\n'), '\\n')"},
-        {"type": "formula", "as": "tLines", "expr": "peek(datum.tLines) == '' ? slice(datum.tLines, 0, -1) : datum.tLines"},
-        {"type": "formula", "as": "sLines", "expr": "split(replace(datum.segment, regexp('(.{1,' + bodyChars + '})( +|$)', 'g'), '$1\\n'), '\\n')"},
-        {"type": "formula", "as": "sLines", "expr": "peek(datum.sLines) == '' ? slice(datum.sLines, 0, -1) : datum.sLines"},
-        {"type": "formula", "as": "bLines", "expr": "split(replace(datum['Alert Issue'], regexp('(.{1,' + bodyChars + '})( +|$)', 'g'), '$1\\n'), '\\n')"},
-        {"type": "formula", "as": "bLines", "expr": "peek(datum.bLines) == '' ? slice(datum.bLines, 0, -1) : datum.bLines"},
-        {"type": "formula", "as": "eLines", "expr": "split(replace(datum.outlookText, regexp('(.{1,' + bodyChars + '})( +|$)', 'g'), '$1\\n'), '\\n')"},
-        {"type": "formula", "as": "eLines", "expr": "peek(datum.eLines) == '' ? slice(datum.eLines, 0, -1) : datum.eLines"},
-        {"type": "formula", "as": "aLines", "expr": "split(replace(datum.actionText, regexp('(.{1,' + bodyChars + '})( +|$)', 'g'), '$1\\n'), '\\n')"},
-        {"type": "formula", "as": "aLines", "expr": "peek(datum.aLines) == '' ? slice(datum.aLines, 0, -1) : datum.aLines"},
-        {"type": "formula", "as": "segY", "expr": "12 + length(datum.tLines) * 18 + 2"},
-        {"type": "formula", "as": "bodyY", "expr": "datum.segY + length(datum.sLines) * 15 + 6"},
-        {"type": "formula", "as": "evidY", "expr": "datum.bodyY + length(datum.bLines) * 16 + 6"},
-        {"type": "formula", "as": "relY", "expr": "datum.evidY + length(datum.eLines) * 16 + 4"},
-        {"type": "formula", "as": "labelY", "expr": "datum.relY + (datum.reliability ? 14 : 0) + 8"},
-        {"type": "formula", "as": "actionY", "expr": "datum.labelY + 18"},
-        {"type": "formula", "as": "h", "expr": "datum.actionY + length(datum.aLines) * 16 + 12"},
+        {"type": "formula", "as": "riskText", "expr": "datum['Alert Issue'] || ''"},
+        {"type": "formula", "as": "actionText", "expr": "datum['Alert Action'] || ''"},
+        {"type": "formula", "as": "reliability", "expr": "datum['Alert Evidence'] || ''"},
+        {"type": "formula", "as": "rkLines", "expr": "split(replace(riskPad + datum.riskText, regexp('(.{1,' + bodyChars + '})( +|$)', 'g'), '$1\\n'), '\\n')"},
+        {"type": "formula", "as": "rkLines", "expr": "peek(datum.rkLines) == '' ? slice(datum.rkLines, 0, -1) : datum.rkLines"},
+        {"type": "formula", "as": "rkFirst", "expr": "replace(datum.rkLines[0], regexp('^~+'), '')"},
+        {"type": "formula", "as": "rkRest", "expr": "slice(datum.rkLines, 1)"},
+        {"type": "formula", "as": "acLines", "expr": "split(replace(actionPad + datum.actionText, regexp('(.{1,' + bodyChars + '})( +|$)', 'g'), '$1\\n'), '\\n')"},
+        {"type": "formula", "as": "acLines", "expr": "peek(datum.acLines) == '' ? slice(datum.acLines, 0, -1) : datum.acLines"},
+        {"type": "formula", "as": "acFirst", "expr": "replace(datum.acLines[0], regexp('^~+'), '')"},
+        {"type": "formula", "as": "acRest", "expr": "slice(datum.acLines, 1)"},
+        {"type": "formula", "as": "rlLines", "expr": "split(replace(datum.reliability, regexp('(.{1,' + smallChars + '})( +|$)', 'g'), '$1\\n'), '\\n')"},
+        {"type": "formula", "as": "rlLines", "expr": "peek(datum.rlLines) == '' ? slice(datum.rlLines, 0, -1) : datum.rlLines"},
+        {"type": "formula", "as": "riskY", "expr": "58"},
+        {"type": "formula", "as": "actionY", "expr": "datum.riskY + length(datum.rkLines) * lh + 10"},
+        {"type": "formula", "as": "relY", "expr": "datum.actionY + length(datum.acLines) * lh + 10"},
+        {"type": "formula", "as": "h", "expr": "datum.relY + length(datum.rlLines) * 15 + 14"},
         {"type": "formula", "as": "op", "expr": "datum.__selected__ == 'off' ? 0.4 : 1"},
         {"type": "window", "sort": {"field": "rn"}, "ops": ["sum"], "fields": ["h"], "as": ["cum"]},
         {"type": "formula", "as": "y", "expr": "headerH + datum.cum - datum.h + (datum.rn - 1) * gap"}
@@ -74,8 +78,8 @@
       "type": "text",
       "interactive": false,
       "encode": {
-        "enter": {
-          "x": {"value": 0}, "y": {"value": 2},
+        "update": {
+          "x": {"signal": "width / 2"}, "y": {"value": 2}, "align": {"value": "center"},
           "text": {"value": "Management alerts"},
           "font": {"value": "Segoe UI Semibold"}, "fontSize": {"value": 16},
           "fill": {"value": "#1A1A1A"}
@@ -87,7 +91,7 @@
       "interactive": false,
       "encode": {
         "update": {
-          "x": {"value": 0}, "y": {"value": 26},
+          "x": {"signal": "width / 2"}, "y": {"value": 26}, "align": {"value": "center"},
           "text": {"signal": "nCards + ' open · ' + nCritical + ' critical · ' + (nCards - nCritical) + ' warning'"},
           "fontSize": {"value": 11}, "fill": {"value": "#5C5C5C"},
           "opacity": {"signal": "nCards > 0 ? 1 : 0"}
@@ -99,7 +103,7 @@
       "interactive": false,
       "encode": {
         "update": {
-          "x": {"value": 0}, "y": {"value": 42},
+          "x": {"signal": "width / 2"}, "y": {"value": 42}, "align": {"value": "center"},
           "text": {"signal": "periodLines"}, "lineHeight": {"value": 14},
           "fontSize": {"value": 10.5}, "fill": {"value": "#8C8C8C"},
           "opacity": {"signal": "nCards > 0 ? 1 : 0"}
@@ -128,11 +132,11 @@
           "x": {"value": 0}, "x2": {"signal": "width"},
           "y": {"field": "y"}, "height": {"field": "h"},
           "fill": {"value": "#FFFFFF"},
-          "stroke": {"value": "#E6E6E6"}, "strokeWidth": {"value": 1},
-          "cornerRadius": {"value": 6},
+          "stroke": {"value": "#E0E0E0"}, "strokeWidth": {"value": 1},
+          "cornerRadius": {"value": 8},
           "opacity": {"field": "op"},
           "cursor": {"value": "pointer"},
-          "tooltip": {"signal": "{'title': datum['Alert Severity'] + ': ' + datum['Alert Headline'], 'Segment': datum.segment, 'Result': datum['Alert Issue'], 'Outlook': datum.outlookText, 'Reliability': datum.reliability, 'Action': datum['Alert Action'], 'Period': datum['Alert Period']}"}
+          "tooltip": {"signal": "{'title': datum['Alert Severity'] + ': ' + datum['Alert Headline'], 'Segment': datum.segment, 'Risk': datum.riskText, 'Action': datum.actionText, 'How reliable is this?': datum.reliability, 'Period': datum['Alert Period']}"}
         },
         "hover": {"stroke": {"value": "#8C8C8C"}}
       }
@@ -144,7 +148,7 @@
       "encode": {
         "update": {
           "x": {"value": 0}, "width": {"value": 4},
-          "y": {"field": "y"}, "height": {"field": "h"},
+          "y": {"signal": "datum.y + 6"}, "height": {"signal": "datum.h - 12"},
           "fill": {"field": "accent"}, "cornerRadius": {"value": 2},
           "opacity": {"field": "op"}
         }
@@ -156,11 +160,11 @@
       "interactive": false,
       "encode": {
         "update": {
-          "shape": {"value": "triangle-up"}, "size": {"value": 170},
-          "x": {"value": 21}, "y": {"signal": "datum.y + 20"},
+          "shape": {"value": "triangle-up"}, "size": {"value": 150},
+          "x": {"signal": "padX + 6"}, "y": {"signal": "datum.y + 20"},
           "fill": {"signal": "datum.critical ? datum.accent : '#FFFFFF'"},
           "stroke": {"field": "accent"}, "strokeWidth": {"value": 1.5},
-          "opacity": {"field": "op"}
+          "strokeJoin": {"value": "round"}, "opacity": {"field": "op"}
         }
       }
     },
@@ -170,10 +174,10 @@
       "interactive": false,
       "encode": {
         "update": {
-          "x": {"value": 21}, "y": {"signal": "datum.y + 16"},
+          "x": {"signal": "padX + 6"}, "y": {"signal": "datum.y + 16"},
           "text": {"value": "!"}, "align": {"value": "center"},
           "font": {"value": "Segoe UI Semibold"}, "fontSize": {"value": 9},
-          "fill": {"signal": "datum.critical ? '#FFFFFF' : datum.accent"}, "opacity": {"field": "op"}
+          "fill": {"signal": "datum.critical ? '#FFFFFF' : datum.accentText"}, "opacity": {"field": "op"}
         }
       }
     },
@@ -183,8 +187,35 @@
       "interactive": false,
       "encode": {
         "update": {
-          "x": {"signal": "textX"}, "y": {"signal": "datum.y + 12"},
-          "text": {"field": "tLines"}, "lineHeight": {"value": 18},
+          "x": {"signal": "padX + 20"}, "y": {"signal": "datum.y + 13"},
+          "text": {"field": "tag"},
+          "font": {"value": "Segoe UI Semibold"}, "fontSize": {"value": 12},
+          "fill": {"field": "accentText"}, "opacity": {"field": "op"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "cards"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "width - padX"}, "y": {"signal": "datum.y + 13"}, "align": {"value": "right"},
+          "text": {"signal": "datum['Alert Headline'] || ''"},
+          "limit": {"signal": "width - 2 * padX - 90"},
+          "fontSize": {"value": 12}, "fill": {"value": "#3A3A3A"}, "opacity": {"field": "op"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "cards"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "padX"}, "y": {"signal": "datum.y + 34"},
+          "text": {"field": "segment"},
+          "limit": {"signal": "width - 2 * padX"},
           "font": {"value": "Segoe UI Semibold"}, "fontSize": {"value": 13.5},
           "fill": {"value": "#1A1A1A"}, "opacity": {"field": "op"}
         }
@@ -196,9 +227,9 @@
       "interactive": false,
       "encode": {
         "update": {
-          "x": {"signal": "textX"}, "y": {"signal": "datum.y + datum.segY"},
-          "text": {"field": "sLines"}, "lineHeight": {"value": 15},
-          "fontSize": {"value": 11.5}, "fill": {"value": "#5C5C5C"}, "opacity": {"field": "op"}
+          "x": {"signal": "padX + riskW"}, "y": {"signal": "datum.y + datum.riskY"},
+          "text": {"field": "rkFirst"},
+          "fontSize": {"value": 13}, "fill": {"value": "#1A1A1A"}, "opacity": {"field": "op"}
         }
       }
     },
@@ -208,9 +239,9 @@
       "interactive": false,
       "encode": {
         "update": {
-          "x": {"signal": "textX"}, "y": {"signal": "datum.y + datum.bodyY"},
-          "text": {"field": "bLines"}, "lineHeight": {"value": 16},
-          "fontSize": {"value": 12}, "fill": {"value": "#1A1A1A"}, "opacity": {"field": "op"}
+          "x": {"signal": "padX"}, "y": {"signal": "datum.y + datum.riskY + lh"},
+          "text": {"field": "rkRest"}, "lineHeight": {"signal": "lh"},
+          "fontSize": {"value": 13}, "fill": {"value": "#1A1A1A"}, "opacity": {"field": "op"}
         }
       }
     },
@@ -220,9 +251,10 @@
       "interactive": false,
       "encode": {
         "update": {
-          "x": {"signal": "textX"}, "y": {"signal": "datum.y + datum.evidY"},
-          "text": {"field": "eLines"}, "lineHeight": {"value": 16},
-          "fontSize": {"value": 12}, "fill": {"value": "#1A1A1A"}, "opacity": {"field": "op"}
+          "x": {"signal": "padX"}, "y": {"signal": "datum.y + datum.riskY"},
+          "text": {"value": "Risk:"},
+          "font": {"value": "Segoe UI Semibold"}, "fontSize": {"value": 13},
+          "fill": {"field": "accentText"}, "opacity": {"field": "op"}
         }
       }
     },
@@ -232,9 +264,9 @@
       "interactive": false,
       "encode": {
         "update": {
-          "x": {"signal": "textX"}, "y": {"signal": "datum.y + datum.relY"},
-          "text": {"field": "reliability"},
-          "fontSize": {"value": 10.5}, "fill": {"value": "#8C8C8C"}, "opacity": {"field": "op"}
+          "x": {"signal": "padX + actionW"}, "y": {"signal": "datum.y + datum.actionY"},
+          "text": {"field": "acFirst"},
+          "fontSize": {"value": 13}, "fill": {"value": "#1A1A1A"}, "opacity": {"field": "op"}
         }
       }
     },
@@ -244,10 +276,9 @@
       "interactive": false,
       "encode": {
         "update": {
-          "x": {"signal": "textX"}, "y": {"signal": "datum.y + datum.labelY"},
-          "text": {"value": "Recommended action"},
-          "font": {"value": "Segoe UI Semibold"}, "fontSize": {"value": 12},
-          "fill": {"value": "#DB0032"}, "opacity": {"field": "op"}
+          "x": {"signal": "padX"}, "y": {"signal": "datum.y + datum.actionY + lh"},
+          "text": {"field": "acRest"}, "lineHeight": {"signal": "lh"},
+          "fontSize": {"value": 13}, "fill": {"value": "#1A1A1A"}, "opacity": {"field": "op"}
         }
       }
     },
@@ -257,9 +288,22 @@
       "interactive": false,
       "encode": {
         "update": {
-          "x": {"signal": "textX"}, "y": {"signal": "datum.y + datum.actionY"},
-          "text": {"field": "aLines"}, "lineHeight": {"value": 16},
-          "fontSize": {"value": 12}, "fill": {"value": "#1A1A1A"}, "opacity": {"field": "op"}
+          "x": {"signal": "padX"}, "y": {"signal": "datum.y + datum.actionY"},
+          "text": {"value": "Action:"},
+          "font": {"value": "Segoe UI Semibold"}, "fontSize": {"value": 13},
+          "fill": {"value": "#1A1A1A"}, "opacity": {"field": "op"}
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": {"data": "cards"},
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "padX"}, "y": {"signal": "datum.y + datum.relY"},
+          "text": {"field": "rlLines"}, "lineHeight": {"value": 15},
+          "fontSize": {"value": 11}, "fill": {"value": "#737373"}, "opacity": {"field": "op"}
         }
       }
     }

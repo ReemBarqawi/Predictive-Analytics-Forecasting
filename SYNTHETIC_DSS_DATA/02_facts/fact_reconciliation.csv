@@ -1,0 +1,63 @@
+CHECK_GROUP,CHECK,VALUE_A,VALUE_B,DIFFERENCE,TOLERANCE,STATUS,NOTE
+calendar,Report window has the current year,1.0,1.0,0.0,0.0,PASS,"data to 2025-01-12, current 2024"
+calendar,Forecast year follows it,1.0,1.0,0.0,0.0,PASS,
+calendar,Optimizer prices the current year,1.0,1.0,0.0,0.0,PASS,optimizer 2024
+calendar,Target is the configured one,1.0,1.0,0.0,0.0,PASS,
+premium,Policy year 2008: segment results = earned table,2375348.67,2375348.67,0.0,23.7534867,PASS,
+premium,Policy year 2009: segment results = earned table,504097.6,504097.60000000003,-5.820766091346741e-11,5.040976000000001,PASS,
+premium,Policy year 2010: segment results = earned table,675785.57,675785.57,0.0,6.7578557,PASS,
+premium,Policy year 2011: segment results = earned table,982650.88,982650.88,0.0,9.826508800000001,PASS,
+premium,Policy year 2012: segment results = earned table,1371480.3,1371480.3,0.0,13.714803000000002,PASS,
+premium,Policy year 2013: segment results = earned table,1397194.41,1397194.4100000001,-2.3283064365386963e-10,13.971944100000002,PASS,
+premium,Policy year 2014: segment results = earned table,1979616.8,1979616.8,0.0,19.796168,PASS,
+premium,Policy year 2015: segment results = earned table,2233784.62,2233784.62,0.0,22.3378462,PASS,
+premium,Policy year 2016: segment results = earned table,2546761.15,2546761.1500000004,-4.656612873077393e-10,25.467611500000007,PASS,
+premium,Policy year 2017: segment results = earned table,3009268.08,3009268.08,0.0,30.092680800000004,PASS,
+premium,Policy year 2018: segment results = earned table,3439149.16,3439149.16,0.0,34.3914916,PASS,
+premium,Policy year 2019: segment results = earned table,4055241.78,4055241.78,0.0,40.5524178,PASS,
+premium,Policy year 2020: segment results = earned table,3801876.16,3801876.1599999997,4.656612873077393e-10,38.0187616,PASS,
+premium,Policy year 2021: segment results = earned table,4628784.32,4628784.32,0.0,46.287843200000005,PASS,
+premium,Policy year 2022: segment results = earned table,5373942.46,5373942.460000001,-9.313225746154785e-10,53.739424600000014,PASS,
+premium,Policy year 2023: segment results = earned table,4950241.68,4950241.68,0.0,49.5024168,PASS,
+premium,Policy year 2024: segment results = earned table,3937363.86,3937363.8599999994,4.656612873077393e-10,39.3736386,PASS,
+claims,Policy year 2020: reported = claim table,4392244.68569071,4392244.68569071,0.0,43.92244685690711,PASS,
+claims,Policy year 2020: ultimate is not below reported,1.0,1.0,0.0,0.0,PASS,"ultimate 4,392,245, reported 4,392,245"
+claims,Policy year 2020: result = premium - claims - expenses,-1303369.7916907102,-1303369.7916907102,0.0,13.033697916907103,PASS,
+claims,Policy year 2021: reported = claim table,7380580.024603753,7380580.024603753,0.0,73.80580024603753,PASS,
+claims,Policy year 2021: ultimate is not below reported,1.0,1.0,0.0,0.0,PASS,"ultimate 7,380,580, reported 7,380,580"
+claims,Policy year 2021: result = premium - claims - expenses,-3604215.2866037525,-3604215.286603754,1.3969838619232178e-09,36.04215286603754,PASS,
+claims,Policy year 2022: reported = claim table,11075430.853917452,11075430.853917453,-1.862645149230957e-09,110.75430853917454,PASS,
+claims,Policy year 2022: ultimate is not below reported,1.0,1.0,0.0,0.0,PASS,"ultimate 11,075,431, reported 11,075,431"
+claims,Policy year 2022: result = premium - claims - expenses,-6715060.419917453,-6715060.419917452,-9.313225746154785e-10,67.15060419917452,PASS,
+claims,Policy year 2023: reported = claim table,5226141.240581114,5226141.240581114,0.0,52.26141240581114,PASS,
+claims,Policy year 2023: ultimate is not below reported,1.0,1.0,0.0,0.0,PASS,"ultimate 5,226,141, reported 5,226,141"
+claims,Policy year 2023: result = premium - claims - expenses,-1206030.8585811134,-1206030.858581114,6.984919309616089e-10,12.060308585811143,PASS,
+claims,Policy year 2024: reported = claim table,1130901.933455522,1130901.933455522,0.0,11.30901933455522,PASS,
+claims,Policy year 2024: ultimate is not below reported,1.0,1.0,0.0,0.0,PASS,"ultimate 2,247,627, reported 1,130,902"
+claims,Policy year 2024: result = premium - claims - expenses,966080.0822190118,966080.0822190122,-3.4924596548080444e-10,9.660800822190122,PASS,
+zones,Every segment's zone is in dim_zone,1.0,1.0,0.0,0.0,PASS,[]
+zones,No office without a location,1.0,1.0,0.0,0.0,PASS,
+levers,Premium: worst segment,360505.48,360505.48,0.0,3.6050548,PASS,Central | Motor Commercial | Comprehensive
+levers,Premium: total,3938374.5999999996,3938374.5999999996,0.0,39.383746,PASS,
+levers,Claims: worst segment,82542.58477302175,82542.58477302175,0.0,1.0,PASS,Central | Motor Commercial | Comprehensive
+levers,Claims: total,2247626.571780988,2247626.571780988,0.0,22.47626571780988,PASS,
+optimizer,Today premium: worst segment,110268.75,0.0,110268.75,1.0,FAIL,Central | Group Medical | Individual Medical
+optimizer,Today premium: total,4426674.4399999995,3938374.6,488299.8399999994,39.383746,FAIL,
+optimizer,Today claims: worst segment,417619.6112725629,397290.428285268,20329.18298729486,3.9729042828526806,FAIL,Southern | Motor Private | Comprehensive
+optimizer,Today claims: total,2337847.7578698713,2247626.5717809885,90221.18608888285,22.476265717809888,FAIL,
+optimizer,Today expenses: worst segment,19252.975,0.0,19252.975,1.0,FAIL,Central | Group Medical | Individual Medical
+optimizer,Today expenses: total,785013.4139999999,701211.3500000001,83802.06399999978,7.012113500000002,FAIL,
+optimizer,Every recommended price is a calculated scenario,1.0,1.0,0.0,0.0,PASS,
+optimizer,Recommended premium = its scenario,12151959.399633972,12151959.399633972,0.0,121.51959399633974,PASS,
+forecast,Forecast has 12 months,1.0,1.0,0.0,0.0,PASS,12 months
+forecast,2020: 12 months of premium = segment results,4070616.2399999993,3801876.16,268740.07999999914,38.018761600000005,FAIL,
+forecast,2020: 12 months of claims = segment results,4392244.68569071,4392244.68569071,0.0,43.92244685690711,PASS,
+forecast,2021: 12 months of premium = segment results,4954000.42,4628784.319999999,325216.10000000056,46.2878432,FAIL,
+forecast,2021: 12 months of claims = segment results,7380580.024603753,7380580.024603753,0.0,73.80580024603753,PASS,
+forecast,2022: 12 months of premium = segment results,5796459.67,5373942.46,422517.20999999996,53.73942460000001,FAIL,
+forecast,2022: 12 months of claims = segment results,11075430.853917452,11075430.853917452,0.0,110.75430853917453,PASS,
+alerts,In-year premium = earned table,2085288.02,2000615.21,84672.81000000006,20.0061521,FAIL,
+alerts,Segment claims = whole premium x reliable loss ratio: worst segment,37029.81488971112,37029.814889711124,-7.275957614183426e-12,1.0,PASS,Western | Motor Commercial | Third Party
+alerts,Segment claims = whole premium x reliable loss ratio: total,2247626.571780988,2247626.571780988,0.0,22.47626571780988,PASS,
+report copies,Claim copy = reported claims of the current year,1130901.933455522,1130901.933455522,0.0,11.30901933455522,PASS,
+bridge,Written - earned outside the year + other policies' earned in it = calendar earned,4418993.39,4418993.390000001,-9.313225746154785e-10,44.18993390000001,PASS,"3,937,364 - 1,936,749 + 2,418,378"

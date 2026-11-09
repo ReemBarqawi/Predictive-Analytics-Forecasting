@@ -148,32 +148,46 @@ most severe first.
 
 ## 7. What the alert card shows
 
-The period, the basis ("actual results"), the target and the data cut-off are shown **once**, in the panel
-header, not on every card. Each card says what happened, whether it is likely to fix itself, and what to do:
+The period, the target and the data cut-off are shown **once**, in the panel header, not on every card.
+Each card is a severity tag, a **Risk** paragraph, an **Action** line and a plain reliability note:
 
 ```
 Management alerts
 15 open · 1 critical · 14 warning
-Last 12 months (Jan 2024 – Dec 2024) · actual results · target combined ratio 95% · data to 18 Jan 2025
+Last 12 months (Jan 2024 – Dec 2024) · target combined ratio 95% · data to 18 Jan 2025
 
-▲ 01 · Underpriced for its risk — worsening
-      Western · Motor Rent a Car · Comprehensive
-      Combined ratio: 101%, up 18 percentage points year over year. SAR 827,651 above target.
-      Outlook: unlikely to improve without intervention. The pricing model also projects a 114%
-      combined ratio for this risk mix.
-      Reliability: Medium · 1,413 claims
-      Recommended action
-      Review pricing at renewal and reassess underwriting and acceptance criteria for this segment.
+▲ CRITICAL                                        Loss-making and getting worse
+Central · Motor Private · Third Party
+Risk: Claims and expenses are estimated at 102% of the SAR 276.7M premium on 2024 policies, SAR 18.1M above the
+95% target. Actual so far: 102% of the SAR 131.7M earned in 2024, up from 80% in 2023. With no price change, this
+is expected to reach 105% in 2025.
+Action: Reprice at renewal: recommended +9%. Drill through to Optimal Price for the effect.
+High confidence: based on 23,025 claims in 2024.
 ```
 
-- **Title:** "Underpriced for its risk" when the pricing model also puts the risk mix above target (the
-  premium is too low); "Claims above expected" when the model expects it within target (recent claims are
-  unusually high). Not "loss": a segment at 98% is above a 95% target without making a loss.
-- **Outlook line:** *"unlikely to improve without intervention"* or *"may improve"*, with the model's projected
-  combined ratio (model expected claims plus the same commission and admin expense).
-- **Reliability** in words from the credibility bands (`docs/CREDIBILITY.md` §6): high ≥ 0.70, medium 0.30–0.70,
-  low < 0.30 (the headline then adds "limited history"). The Z value itself is not shown.
-- Right-click → Drill through opens the segment's pages.
+**Risk** (`Alert Issue`), wording rules so the text stays true on every card:
+- Every figure names its year and the premium it is measured on, never "last year" or "next year": the estimate on
+  the whole premium of the current year's policies (`Today Combined Ratio`, `Today Premium`), the actual so far on
+  the premium earned in the year (`In-Year Combined Ratio`, `In-Year Premium`), and the prior year.
+- The prior year's combined ratio = this year's actual minus `Alert Trend Pts`. The trend is measured on the loss
+  ratio, so this assumes the same expense share as this year.
+- "SAR … above the 95% target" is `Alert SAR Above Target` (the estimate minus target, times whole premium). A segment
+  flagged only on its outlook says "within the 95% target" instead.
+- Outlook: flagged → "With no price change, this is expected to reach X% in <next year>"; clearly improving →
+  "Results are clearly improving, so it is not flagged for <next year> (X% expected)."
+
+**Action** (`Alert Action`): low credibility → "Review this small book manually before changing prices (recommended
+±X%)"; improving → "Keep current measures and monitor at the next review"; otherwise → "Reprice at renewal:
+recommended ±X%. Drill through to Optimal Price for the effect."
+
+**Reliability** (`Alert Evidence`) from the credibility bands (`docs/CREDIBILITY.md` §6: high ≥ 0.70,
+medium 0.30–0.70, low < 0.30), one fixed sentence on every card: "High / Medium / Low confidence: based on N claims
+in <year>." The Z value is not shown.
+
+`Alert Headline` is a short status ("Loss-making and getting worse", "Loss-making, no clear trend", "Above target but
+improving", "Expected to go above target"), shown at the top of the card and as the tooltip title. The segment name
+sits under it in bold.
+Right-click → Drill through opens the segment's pages.
 
 ## 8. Changes this needs elsewhere
 

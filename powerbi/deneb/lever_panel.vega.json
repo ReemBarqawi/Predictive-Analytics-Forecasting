@@ -1,0 +1,194 @@
+{
+  "$schema": "https://vega.github.io/schema/vega/v5.json",
+  "description": "Lever panel with on/off toggles (Path to Profitability page). Provider: Vega. Fields: PTP Levers[Lever], PTP Levers[Lever Order], PTP Levers[Description] (all 'Don't summarize'), then the measures PTP Lever Potential Pts, PTP Lever Potential SAR, PTP Gap CR, and optionally a Currency Label measure. Turn on Deneb's Cross-filtering with Selection mode = Advanced. Clicking a toggle cross-filters PTP Levers to the levers that stay on; the Toggle ... Value measures read that filter, so the KPI cards, timeline and waterfall follow. No filter = every lever on, so switching the last lever back on clears the filter, and the last lever that is on cannot be switched off. The panel shows each lever's own potential (before the levers are scaled to the target gap); the scaled plan is in the cards and charts, so the scaling rule lives only in DAX. 'See details' is drawn here; the page links are Power BI buttons placed over it, because a custom visual cannot change page. Card positions are fixed (cards share the height equally above a 46px footer) so the buttons stay aligned.",
+  "width": {"signal": "boxW"},
+  "height": {"signal": "boxH"},
+  "padding": 0,
+  "autosize": {"type": "none"},
+  "background": "transparent",
+  "config": {"text": {"font": "Segoe UI"}},
+  "signals": [
+    {"name": "boxW", "init": "containerSize()[0] || 372", "on": [{"events": "window:resize", "update": "containerSize()[0] || boxW"}]},
+    {"name": "boxH", "init": "containerSize()[1] || 678", "on": [{"events": "window:resize", "update": "containerSize()[1] || boxH"}]},
+    {"name": "nRows", "update": "length(data('dataset'))"},
+    {"name": "hasFields", "update": "nRows > 0 && isDefined(data('dataset')[0]['Lever']) && isDefined(data('dataset')[0]['PTP Lever Potential Pts'])"},
+    {"name": "problem", "update": "nRows == 0 ? 'No rows reached this visual. Add PTP Levers[Lever], [Lever Order], [Description] and the measures listed in the spec description.' : !hasFields ? 'Rows arrived without Lever or PTP Lever Potential Pts. Check the field names in the Values well.' : ''"},
+    {"name": "cur", "update": "nRows > 0 && isValid(data('dataset')[0]['Currency Label']) && data('dataset')[0]['Currency Label'] != '' ? data('dataset')[0]['Currency Label'] + ' ' : 'SAR '"},
+    {"name": "gapPts", "update": "nRows > 0 && isValid(data('dataset')[0]['PTP Gap CR']) ? data('dataset')[0]['PTP Gap CR'] * 100 : null"},
+    {"name": "footerH", "value": 46},
+    {"name": "gap", "value": 10},
+    {"name": "pad", "value": 14},
+    {"name": "cardH", "update": "(height - footerH - gap * 4) / 5"},
+    {"name": "nLev", "update": "length(data('levers'))"},
+    {"name": "onList", "update": "pluck(data('onLevers'), 'Lever')"},
+    {"name": "onQuoted", "update": "length(onList) ? \"'\" + join(onList, \"','\") + \"'\" : ''"},
+    {"name": "onPts", "update": "length(data('onTotal')) ? data('onTotal')[0].pts || 0 : 0"},
+    {
+      "name": "leverClick",
+      "value": null,
+      "on": [{
+        "events": "@toggleHit:click",
+        "update": "datum.isOn && length(onList) <= 1 ? null : (!datum.isOn && length(onList) >= nLev - 1) ? pbiCrossFilterClear() : pbiCrossFilterApply(event, '(indexof([' + onQuoted + '], datum.Lever) >= 0) != (datum.Lever == _{Lever}_)')"
+      }]
+    }
+  ],
+  "data": [
+    {"name": "dataset"},
+    {
+      "name": "levers",
+      "source": "dataset",
+      "transform": [
+        {"type": "filter", "expr": "hasFields && isValid(datum['Lever'])"},
+        {"type": "collect", "sort": {"field": "Lever Order"}},
+        {"type": "window", "ops": ["row_number"], "as": ["rank"]},
+        {"type": "formula", "as": "i", "expr": "datum.rank - 1"},
+        {"type": "formula", "as": "top", "expr": "datum.i * (cardH + gap)"},
+        {"type": "formula", "as": "isOn", "expr": "datum.__selected__ != 'off'"},
+        {"type": "formula", "as": "pts", "expr": "(datum['PTP Lever Potential Pts'] || 0) * 100"},
+        {"type": "formula", "as": "sar", "expr": "datum['PTP Lever Potential SAR'] || 0"},
+        {"type": "formula", "as": "sarText", "expr": "'+' + cur + (abs(datum.sar) >= 1e9 ? format(datum.sar / 1e9, ',.2f') + 'B' : abs(datum.sar) >= 1e6 ? format(datum.sar / 1e6, ',.1f') + 'M' : format(datum.sar / 1e3, ',.0f') + 'K')"},
+        {"type": "formula", "as": "num", "expr": "(datum.rank < 10 ? '0' : '') + datum.rank"},
+        {"type": "formula", "as": "desc", "expr": "datum['Description'] || ''"},
+        {"type": "formula", "as": "maxChars", "expr": "max(20, floor((width - pad * 2 - 40 - 8) / 6.2))"},
+        {"type": "formula", "as": "cut", "expr": "length(datum.desc) <= datum.maxChars ? -1 : lastindexof(substring(datum.desc, 0, datum.maxChars), ' ')"},
+        {"type": "formula", "as": "descLines", "expr": "datum.cut < 0 ? [datum.desc] : [substring(datum.desc, 0, datum.cut), substring(datum.desc, datum.cut + 1)]"},
+        {"type": "formula", "as": "fade", "expr": "datum.isOn ? 1 : 0.4"}
+      ]
+    },
+    {"name": "onLevers", "source": "levers", "transform": [{"type": "filter", "expr": "datum.isOn"}]},
+    {"name": "onTotal", "source": "onLevers", "transform": [{"type": "aggregate", "ops": ["sum"], "fields": ["pts"], "as": ["pts"]}]}
+  ],
+  "marks": [
+    {
+      "type": "rect", "from": {"data": "levers"}, "interactive": false,
+      "encode": {"update": {
+        "x": {"value": 0}, "x2": {"signal": "width"},
+        "y": {"field": "top"}, "height": {"signal": "cardH"},
+        "fill": {"value": "#FFFFFF"}, "stroke": {"value": "#E5E7EB"}, "cornerRadius": {"value": 8}
+      }}
+    },
+    {
+      "type": "symbol", "from": {"data": "levers"}, "interactive": false,
+      "encode": {"update": {
+        "x": {"signal": "pad + 13"}, "y": {"signal": "datum.top + pad + 13"},
+        "shape": {"value": "circle"}, "size": {"value": 676},
+        "fill": {"signal": "datum.isOn ? '#1A1A1A' : '#C0C0C0'"}
+      }}
+    },
+    {
+      "type": "text", "from": {"data": "levers"}, "interactive": false,
+      "encode": {"update": {
+        "x": {"signal": "pad + 13"}, "y": {"signal": "datum.top + pad + 13"},
+        "text": {"field": "num"}, "align": {"value": "center"}, "baseline": {"value": "middle"},
+        "fontSize": {"value": 11}, "fontWeight": {"value": 700}, "fill": {"value": "#FFFFFF"}
+      }}
+    },
+    {
+      "type": "text", "from": {"data": "levers"}, "interactive": false,
+      "encode": {"update": {
+        "x": {"signal": "pad + 36"}, "y": {"signal": "datum.top + pad + 13"},
+        "text": {"field": "Lever"}, "baseline": {"value": "middle"},
+        "limit": {"signal": "width - pad * 2 - 36 - 86"},
+        "fontSize": {"value": 16}, "fontWeight": {"value": 700},
+        "fill": {"value": "#1A1A1A"}, "opacity": {"field": "fade"}
+      }}
+    },
+    {
+      "type": "text", "from": {"data": "levers"}, "interactive": false,
+      "encode": {"update": {
+        "x": {"signal": "pad + 36"}, "y": {"signal": "datum.top + pad + 32"},
+        "text": {"field": "descLines"}, "baseline": {"value": "top"}, "lineHeight": {"value": 15},
+        "limit": {"signal": "width - pad * 2 - 36 - 8"},
+        "fontSize": {"value": 12}, "fill": {"value": "#667085"}, "opacity": {"field": "fade"}
+      }}
+    },
+    {
+      "type": "text", "from": {"data": "levers"}, "interactive": false,
+      "encode": {"update": {
+        "x": {"signal": "width - pad"}, "y": {"signal": "datum.top + pad + 13"},
+        "text": {"signal": "'−' + format(datum.pts, '.1f') + ' pts'"},
+        "align": {"value": "right"}, "baseline": {"value": "middle"},
+        "fontSize": {"value": 16}, "fontWeight": {"value": 700},
+        "fill": {"value": "#1A1A1A"}, "opacity": {"field": "fade"}
+      }}
+    },
+    {
+      "type": "text", "from": {"data": "levers"}, "interactive": false,
+      "encode": {"update": {
+        "x": {"signal": "width - pad"}, "y": {"signal": "datum.top + pad + 30"},
+        "text": {"field": "sarText"}, "align": {"value": "right"}, "baseline": {"value": "middle"},
+        "fontSize": {"value": 12}, "fontWeight": {"value": 600},
+        "fill": {"value": "#1B930D"}, "opacity": {"field": "fade"}
+      }}
+    },
+    {
+      "type": "text", "from": {"data": "levers"}, "interactive": false,
+      "encode": {"update": {
+        "x": {"signal": "pad + 36"}, "y": {"signal": "datum.top + cardH - 18"},
+        "text": {"value": "See details ›"}, "baseline": {"value": "middle"},
+        "fontSize": {"value": 12}, "fontWeight": {"value": 600}, "fill": {"value": "#DB0032"}
+      }}
+    },
+    {
+      "type": "rect", "from": {"data": "levers"}, "interactive": false,
+      "encode": {"update": {
+        "x": {"signal": "width - pad - 50"}, "width": {"value": 50},
+        "y": {"signal": "datum.top + cardH - 30"}, "height": {"value": 24},
+        "cornerRadius": {"value": 12},
+        "fill": {"signal": "datum.isOn ? '#1B930D' : '#D0D5DD'"}
+      }}
+    },
+    {
+      "type": "symbol", "from": {"data": "levers"}, "interactive": false,
+      "encode": {"update": {
+        "x": {"signal": "datum.isOn ? width - pad - 12 : width - pad - 38"},
+        "y": {"signal": "datum.top + cardH - 18"},
+        "shape": {"value": "circle"}, "size": {"value": 324}, "fill": {"value": "#FFFFFF"}
+      }}
+    },
+    {
+      "type": "text", "from": {"data": "levers"}, "interactive": false,
+      "encode": {"update": {
+        "x": {"signal": "width - pad - 56"}, "y": {"signal": "datum.top + cardH - 18"},
+        "text": {"signal": "datum.isOn ? 'On' : 'Off'"}, "align": {"value": "right"}, "baseline": {"value": "middle"},
+        "fontSize": {"value": 11}, "fontWeight": {"value": 600},
+        "fill": {"signal": "datum.isOn ? '#1B930D' : '#98A2B3'"}
+      }}
+    },
+    {
+      "name": "toggleHit", "type": "rect", "from": {"data": "levers"},
+      "encode": {"update": {
+        "x": {"signal": "width - pad - 84"}, "width": {"value": 88},
+        "y": {"signal": "datum.top + cardH - 36"}, "height": {"value": 36},
+        "fill": {"value": "#FFFFFF"}, "fillOpacity": {"value": 0.001},
+        "cursor": {"signal": "datum.isOn && length(onList) <= 1 ? 'not-allowed' : 'pointer'"},
+        "tooltip": {"signal": "datum.isOn && length(onList) <= 1 ? {'title': datum.Lever, 'Status': 'At least one lever stays on'} : {'title': datum.Lever, 'Click to': datum.isOn ? 'switch off' : 'switch on', 'Potential on its own': '−' + format(datum.pts, '.1f') + ' pts, ' + datum.sarText}"}
+      }}
+    },
+    {
+      "type": "text", "interactive": false,
+      "encode": {"update": {
+        "x": {"value": 2}, "y": {"signal": "height - footerH + 14"},
+        "text": {"signal": "gapPts == null ? '' : gapPts <= 0 ? 'Already at or better than the target' : 'Gap to target: ' + format(gapPts, '.1f') + ' pts · switched-on levers: ' + format(onPts, '.1f') + ' pts'"},
+        "baseline": {"value": "middle"}, "limit": {"signal": "width - 4"},
+        "fontSize": {"value": 12}, "fontWeight": {"value": 600}, "fill": {"value": "#1A1A1A"}
+      }}
+    },
+    {
+      "type": "text", "interactive": false,
+      "encode": {"update": {
+        "x": {"value": 2}, "y": {"signal": "height - footerH + 32"},
+        "text": {"value": "Points are each lever on its own; the plan stops at the target."},
+        "baseline": {"value": "middle"}, "limit": {"signal": "width - 4"},
+        "fontSize": {"value": 11}, "fill": {"value": "#667085"}
+      }}
+    },
+    {
+      "type": "text", "interactive": false,
+      "encode": {"update": {
+        "x": {"signal": "width / 2"}, "y": {"signal": "height / 2"}, "align": {"value": "center"},
+        "text": {"signal": "problem"}, "limit": {"signal": "width"}, "fill": {"value": "#A13C35"}, "fontSize": {"value": 12}
+      }}
+    }
+  ]
+}

@@ -15,7 +15,7 @@ Not applied: no claim triangles for this source (claims used as recorded).
 
 ## Validation (7 forecast origins, every quarter-end with 24+ months of history)
 
-**7 checks pass, 4 need review.** The same rows are in fact_forecast_validation.csv for Power BI.
+**8 checks pass, 4 need review.** The same rows are in fact_forecast_validation.csv for Power BI.
 
 | Group | Check | Measure | Horizon | Value | Benchmark | Rule | Status |
 |---|---|---|---|---:|---:|---|---|
@@ -37,7 +37,8 @@ Not applied: no claim triangles for this source (claims used as recorded).
 | accuracy | Bias over 4 forecast origins | Claim count | 12M | -10.6% |  | within ±10% | **REVIEW** |
 | accuracy | Error (WAPE) over 4 forecast origins, vs seasonal naive | Claims cost | 12M | 28.0% | 28.0% | at or below seasonal naive | **INFO** |
 | accuracy | Bias over 4 forecast origins | Claims cost | 12M | -28.0% |  | within ±10% | **REVIEW** |
-| band | Months inside the 90% band (each origin tested on a band from the others) | Claims cost |  | 95.5% |  | 80% to 97% | **PASS** |
+| band | Months inside the P10-P90 band (each origin tested on a band from the others) | Premium |  | 75.8% |  | 70% to 90% | **PASS** |
+| band | Months inside the P10-P90 band (each origin tested on a band from the others) | Claims |  | 74.2% |  | 70% to 90% | **PASS** |
 | inputs | Earned premium rebuilt from policy dates / fact_earned_premium | Earned premium |  | 1.000 |  | within ±1% | **PASS** |
 
 ### Model choice
@@ -78,4 +79,4 @@ Actuals for the latest months are themselves developed estimates, and the develo
 | 2024-06 | 420,357 | 1,135,228 | 88 | 270.1% |
 | 2024-07 | 423,467 | 865,317 | 70 | 204.3% |
 | 2024-08 | 421,701 | 876,785 | 73 | 207.9% |
-| 2024-09 | 421,526 | 892,947 | 49 | 211.8% |
+| 2024-09 | 421,526 | 892,946 | 49 | 211.8% |

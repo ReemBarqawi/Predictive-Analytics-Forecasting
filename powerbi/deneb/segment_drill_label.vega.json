@@ -1,0 +1,157 @@
+{
+  "$schema": "https://vega.github.io/schema/vega/v5.json",
+  "description": "Segment label with right-click drill-through. Provider: Vega. Fields: dim_zone_summary ZONE, dim_business_class CLASS_DESC (drill-through keys, Don't summarize), then the Segment Label measure. One row per zone x class in context. The drill rect is bound to that row and only exists when exactly one row is left, so right-click always sends the zone and class on screen; policy type (when a slicer sets it) and the other slicers travel with Keep all filters on the target page. Settings > Interactivity > Context menu must be on.",
+  "width": {"signal": "boxW"},
+  "height": {"signal": "boxH"},
+  "padding": 0,
+  "autosize": {"type": "pad", "resize": false},
+  "background": "transparent",
+  "config": {
+    "text": {"font": "Segoe UI"}
+  },
+  "signals": [
+    {"name": "boxW", "init": "containerSize()[0] || 460", "on": [{"events": "window:resize", "update": "containerSize()[0] || boxW"}]},
+    {"name": "boxH", "init": "containerSize()[1] || 34", "on": [{"events": "window:resize", "update": "containerSize()[1] || boxH"}]},
+    {"name": "nRows", "update": "length(data('dataset'))"},
+    {"name": "canDrill", "update": "nRows == 1"},
+    {"name": "nZone", "update": "length(data('zones'))"},
+    {"name": "nClass", "update": "length(data('classes'))"},
+    {"name": "parts", "update": "(nZone == 1 ? data('zones')[0].ZONE : '') + (nClass == 1 ? (nZone == 1 ? ' · ' : '') + data('classes')[0].CLASS_DESC : '')"},
+    {"name": "label", "update": "nRows == 0 ? 'No segment in the current selection' : nRows == 1 ? (data('dataset')[0]['Segment Label'] || parts) : parts == '' ? 'All segments' : parts"},
+    {"name": "hint", "update": "canDrill ? 'Right-click › Drill through to explore this segment' : 'Pick one zone and one class to drill through'"},
+    {"name": "iconColor", "update": "canDrill ? '#101828' : '#98A2B3'"},
+    {"name": "iconX", "update": "width - 22"}
+  ],
+  "data": [
+    {"name": "dataset"},
+    {"name": "zones", "source": "dataset", "transform": [{"type": "aggregate", "groupby": ["ZONE"]}]},
+    {"name": "classes", "source": "dataset", "transform": [{"type": "aggregate", "groupby": ["CLASS_DESC"]}]},
+    {
+      "name": "drill",
+      "source": "dataset",
+      "transform": [{"type": "filter", "expr": "length(data('dataset')) == 1"}]
+    }
+  ],
+  "marks": [
+    {
+      "description": "card",
+      "type": "rect",
+      "encode": {
+        "update": {
+          "x": {"value": 0.5}, "x2": {"signal": "width - 0.5"},
+          "y": {"value": 0.5}, "y2": {"signal": "height - 0.5"},
+          "fill": {"value": "#FFFFFF"},
+          "stroke": {"value": "#D0D5DD"}, "strokeWidth": {"value": 1},
+          "cornerRadius": {"value": 6},
+          "tooltip": {"signal": "hint"}
+        }
+      }
+    },
+    {
+      "description": "segment label",
+      "type": "text",
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "(width - 30) / 2"}, "y": {"signal": "height / 2"},
+          "align": {"value": "center"}, "baseline": {"value": "middle"},
+          "text": {"signal": "label"},
+          "limit": {"signal": "width - 70"},
+          "fontSize": {"value": 22}, "fill": {"value": "#101828"}
+        }
+      }
+    },
+    {
+      "description": "target icon: two rings and the centre dot, one path in the -1..1 box (inner circles drawn the other way round to cut the holes). size 484 = 22 px.",
+      "type": "symbol",
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "iconX"}, "y": {"signal": "height / 2"},
+          "size": {"value": 484},
+          "shape": {"value": "M0.87,0.05 A0.92,0.92 0 1 1 -0.97,0.05 A0.92,0.92 0 1 1 0.87,0.05 Z M0.65,0.05 A0.7,0.7 0 1 0 -0.75,0.05 A0.7,0.7 0 1 0 0.65,0.05 Z M0.47,0.05 A0.52,0.52 0 1 1 -0.57,0.05 A0.52,0.52 0 1 1 0.47,0.05 Z M0.27,0.05 A0.32,0.32 0 1 0 -0.37,0.05 A0.32,0.32 0 1 0 0.27,0.05 Z M0.11,0.05 A0.16,0.16 0 1 1 -0.21,0.05 A0.16,0.16 0 1 1 0.11,0.05 Z"},
+          "fill": {"signal": "iconColor"},
+          "strokeWidth": {"value": 0}
+        }
+      }
+    },
+    {
+      "description": "target icon: arrow (shaft and notched fletching) on top; its white outline cuts the gap through the rings",
+      "type": "symbol",
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "iconX"}, "y": {"signal": "height / 2"},
+          "size": {"value": 484},
+          "shape": {"value": "M0,0.1 L0.55,-0.45 L0.45,-0.55 L-0.1,0 Z M0.32,-0.56 L0.66,-0.98 L0.76,-0.76 L0.98,-0.66 L0.56,-0.32 Z"},
+          "fill": {"signal": "iconColor"},
+          "stroke": {"value": "#FFFFFF"}, "strokeWidth": {"value": 2.5}, "strokeJoin": {"value": "round"}
+        }
+      }
+    },
+    {
+      "description": "drill target: the visible card itself, bound to the single data row (same pattern as the segment grid cards). Click selects it through Deneb cross-filtering (selected = dark 2 px border, light blue fill, as on the grid); right-click opens Drill through. Drawn last so it is the mark under the cursor; label and icon are redrawn above it with interactive false.",
+      "name": "drillTarget",
+      "type": "rect",
+      "from": {"data": "drill"},
+      "encode": {
+        "update": {
+          "x": {"value": 0.5}, "x2": {"signal": "width - 0.5"},
+          "y": {"value": 0.5}, "y2": {"signal": "height - 0.5"},
+          "fill": {"signal": "datum.__selected__ === 'on' ? '#F4F8FB' : '#FFFFFF'"},
+          "stroke": {"signal": "datum.__selected__ === 'on' ? '#263238' : '#D0D5DD'"},
+          "strokeWidth": {"signal": "datum.__selected__ === 'on' ? 2 : 1"},
+          "cornerRadius": {"value": 6},
+          "cursor": {"value": "pointer"},
+          "tooltip": {"signal": "datum.__selected__ === 'on' ? 'Selected · right-click › Drill through' : 'Click to select, then right-click › Drill through'"}
+        },
+        "hover": {"stroke": {"value": "#8C8C8C"}}
+      }
+    },
+    {
+      "description": "label again, above the drill card",
+      "type": "text",
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "(width - 30) / 2"}, "y": {"signal": "height / 2"},
+          "align": {"value": "center"}, "baseline": {"value": "middle"},
+          "text": {"signal": "label"},
+          "limit": {"signal": "width - 70"},
+          "fontSize": {"value": 22}, "fill": {"value": "#101828"},
+          "opacity": {"signal": "canDrill ? 1 : 0"}
+        }
+      }
+    },
+    {
+      "description": "icon rings again, above the drill card",
+      "type": "symbol",
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "iconX"}, "y": {"signal": "height / 2"},
+          "size": {"value": 484},
+          "shape": {"value": "M0.87,0.05 A0.92,0.92 0 1 1 -0.97,0.05 A0.92,0.92 0 1 1 0.87,0.05 Z M0.65,0.05 A0.7,0.7 0 1 0 -0.75,0.05 A0.7,0.7 0 1 0 0.65,0.05 Z M0.47,0.05 A0.52,0.52 0 1 1 -0.57,0.05 A0.52,0.52 0 1 1 0.47,0.05 Z M0.27,0.05 A0.32,0.32 0 1 0 -0.37,0.05 A0.32,0.32 0 1 0 0.27,0.05 Z M0.11,0.05 A0.16,0.16 0 1 1 -0.21,0.05 A0.16,0.16 0 1 1 0.11,0.05 Z"},
+          "fill": {"signal": "iconColor"},
+          "strokeWidth": {"value": 0},
+          "opacity": {"signal": "canDrill ? 1 : 0"}
+        }
+      }
+    },
+    {
+      "description": "icon arrow again, above the drill card",
+      "type": "symbol",
+      "interactive": false,
+      "encode": {
+        "update": {
+          "x": {"signal": "iconX"}, "y": {"signal": "height / 2"},
+          "size": {"value": 484},
+          "shape": {"value": "M0,0.1 L0.55,-0.45 L0.45,-0.55 L-0.1,0 Z M0.32,-0.56 L0.66,-0.98 L0.76,-0.76 L0.98,-0.66 L0.56,-0.32 Z"},
+          "fill": {"signal": "iconColor"},
+          "stroke": {"value": "#FFFFFF"}, "strokeWidth": {"value": 2.5}, "strokeJoin": {"value": "round"},
+          "opacity": {"signal": "canDrill ? 1 : 0"}
+        }
+      }
+    }
+  ]
+}
