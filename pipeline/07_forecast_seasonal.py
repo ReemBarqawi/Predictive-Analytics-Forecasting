@@ -19,9 +19,9 @@ so they follow the book's known run-off instead of extending the past trend.
      - ends with the last complete month of claims data
   2. Developed history
      - recent accident months are incomplete: claims are still being reported and reserves
-       still move. Each accident quarter is grossed up by its chain-ladder ultimate over what
-       the warehouse triangles (sql/claims_dev_*.sql) have recorded to the data end:
-       incurred for cost, reported for counts.
+       still move. Each accident quarter is grossed up by its ultimate over what the warehouse
+       triangles (sql/claims_dev_*.sql) have recorded to the data end: incurred cost with
+       Bornhuetter-Ferguson (Cape Cod expected loss ratio), reported counts with chain-ladder.
      - without triangles (synthetic data: ULTIMATE_CLAIM already includes IBNR) the claims
        are used as they are
   3. Rolling validation: both models forecast from every quarter-end with two years of
@@ -81,6 +81,16 @@ BOOK_RAMP_MONTHS = 12
 # Method constant: chain-ladder factors are volume-weighted over the latest 20 quarterly
 # diagonals (5 years), so the current claims process and mix drive them, not 2008 behaviour.
 DEV_DIAGONALS = 20
+# Method constants: claims cost is developed with Bornhuetter-Ferguson, claim counts with
+# chain-ladder. BF gives a young accident quarter its recorded claims plus the share still to
+# come times premium x an expected loss ratio, instead of scaling its few early claims by a large
+# factor. The expected loss ratio is Cape Cod over the latest CAPE_COD_QUARTERS accident quarters
+# (recorded claims / premium already "used up" by development), so it comes from the data.
+# Evidence (Oracle, 2026-11-10, 12 past valuations): on the newest quarter chain-ladder
+# over-predicted cost by +8.7% (mean abs error 11.2%), BF by +4.0% (9.7%). For counts chain-ladder
+# was better (7.2% vs 8.4%+), so counts keep it.
+BF_SERIES = {"CLAIMS_COST"}
+CAPE_COD_QUARTERS = 12
 BAND_QUANTILES = (0.10, 0.90)           # written to CLAIMS_P10 / P90 and PREMIUM_P10 / P90
 
 SERIES = ["EARNED_PREMIUM", "CLAIM_COUNT", "CLAIMS_COST"]    # shown on the page and scored
@@ -153,57 +163,88 @@ def _cdf(cum: np.ndarray, age: np.ndarray) -> np.ndarray:
     return np.append(np.cumprod(factors[::-1])[::-1], 1.0)
 
 
-def development(tri: pd.DataFrame, value_col: str, last_q: pd.Period) -> tuple[np.ndarray, pd.Series]:
+def _cape_cod_elr(aqs: pd.PeriodIndex, known: np.ndarray, used: np.ndarray, start_q: pd.Period) -> float:
+    """Cape Cod expected loss ratio: recorded claims / premium already used up by development
+    (premium / factor to ultimate), over the latest CAPE_COD_QUARTERS accident quarters of the
+    modelling window."""
+    sel = np.where(aqs >= start_q)[0][-CAPE_COD_QUARTERS:]
+    den = used[sel].sum()
+    return float(known[sel].sum() / den) if den > 0 else np.nan
+
+
+class _Dev:
+    """Development as at one valuation quarter: chain-ladder factors, plus BF when given premium."""
+
+    def __init__(self, tri: pd.DataFrame, value_col: str, valued: pd.Period,
+                 premium_q: pd.Series | None, start_q: pd.Period | None):
+        self.aqs, self.cum, self.age = _cumulative(tri, value_col, valued)
+        self.cdf = _cdf(self.cum, self.age)
+        self.known = self.cum[np.arange(len(self.aqs)), self.age]
+        self.bf = premium_q is not None
+        if self.bf:
+            self.premium = premium_q.reindex(self.aqs).fillna(0.0).to_numpy(dtype=float)
+            self.elr = _cape_cod_elr(self.aqs, self.known, self.premium / self.cdf[self.age], start_q)
+            self.bf = np.isfinite(self.elr)
+
+    def expected(self, i: int, later_age: int) -> float:
+        """Expected cumulative value of accident quarter i once it reaches `later_age`
+        (len(cdf) - 1 or more = ultimate)."""
+        g, later = self.age[i], min(later_age, len(self.cdf) - 1)
+        if self.bf:
+            return self.known[i] + self.premium[i] * self.elr * (1 / self.cdf[later] - 1 / self.cdf[g])
+        return self.known[i] * self.cdf[g] / self.cdf[later]
+
+
+def development(tri: pd.DataFrame, value_col: str, last_q: pd.Period,
+                premium_q: pd.Series | None = None, start_q: pd.Period | None = None):
     """
-    Chain-ladder on a triangle of increments by accident x development quarter.
-    Returns the cumulative factor to ultimate by age in quarters (index 0 = the latest
-    complete quarter), and per accident quarter the ratio ultimate / everything recorded so
-    far. The ratio is what the claims extract needs: it was taken at the data end, part-way
-    into the next quarter, so it is further developed than the last complete diagonal.
+    Chain-ladder on a triangle of increments by accident x development quarter, or
+    Bornhuetter-Ferguson when quarterly earned premium is given. Returns the chain-ladder
+    factor to ultimate by age in quarters (index 0 = the latest complete quarter), per accident
+    quarter the ratio ultimate / everything recorded so far, and the BF expected loss ratio (NaN
+    for chain-ladder). The ratio is what the claims extract needs: it was taken at the data end,
+    part-way into the next quarter, so it is further developed than the last complete diagonal.
     """
     recorded = tri.groupby(pd.to_datetime(tri["ACC_QUARTER"]).dt.to_period("Q"))[value_col].sum()
-    aqs, cum, age = _cumulative(tri, value_col, last_q)
-    cdf = _cdf(cum, age)
-    ultimate = pd.Series(cum[np.arange(len(aqs)), age] * cdf[age], index=aqs)
-    ratio = (ultimate / recorded.reindex(aqs)).where(lambda r: np.isfinite(r) & (r > 0), 1.0)
-    return cdf, ratio
+    d = _Dev(tri, value_col, last_q, premium_q, start_q)
+    ultimate = pd.Series([d.expected(i, len(d.cdf)) for i in range(len(d.aqs))], index=d.aqs)
+    ratio = (ultimate / recorded.reindex(d.aqs)).where(lambda r: np.isfinite(r) & (r > 0), 1.0)
+    return d.cdf, ratio, (d.elr if d.bf else np.nan)
 
 
-def development_lookback(tri: pd.DataFrame, value_col: str, last_q: pd.Period) -> pd.DataFrame:
+def development_lookback(tri: pd.DataFrame, value_col: str, last_q: pd.Period,
+                         premium_q: pd.Series | None = None, start_q: pd.Period | None = None) -> pd.DataFrame:
     """
-    Actual vs expected development: factors estimated as at DEV_LOOKBACK_QUARTERS ago predict
-    how much each accident quarter would grow since then; compare with what it actually did.
+    Actual vs expected development: the method as at DEV_LOOKBACK_QUARTERS ago predicts how
+    much each accident quarter would grow since then; compare with what it actually did.
     """
-    then = last_q - DEV_LOOKBACK_QUARTERS
-    aqs_then, cum_then, age_then = _cumulative(tri, value_col, then)
+    then = _Dev(tri, value_col, last_q - DEV_LOOKBACK_QUARTERS, premium_q, start_q)
     aqs_now, cum_now, age_now = _cumulative(tri, value_col, last_q)
-    cdf_then = _cdf(cum_then, age_then)
     rows = []
-    for i, a in enumerate(aqs_then[-DEV_LOOKBACK_AQS:], start=len(aqs_then) - DEV_LOOKBACK_AQS):
-        known = cum_then[i, age_then[i]]
-        j = aqs_now.get_loc(a)
-        grow = cdf_then[age_then[i]] / cdf_then[min(age_then[i] + DEV_LOOKBACK_QUARTERS, len(cdf_then) - 1)]
-        rows.append({"ACC_QUARTER": str(a), "KNOWN_THEN": known, "EXPECTED_NOW": known * grow,
+    for i in range(len(then.aqs) - DEV_LOOKBACK_AQS, len(then.aqs)):
+        j = aqs_now.get_loc(then.aqs[i])
+        rows.append({"ACC_QUARTER": str(then.aqs[i]), "KNOWN_THEN": then.known[i],
+                     "EXPECTED_NOW": then.expected(i, then.age[i] + DEV_LOOKBACK_QUARTERS),
                      "ACTUAL_NOW": cum_now[j, age_now[j]]})
     out = pd.DataFrame(rows)
     out["ACTUAL_VS_EXPECTED"] = out["ACTUAL_NOW"] / out["EXPECTED_NOW"]
     return out
 
 
-def development_newest(tri: pd.DataFrame, value_col: str, last_q: pd.Period) -> pd.DataFrame:
+def development_newest(tri: pd.DataFrame, value_col: str, last_q: pd.Period,
+                       premium_q: pd.Series | None = None, start_q: pd.Period | None = None) -> pd.DataFrame:
     """
     The newest accident quarter carries the largest factor and drives the forecast, so it is
-    tested on its own: at each of DEV_NEWEST_TESTS past valuations, the factors then predict
+    tested on its own: at each of DEV_NEWEST_TESTS past valuations, the method then predicts
     how far that quarter would grow by now; compare with what it actually reached.
     """
     aqs_now, cum_now, age_now = _cumulative(tri, value_col, last_q)
     rows = []
     for lag in range(DEV_LOOKBACK_QUARTERS, DEV_LOOKBACK_QUARTERS + DEV_NEWEST_TESTS):
-        aqs, cum, age = _cumulative(tri, value_col, last_q - lag)
-        cdf = _cdf(cum, age)
-        j = aqs_now.get_loc(aqs[-1])
-        expected = cum[-1, 0] * cdf[0] / cdf[min(lag, len(cdf) - 1)]
-        rows.append({"VALUED_AT": str(last_q - lag), "ACTUAL_VS_EXPECTED": cum_now[j, age_now[j]] / expected})
+        d = _Dev(tri, value_col, last_q - lag, premium_q, start_q)
+        j = aqs_now.get_loc(d.aqs[-1])
+        rows.append({"VALUED_AT": str(last_q - lag),
+                     "ACTUAL_VS_EXPECTED": cum_now[j, age_now[j]] / d.expected(len(d.aqs) - 1, lag)})
     return pd.DataFrame(rows)
 
 
@@ -227,24 +268,31 @@ def develop(monthly: pd.DataFrame, data_end: pd.Timestamp) -> tuple[pd.DataFrame
     q_end = data_end.to_period("Q")
     last_q = q_end if data_end.normalize() >= q_end.end_time.normalize() else q_end - 1
     info = {"developed": True, "valuation_quarter": str(last_q), "cdf": {}, "latest_ratio": {},
-            "lookback": {}, "newest": {}, "tri_vs_extract": {}}
+            "lookback": {}, "newest": {}, "tri_vs_extract": {}, "method": {}, "elr": {}}
+    premium_q = out["EARNED_PREMIUM"].groupby(out.index.asfreq("Q")).sum()
+    start_q = (out.index.min() + BOOK_RAMP_MONTHS).asfreq("Q")   # the book's ramp-up is not experience
     for col, (name, value_col) in files.items():
         tri = pd.read_parquet(paths[col])
-        cdf, ratio = development(tri, value_col, last_q)
+        bf = (premium_q, start_q) if col in BF_SERIES else (None, None)
+        cdf, ratio, elr = development(tri, value_col, last_q, *bf)
         # Accident quarters outside the triangle (before its history, or the partial quarter
         # after last_q, which the forecast window never uses) stay as recorded.
         out[col] = out[col] * ratio.reindex(out.index.asfreq("Q")).fillna(1.0).to_numpy()
         info["cdf"][col] = cdf[:8]
+        info["method"][col] = "Bornhuetter-Ferguson" if np.isfinite(elr) else "chain-ladder"
+        info["elr"][col] = elr
         info["latest_ratio"][col] = float(ratio.iloc[-1])
-        info["lookback"][col] = development_lookback(tri, value_col, last_q)
-        info["newest"][col] = development_newest(tri, value_col, last_q)
+        info["lookback"][col] = development_lookback(tri, value_col, last_q, *bf)
+        info["newest"][col] = development_newest(tri, value_col, last_q, *bf)
         # Same claims, two extracts: the triangle and fact_claim must agree on recent quarters
         quarters = pd.period_range(last_q - 7, last_q, freq="Q")
         in_tri = tri.groupby(pd.to_datetime(tri["ACC_QUARTER"]).dt.to_period("Q"))[value_col].sum()
         reported = "REPORTED_COST" if col == "CLAIMS_COST" else "REPORTED_COUNT"
         in_extract = out[reported].groupby(out.index.asfreq("Q")).sum()
         info["tri_vs_extract"][col] = float(in_tri.reindex(quarters).sum() / in_extract.reindex(quarters).sum())
-        _log(f"{name}: factor to ultimate {cdf[0]:.3f} at quarter-end; the latest quarter as "
+        how = (f"Bornhuetter-Ferguson, Cape Cod expected loss ratio {elr:.1%}" if np.isfinite(elr)
+               else "chain-ladder")
+        _log(f"{name}: {how}; factor to ultimate {cdf[0]:.3f} at quarter-end; the latest quarter as "
              f"extracted x{ratio.iloc[-1]:.3f}, one year back x{ratio.iloc[-5]:.3f}")
     return out, info
 
@@ -678,8 +726,13 @@ def write_report(history: pd.DataFrame, fc: pd.DataFrame, scores: pd.DataFrame, 
                 "year's policy terms).\n\n")
         f.write("## Development to ultimate\n\n")
         if dev["developed"]:
-            f.write(f"Chain-ladder at {dev['valuation_quarter']}, volume-weighted over the latest "
-                    f"{DEV_DIAGONALS} diagonals. Factor to ultimate by age of the accident quarter:\n\n")
+            for col, m in dev["method"].items():
+                extra = (f", expected loss ratio {dev['elr'][col]:.1%} (Cape Cod over the latest "
+                         f"{CAPE_COD_QUARTERS} accident quarters)" if m == "Bornhuetter-Ferguson" else "")
+                f.write(f"- {names[col]}: {m}{extra}\n")
+            f.write(f"\nChain-ladder factors at {dev['valuation_quarter']}, volume-weighted over the latest "
+                    f"{DEV_DIAGONALS} diagonals (BF uses them for the share still to come). "
+                    "Factor to ultimate by age of the accident quarter:\n\n")
             f.write("| Age (quarters) | " + " | ".join(str(i) for i in range(8)) + " |\n")
             f.write("|---|" + "---|" * 8 + "\n")
             for col, cdf in dev["cdf"].items():

@@ -90,7 +90,7 @@ the rolling backtest** (12 origins at 3M, 9 at 12M) before it replaces it, and t
 
 | # | Item | Why | Size |
 |---|---|---|---|
-| C1 | **Claim development** with Bornhuetter-Ferguson (`chainladder` package, section 3) on the existing triangles | Recent claims are understated. The development test moved the no-change combined ratio from 106.7% to 119.8%. The newest quarter's development check is 0.92 (REVIEW) | Medium |
+| C1 | **Claim development** with Bornhuetter-Ferguson (`chainladder` package, section 3) on the existing triangles | Recent claims are understated. The development test moved the no-change combined ratio from 106.7% to 119.8%. The newest quarter's development check is 0.92 (REVIEW). **Step 07 done 2026-11-10:** BF for cost (Cape Cod ELR 88.9%, written in-house, no new package), chain-ladder kept for counts; newest-quarter check 0.921 → 0.945, claims WAPE better at 3/6/12M. **Still to do:** step 01 sets `ULTIMATE_CLAIM` = incurred with no IBNR, which every page's actual loss ratio reads | Medium |
 | C2 | Claims = frequency × severity × exposure from B1's book, rather than a cost rate on premium | When price changes, the cost-on-premium rate breaks. Claims follow cars, not riyals | Medium |
 | C3 | Trend factor: more origins (A1), and split into frequency and severity inflation | 9 origins; the raw forecast ran 13.5 points high and got the direction right 5 times out of 9 | Small |
 | C4 | Large-loss cap and reload in the monthly series | Single large months drive the 57%–121% monthly loss ratio swings | Small |
