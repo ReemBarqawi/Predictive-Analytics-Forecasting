@@ -5,7 +5,7 @@ run_all.py — runs the Aman Prediction pipeline end to end, in dependency order
     python run_all.py --source synthetic       # demo data (Excel files in ORIGINAL_DATA/)
     python run_all.py --source oracle          # company warehouse: extract, prepare, models
     python run_all.py --source oracle --skip-extract   # reuse the last extract in data/raw/
-    python run_all.py --from 5                 # start at step 5 (earlier outputs must exist)
+    python run_all.py --from 5                 # every step numbered 5 or more, in run order (earlier outputs must exist)
     python run_all.py --only 9 10              # run just these steps
     python run_all.py --source oracle --check-connection   # test the warehouse login only
 
@@ -29,7 +29,8 @@ MODEL_STEPS = [
     (2, "02_glm_refit.py"),
     (3, "03_pure_premium.py"),
     (4, "04_backtest.py"),
-    (11, "11_build_alerts.py"),      # first: steps 5 and 9 read its reliable loss ratios
+    (14, "14_reserving.py"),         # claims to ultimate: steps 5, 7 and 9 read it
+    (11, "11_build_alerts.py"),
     (5, "05_segment_performance_by_year.py"),
     (6, "06_lever_allocation.py"),
     (7, "07_forecast_seasonal.py"),

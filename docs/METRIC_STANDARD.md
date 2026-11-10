@@ -166,7 +166,7 @@ The run fails when any of these is off by more than rounding:
 |---|---|---|---|
 | **1 Measures** | Dictionary in Power BI; pages repointed; old names retired; year rule | Same number on every page, no method change | Nothing |
 | **2 Gate** | Reconcile step in `run_all.py`; no rounding in facts; typed values to settings | Bad runs stop | Phase 1 |
-| **3 Reserving** | One step for ultimate claims, using accident-quarter triangles first; all years comparable | Honest claims; steps 05, 07, 09, 11 read it | Actuary's method |
+| **3 Reserving** ✅ *built 2026-11-10, provisional* | One step for ultimate claims, using accident-quarter triangles first; all years comparable | Honest claims; steps 05, 07, 09 read it (`14_reserving.py`, `fact_claims_ultimate`); step 11's alerts stay on in-year results | Actuary's method (decision #6) |
 | **4 Underwriting-year triangles** | New extract and Bornhuetter-Ferguson | Default method on the report's basis | DBA, actuary |
 | **5 Forecast and pricing** | Segment trend; on-level; technical price; A/E alerts | Pricing on the default method | Phases 3–4, rate history |
 | **6 Retention** | Estimate from renewals | Reliable customer reaction | Renewal link |

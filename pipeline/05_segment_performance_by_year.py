@@ -18,14 +18,10 @@ Rates and bands come from config.toml ([business], [safe_zone], [credibility]):
     safe zone          = Green, Yellow, Red by combined ratio, else Loss
     credibility        = Full, Partial by claim count, else Low
 
-Immature years: policy years from the current year on (settings.current_year) have too few reported
-claims (2024: 41 claims on 1,779 policies). For those years the claims used are
-the GLM expected claims from fact_policy_pricing, and CLAIMS_BASIS says so.
-The actual figure is kept in ACTUAL_ULTIMATE_CLAIMS.
-
-[pricing] expected_claims = "experience" (config.toml, needs manager review): those years use their
-whole premium times the segment's reliable loss ratio from step 11, the same estimate as the alerts,
-because the model runs below actual on the current year. Segments without one keep the model.
+Claims: ULTIMATE_CLAIMS comes from step 14 (fact_claims_ultimate.csv, reserving), the one place
+ultimate claims are estimated, for every policy year: recorded + still to come (late reporting and
+cover not yet run). Recorded claims are kept in ACTUAL_ULTIMATE_CLAIMS. Until 2026-11-10 past years
+used recorded claims only and the current year whole premium x the alerts' reliable loss ratio.
 """
 from pathlib import Path
 import sys
@@ -82,19 +78,17 @@ df = (ep_g.merge(pol_g, on=KEYS, how="outer")
 num = df.columns.difference(KEYS)
 df[num] = df[num].fillna(0)
 
-# ---- claims basis: actual for mature years, model-expected for immature ----
+# ---- claims: ultimate from the reserving step (14), the same method for every year ----
+# Recorded claims stay in ACTUAL_ULTIMATE_CLAIMS ("Reported Claims" in Power BI). Years before the
+# current one are labelled "Actual developed" (mostly recorded); the current year on is a
+# "Developed estimate" (step 07 reads the label to mark the Forecast chart's estimated months).
+ult = pd.read_csv(FACTS / "fact_claims_ultimate.csv",
+                  usecols=KEYS + ["ULTIMATE_CLAIMS", "ULTIMATE_CLAIM_COUNT"], encoding_errors="replace")
+df = df.merge(ult.rename(columns={"ULTIMATE_CLAIMS": "RESERVED_CLAIMS"}), on=KEYS, how="left")
 mature = df.POLICY_YEAR <= LATEST_MATURE_YEAR
-df["CLAIMS_BASIS"] = np.where(mature, "Actual developed", "Model expected")
-df["ULTIMATE_CLAIMS"] = np.where(mature, df.ACTUAL_ULTIMATE_CLAIMS, df.MODEL_EXPECTED_CLAIMS)
-df["CLAIM_COUNT"] = np.where(mature, df.ACTUAL_CLAIM_COUNT, df.MODEL_EXPECTED_CLAIM_COUNT.round()).astype(int)
-reliable_path = FACTS / "fact_expected_claims.csv"
-if expected_claims_basis() == "experience" and reliable_path.exists():
-    lr = df[["ZONE", "CLASS_DESC", "POLICY_TYPE_DESC"]].merge(pd.read_csv(reliable_path), how="left").RELIABLE_LR
-    estimate = (~mature) & lr.notna() & (df.EARNED_PREMIUM > 0)
-    ratio = (df.EARNED_PREMIUM * lr / df.MODEL_EXPECTED_CLAIMS.replace(0, np.nan)).fillna(1.0)
-    df.loc[estimate, "ULTIMATE_CLAIMS"] = (df.EARNED_PREMIUM * lr)[estimate]
-    df.loc[estimate, "CLAIM_COUNT"] = (df.MODEL_EXPECTED_CLAIM_COUNT * ratio)[estimate].round().astype(int)
-    df.loc[estimate, "CLAIMS_BASIS"] = "Experience estimate"
+df["CLAIMS_BASIS"] = np.where(mature, "Actual developed", "Developed estimate")
+df["ULTIMATE_CLAIMS"] = np.maximum(df.RESERVED_CLAIMS.fillna(df.ACTUAL_ULTIMATE_CLAIMS), df.ACTUAL_ULTIMATE_CLAIMS)
+df["CLAIM_COUNT"] = np.maximum(df.ULTIMATE_CLAIM_COUNT.fillna(df.ACTUAL_CLAIM_COUNT), df.ACTUAL_CLAIM_COUNT).round().astype(int)
 
 # ---- derived columns (same formulas as the current table) -----------------
 P = df.EARNED_PREMIUM

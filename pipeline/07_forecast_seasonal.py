@@ -55,6 +55,7 @@ import numpy as np
 import pandas as pd
 
 from settings import S, year_basis, expected_claims_basis
+from development import DEV_DIAGONALS, TRIANGLES, cdf, cumulative, valuation_quarter
 import timesfm_model
 
 warnings.filterwarnings("ignore")
@@ -78,9 +79,6 @@ INPUT_TOLERANCE = 0.01                  # input reconciliations must agree withi
 # Method constant: the book needs one policy year after the first policy is written before
 # earned premium (and the claims on it) stop ramping up mechanically.
 BOOK_RAMP_MONTHS = 12
-# Method constant: chain-ladder factors are volume-weighted over the latest 20 quarterly
-# diagonals (5 years), so the current claims process and mix drive them, not 2008 behaviour.
-DEV_DIAGONALS = 20
 # Method constants: claims cost is developed with Bornhuetter-Ferguson, claim counts with
 # chain-ladder. BF gives a young accident quarter its recorded claims plus the share still to
 # come times premium x an expected loss ratio, instead of scaling its few early claims by a large
@@ -136,31 +134,7 @@ def history_window(first_premium: pd.Period, data_end: pd.Timestamp) -> tuple[pd
 # =========================================================================
 # Development to ultimate
 # =========================================================================
-def _cumulative(tri: pd.DataFrame, value_col: str, last_q: pd.Period):
-    """Cumulative triangle (accident quarter x age) as known at the end of `last_q`."""
-    aq = pd.to_datetime(tri["ACC_QUARTER"]).dt.to_period("Q")
-    cq = pd.Series([a + int(d) for a, d in zip(aq, tri["DEV_QUARTER"])], index=tri.index)
-    t = tri.assign(AQ=aq, CQ=cq)
-    first_eval = t["CQ"].min()                     # history starts here: earlier accident
-    t = t[(t["CQ"] <= last_q) & (t["AQ"] >= first_eval)]  # quarters lack their early development
-    aqs = pd.period_range(first_eval, last_q, freq="Q")
-    n = len(aqs)
-    inc = (t.groupby(["AQ", "DEV_QUARTER"])[value_col].sum().unstack(fill_value=0)
-             .reindex(index=aqs, columns=range(n), fill_value=0))
-    age = np.array([(last_q - a).n for a in aqs])
-    return aqs, inc.cumsum(axis=1).to_numpy(dtype=float), age
-
-
-def _cdf(cum: np.ndarray, age: np.ndarray) -> np.ndarray:
-    """Volume-weighted chain-ladder: cumulative factor to ultimate by age (index 0 = latest)."""
-    n = len(age)
-    factors = np.ones(n - 1)
-    for k in range(n - 1):
-        rows = np.where(age >= k + 1)[0][-DEV_DIAGONALS:]
-        den = cum[rows, k].sum()
-        if den > 0:
-            factors[k] = cum[rows, k + 1].sum() / den
-    return np.append(np.cumprod(factors[::-1])[::-1], 1.0)
+_cumulative, _cdf = cumulative, cdf          # shared with step 14 (pipeline/development.py)
 
 
 def _cape_cod_elr(aqs: pd.PeriodIndex, known: np.ndarray, used: np.ndarray, start_q: pd.Period) -> float:
@@ -254,8 +228,7 @@ def develop(monthly: pd.DataFrame, data_end: pd.Timestamp) -> tuple[pd.DataFrame
     out["REPORTED_COST"] = out["CLAIMS_COST"]
     out["REPORTED_COUNT"] = out["CLAIM_COUNT"]
 
-    files = {"CLAIMS_COST": ("claims_dev_incurred", "INCURRED_CHANGE"),
-             "CLAIM_COUNT": ("claims_dev_reported", "CLAIMS_REPORTED")}
+    files = TRIANGLES
     paths = {k: S.raw_dir / f"{name}.parquet" for k, (name, _) in files.items()} if S.raw_dir else {}
     if not paths or not all(p.exists() for p in paths.values()):
         if S.source == "oracle":
@@ -265,8 +238,7 @@ def develop(monthly: pd.DataFrame, data_end: pd.Timestamp) -> tuple[pd.DataFrame
             _log("no claim triangles for this source — ULTIMATE_CLAIM used as already developed")
         return out, {"developed": False}
 
-    q_end = data_end.to_period("Q")
-    last_q = q_end if data_end.normalize() >= q_end.end_time.normalize() else q_end - 1
+    last_q = valuation_quarter(data_end)
     info = {"developed": True, "valuation_quarter": str(last_q), "cdf": {}, "latest_ratio": {},
             "lookback": {}, "newest": {}, "tri_vs_extract": {}, "method": {}, "elr": {}}
     premium_q = out["EARNED_PREMIUM"].groupby(out.index.asfreq("Q")).sum()
@@ -496,7 +468,7 @@ def written_month_view(history: pd.DataFrame, fc: pd.DataFrame) -> tuple[pd.Data
     """
     [report] year_basis = "written_year": each policy's whole premium and claims sit in the month it
     starts, so a year's 12 months add up to the policy-year figures on Profitability. Claims follow
-    step 05: actual for mature years, model-expected on priced policies for the others. A policy whose
+    step 05, which takes every year's ultimate from step 14 (reserving). A policy whose
     start falls outside its POLICY_YEAR goes to that year's first or last month. The models still run
     on the whole book; this only changes what the page shows. Forecast: written premium at the
     forecast claim rates.
@@ -527,11 +499,12 @@ def written_month_view(history: pd.DataFrame, fc: pd.DataFrame) -> tuple[pd.Data
     h["CLAIM_COUNT"] = cl.groupby("M")["CLM_NO"].size().reindex(h.index, fill_value=0).astype(float).where(
         is_mature, pp[priced].groupby("M")["expected_frequency_period"].sum().reindex(h.index, fill_value=0.0))
 
-    # Years on an estimate: each month starts from what is recorded, so none sits below it. The rest of the
-    # year's total goes to the months whose share by the model's monthly shape is above their recorded figure.
+    # Every year's months add up to its ultimate in segment results (step 14, reserving): each month starts
+    # from what is recorded, so none sits below it, and the year's still-to-come goes to the months whose
+    # share by the monthly shape (recorded for mature years, the model's for the others) is above it.
     recorded = {"CLAIMS_COST": cl.groupby("M")["ULTIMATE_CLAIM"].sum(), "CLAIM_COUNT": cl.groupby("M")["CLM_NO"].size()}
     for col, total in (("CLAIMS_COST", "ULTIMATE_CLAIMS"), ("CLAIM_COUNT", "CLAIM_COUNT")):
-        for year, g in h[~is_mature].groupby(h[~is_mature].index.year):
+        for year, g in h.groupby(h.index.year):
             if year in year_totals.index and g[col].sum() > 0:
                 year_total = year_totals.at[year, total]
                 known = recorded[col].reindex(g.index, fill_value=0).astype(float)

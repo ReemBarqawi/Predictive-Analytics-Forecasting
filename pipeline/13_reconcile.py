@@ -127,10 +127,16 @@ if written_year:
 if written_year:
     inside = earned[(earned["POLICY_YEAR"] == current) & (earned["MONTH_DATE"].dt.year == current)]
     check("alerts", "In-year premium = earned table", alerts["EP_L12"].sum(), inside["EARNED_PREMIUM"].sum())
-    reliable = F / "fact_expected_claims.csv"
-    if experience and reliable.exists():
-        lr = pd.read_csv(reliable).set_index(SEG)["RELIABLE_LR"]
-        check_segments("alerts", "Segment claims = whole premium x reliable loss ratio", now["ULTIMATE_CLAIMS"], (now["EARNED_PREMIUM"] * lr).dropna())
+
+# ---- reserving: the one source of ultimate claims (step 14)
+reserve = pd.read_csv(F / "fact_claims_ultimate.csv")
+check("reserving", "Reported + still to come = ultimate (all years)",
+      (reserve["REPORTED_CLAIMS"] + reserve["STILL_TO_COME"]).sum(), reserve["ULTIMATE_CLAIMS"].sum())
+check_true("reserving", "Ultimate is never below reported", (reserve["STILL_TO_COME"] >= -TOL_SAR).all())
+for year in report_years:
+    r_year = reserve[reserve["POLICY_YEAR"] == year].groupby(SEG)["ULTIMATE_CLAIMS"].sum()
+    s_year = by_year[by_year["POLICY_YEAR"] == year].groupby(SEG)["ULTIMATE_CLAIMS"].sum()
+    check_segments("reserving", f"Policy year {year}: segment claims = reserving", s_year[s_year != 0], r_year[r_year != 0])
 
 # ---- report copies Power BI loads
 claim_copy = pd.read_csv(F / "fact_claim_report.csv", usecols=["POLICY_YEAR", "ULTIMATE_CLAIM", "POLICY_MATCHED"])

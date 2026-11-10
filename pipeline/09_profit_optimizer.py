@@ -71,18 +71,22 @@ SEG = ["ZONE", "CLASS_DESC", "POLICY_TYPE_DESC"]
 # ------------------------------------------------------------------ DATA
 def apply_expected_claims(df):
     """[pricing] expected_claims = "experience": scale each segment's policy costs so its claims equal its
-    reliable loss ratio (step 11) times the trend factor (step 07). The model keeps setting how cost splits
-    between policies inside a segment; a segment without a reliable loss ratio keeps the model's level."""
-    reliable = os.path.join(BASE, "fact_expected_claims.csv")
+    ultimate loss ratio for the priced policy year (step 14, reserving: the one source of ultimate claims)
+    times the trend factor (step 07). The model keeps setting how cost splits between policies inside a
+    segment; a segment without a reserving row keeps the model's level."""
+    ultimate = os.path.join(BASE, "fact_claims_ultimate.csv")
     trend = os.path.join(BASE, "fact_trend_factor.csv")
-    if expected_claims_basis() != "experience" or not (os.path.exists(reliable) and os.path.exists(trend)):
+    if expected_claims_basis() != "experience" or not (os.path.exists(ultimate) and os.path.exists(trend)):
         return df
     factor_trend = float(pd.read_csv(trend)["TREND_FACTOR"].iloc[0])
     model = df["EXPOSURE_YEARS"] * df["expected_frequency_per_year"] * df["expected_severity"]
     totals = pd.DataFrame({"MODEL": model.groupby([df[c] for c in SEG]).sum(),
                            "PREMIUM": df.groupby(SEG)["base_premium"].sum()}).reset_index()
-    totals = totals.merge(pd.read_csv(reliable), on=SEG, how="left")
-    totals["SCALE"] = (totals["PREMIUM"] * totals["RELIABLE_LR"] * factor_trend / totals["MODEL"].replace(0, np.nan)).fillna(1.0)
+    ult = pd.read_csv(ultimate)
+    ult = ult[ult["POLICY_YEAR"].isin(df["POLICY_YEAR"].unique())].groupby(SEG)[["ULTIMATE_CLAIMS", "WRITTEN_PREMIUM"]].sum()
+    lr = (ult["ULTIMATE_CLAIMS"] / ult["WRITTEN_PREMIUM"].replace(0, np.nan)).rename("ULTIMATE_LR").reset_index()
+    totals = totals.merge(lr, on=SEG, how="left")
+    totals["SCALE"] = (totals["PREMIUM"] * totals["ULTIMATE_LR"] * factor_trend / totals["MODEL"].replace(0, np.nan)).fillna(1.0)
     scale = df[SEG].merge(totals[SEG + ["SCALE"]], on=SEG, how="left")["SCALE"].to_numpy()
     print(f"Expected claims: {model.sum():,.0f} from the model -> {(model.to_numpy() * scale).sum():,.0f} on experience "
           f"(trend factor {factor_trend:.3f})")
