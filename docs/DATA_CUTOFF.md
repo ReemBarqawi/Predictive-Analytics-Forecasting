@@ -18,7 +18,7 @@ month is "current"**. Today several steps do:
 | `07_forecast_seasonal.py` | `MATURE_DATA_END = "2023-09-30"`, typed in code |
 | `05_segment_performance_by_year.py` | `LATEST_MATURE_YEAR = 2023`, typed in code |
 | `04_backtest.py` | backtest points 2019-12-31 to 2024-06-30, typed in code |
-| `settings.valuation_date()` | the **date of the extract file** (2026-10-25), although the data ends 2025-01-18 |
+| `settings.valuation_date()` | ✅ From the data: latest accident date in the claims extract (fixed 2026-11-10; was the extract file's date) |
 
 ## 2. What the company extract contains (checked 2026-10-27)
 
@@ -29,10 +29,11 @@ month is "current"**. Today several steps do:
 | History | One snapshot per extract | Payment and reserve history over time |
 | Runs | `data/run_log.csv` records every run | — |
 
-**Finding:** the development factors the pipeline writes (`fact_dev_factors_paid`) are **not valid**:
-the 12→24-month factor is **434×**. A single snapshot with no payment or closing dates cannot produce a
-development triangle. Until there is transaction history (§7), these factors must not be used; the
-settlement-speed check that reads them is switched off.
+**Finding (corrected 2026-11-10):** the 12→24-month paid factor of **434×** was caused by the as-of date, not
+by missing history: `valuation_date()` used the extract file's date (25 Oct 2026), so every open claim got about
+21 extra months of development. With the as-of date set to the data's cut-off (18 Jan 2025), the factors are
+2.21, 1.60, 1.26, 1.14, 1.07, 1.00 (12→24 … 72→84) and can be used for claim development
+(`docs/MODEL_IMPROVEMENT_PLAN.md`, C1). Payment and reserve history (§7) would still improve them.
 
 ## 3. Cut-off date (decision 1)
 

@@ -86,14 +86,21 @@ S = get_settings()
 
 
 def valuation_date() -> date:
-    """The run's as-of date: [prepare] as_of_date if set, else the date of the warehouse claims
-    extract, else today (synthetic data has no extract)."""
+    """The run's as-of date: [prepare] as_of_date if set, else the data's cut-off, the latest
+    accident date in the claims extract (a client backup ends where its data ends, not on the day
+    the file was written), else today (synthetic data has no extract)."""
     cfg = S.config.get("prepare", {}).get("as_of_date") or ""
     if cfg:
         return date.fromisoformat(cfg)
     extract = S.raw_dir / "claims.parquet" if S.raw_dir else None
     if extract is not None and extract.exists():
-        return date.fromtimestamp(extract.stat().st_mtime)
+        import pandas as pd
+        acc = pd.to_datetime(pd.read_parquet(extract, columns=["ACC_DATE"])["ACC_DATE"], errors="coerce")
+        cutoff = acc.max()
+        if pd.isna(cutoff):
+            raise SystemExit(f"{extract} has no accident dates: cannot tell the data's as-of date. "
+                             "Set [prepare] as_of_date in config.toml.")
+        return cutoff.date()
     return date.today()
 
 

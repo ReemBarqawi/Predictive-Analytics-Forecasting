@@ -248,7 +248,9 @@ Not done now. The redesign notes are in **Task 11 → Path to Profitability rede
 **Goal:** a real seasonal forecast. This answers CEO feedback #1: no more "multiplying linearly".
 
 **Description**
-- **Retire the remaining flat run-rate forecast** (`08_forecast_kpi_cards.py`) and make sure no visual reads it.
+- [x] **Retire the remaining flat run-rate forecast** (`08_forecast_kpi_cards.py`) and make sure no visual reads it.
+  Done 2026-11-10: step 08 writes only `dim_metric` and removes `fact_kpi_forecast` / `fact_timeseries`; the clean
+  model loads neither table and no measure reads them.
 - **Rerun the seasonal forecast** (`07_forecast_seasonal.py`) on real data, with real claims development instead of the demo maturity window.
 - **Show forecast accuracy** (backtest WAPE and bias) on the page, so the CEO can see how far to trust it.
 

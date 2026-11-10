@@ -67,7 +67,7 @@ fetch_batch_rows = 50000
 #   "incurred" = paid + case reserve, no IBNR.  [ASSUMPTION — agree the method with the
 #   manager/actuary; a chain-ladder option is a planned improvement]
 ultimate_method = "incurred"
-as_of_date = ""               # valuation date "YYYY-MM-DD"; empty = date of the extract
+as_of_date = ""               # valuation date "YYYY-MM-DD"; empty = latest accident date in the claims extract
 
 [pricing]
 # [DECIDED FOR THE DEMO, NEEDS MANAGER REVIEW: docs/TASK_PLAN.md decision 9]
@@ -143,7 +143,7 @@ base = 5.0
 high = 8.0
 
 [forecast]
-annual_growth_default = 0.04  # default of the Forecast page's growth slider
+annual_growth_default = 0.0   # default of the Forecast page's "What-if: adjust the forecast" slider; 0 = the model's own forecast
 
 [report_tiers]
 # Wording tiers of the lever pages' action columns

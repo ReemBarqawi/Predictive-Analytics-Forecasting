@@ -75,7 +75,7 @@ Then refresh. The real-data tables have exactly the same columns as the demo tab
 | Item | Current setting | Where |
 |---|---|---|
 | Ultimate claim cost | **Incurred = paid + case reserve, no IBNR** | `config.toml [prepare] ultimate_method` |
-| Valuation date | Date of the extract | `config.toml [prepare] as_of_date` |
+| Valuation date | Latest accident date in the claims extract | `config.toml [prepare] as_of_date` |
 | Admin expense / risk margin | 10% / 5% | `config.toml [business]` |
 | Motor classes | Motor Private, Commercial, Rent a Car | `config.toml [data] motor_classes` (empty list = all classes in the extract) |
 | Years in the dashboard | Latest **5** policy years, ending at the current year (last calendar year the claims reach to its end; today 2020–2024). Models still use the full history; forecast months are kept | `config.toml [report] years`; step 12 writes `03_dims/dim_report_window.csv` plus report copies `02_facts/fact_policy_pricing_report.csv` (report years, 5 columns) and `fact_claim_report.csv` (report years), which Power BI loads instead of the full files. Power BI filters `fact_earned_premium`, `fact_segment_performance` and `fact_forecast_seasonal` on the window |
