@@ -84,6 +84,19 @@ def prepare_policies(raw: pd.DataFrame) -> pd.DataFrame:
     if bad.any():
         log(f"policies: {int(bad.sum()):,} rows dropped (missing cover dates)")
         p = p[~bad].copy()
+    # Typing errors in old records (years 9, 209, 1429, expiry 3011): the start must fall within a
+    # year of the policy's own POLICY_YEAR, and cover must end after it starts and within two years
+    # (the same limit as EXPOSURE_YEARS below).
+    eff_year = p["POLICY_EFFECTIVE_DATE"].dt.year
+    year = pd.to_numeric(p["POLICY_YEAR"], errors="coerce")
+    term = (p["POLICY_EXPIRY_DATE"] - p["POLICY_EFFECTIVE_DATE"]).dt.days
+    impossible = ~eff_year.between(year - 1, year + 1) | (term <= 0) | (term > 2 * 366)
+    if impossible.any():
+        log(f"policies: {int(impossible.sum()):,} rows dropped (impossible cover dates, "
+            f"premium SAR {p.loc[impossible, 'TOTAL_PREMIUM'].astype(float).sum():,.0f})")
+        p = p[~impossible].copy()
+    for c in ("POLICY_EFFECTIVE_DATE", "POLICY_EXPIRY_DATE"):
+        p[c] = p[c].astype("datetime64[ns]")
     for c in ("TOTAL_PREMIUM", "COMMISSION", "SUM_INSURED", "GROSS_PREMIUM", "NET_PREMIUM"):
         if c in p:
             p[c] = pd.to_numeric(p[c], errors="coerce")

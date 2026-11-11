@@ -49,6 +49,7 @@ warnings.filterwarnings("ignore")
 # =========================================================================
 from settings import S, is_motor, pricing_features  # folders + motor classes for the active data source
 import timesfm_model  # optional challenger: daily portfolio claims from their own history
+import training_window
 FACT_DIR = S.facts_dir
 OUTPUTS_DIR = S.reports_dir
 
@@ -64,6 +65,10 @@ MIN_TRAIN_CLAIMS = 100             # minimum claims to attempt severity fit
 # keeps memory flat on large books (2M+ policies per cut-off ran out of memory).
 MAX_TRAIN_POLICIES = 500_000
 SAMPLE_SEED = 20260826
+# Method constants: cut-offs are the quarter-ends of the last five years of data; the training
+# window (pipeline/training_window.py) is chosen on the latest six that have 12 months of actuals.
+BACKTEST_YEARS = 5
+WINDOW_TEST_CUTOFFS = 6
 
 # Only these columns are read: the full fact tables are hundreds of MB on a real book.
 POLICY_COLS = ["POLICY_NO", "POLICY_YEAR", "POLICY_EFFECTIVE_DATE", "POLICY_EXPIRY_DATE"] + PRICING_FEATURES
@@ -141,6 +146,10 @@ def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     c["ACC_DATE"]              = pd.to_datetime(c["ACC_DATE"])
 
     p = p[is_motor(p["CLASS_DESC"])].copy()
+    # One fixed random number per policy: whenever a cut-off has more than MAX_TRAIN_POLICIES, the
+    # lowest numbers are kept, so every training window samples the same policies and the windows
+    # differ only in their history, not in their luck.
+    p["SAMPLE_U"] = np.random.default_rng(SAMPLE_SEED).random(len(p))
     c = c[c["POLICY_MATCHED"] == True].copy()
     c = c.dropna(subset=["POLICY_NO", "POLICY_YEAR", "ACC_DATE"])
     c["POLICY_NO"]   = c["POLICY_NO"].astype(int)
@@ -162,10 +171,17 @@ def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
 # =========================================================================
 # Train GLMs at a given cutoff T
 # =========================================================================
-def train_at_cutoff(policies: pd.DataFrame, claims: pd.DataFrame, T: pd.Timestamp):
-    """Fit frequency and severity GLMs using only data available at T."""
-    # Training policies: effective on or before T
-    train_pol = policies[policies["POLICY_EFFECTIVE_DATE"] <= T].copy()
+def train_at_cutoff(policies: pd.DataFrame, claims: pd.DataFrame, T: pd.Timestamp,
+                    window_years: int | None = None):
+    """Fit frequency and severity GLMs using only data available at T, and only the last
+    `window_years` before it (pipeline/training_window.py; None = all history)."""
+    # Training policies: effective on or before T (and inside the window)
+    since = None if window_years is None else T - pd.DateOffset(years=window_years)
+    in_window = policies["POLICY_EFFECTIVE_DATE"] <= T
+    if since is not None:
+        in_window &= policies["POLICY_EFFECTIVE_DATE"] > since
+        claims = claims[claims["ACC_DATE"] > since]
+    train_pol = policies[in_window].copy()
 
     # Observed exposure at T (partial for still-in-force policies)
     end_at_T = train_pol["POLICY_EXPIRY_DATE"].clip(upper=T)
@@ -179,7 +195,7 @@ def train_at_cutoff(policies: pd.DataFrame, claims: pd.DataFrame, T: pd.Timestam
     if len(train_pol) < MIN_TRAIN_POLICIES:
         return None, None
     if len(train_pol) > MAX_TRAIN_POLICIES:
-        train_pol = train_pol.sample(n=MAX_TRAIN_POLICIES, random_state=SAMPLE_SEED)
+        train_pol = train_pol.nsmallest(MAX_TRAIN_POLICIES, "SAMPLE_U")
 
     # Aggregate observed claims
     train_claims = claims[claims["ACC_DATE"] <= T].copy()
@@ -373,15 +389,17 @@ def timesfm_forecasts(claims: pd.DataFrame, cutoffs: list[pd.Timestamp]) -> dict
 # Backtest driver
 # =========================================================================
 def run_backtest(policies: pd.DataFrame, claims: pd.DataFrame,
-                 cutoffs: list[pd.Timestamp]) -> pd.DataFrame:
-    """Run the full rolling backtest and return a long-format results DataFrame."""
+                 cutoffs: list[pd.Timestamp], window_years: int | None = None,
+                 glm_only: bool = False) -> pd.DataFrame:
+    """Run the full rolling backtest and return a long-format results DataFrame.
+    glm_only: skip the benchmarks (the training-window test compares GLMs only)."""
     max_data_date = claims["ACC_DATE"].max()
-    tfm = timesfm_forecasts(claims, cutoffs)
+    tfm = None if glm_only else timesfm_forecasts(claims, cutoffs)
     rows = []
 
     for T in cutoffs:
-        _log(f"cutoff {T.date()} — training GLMs")
-        freq, sev = train_at_cutoff(policies, claims, T)
+        _log(f"cutoff {T.date()} — training GLMs ({training_window.label(window_years)})")
+        freq, sev = train_at_cutoff(policies, claims, T, window_years)
         if freq is None:
             _log(f"  skipped (insufficient training data)")
             continue
@@ -404,7 +422,7 @@ def run_backtest(policies: pd.DataFrame, claims: pd.DataFrame,
                 .rename(columns={"actual_count": "predicted_count",
                                  "actual_cost":  "predicted_cost"})
 
-            models = [("glm", glm_pred_df), ("seasonal_naive", naive_df)]
+            models = [("glm", glm_pred_df)] + ([] if glm_only else [("seasonal_naive", naive_df)])
             if tfm is not None:
                 models.append(("timesfm", pd.DataFrame([{
                     "segment_level": "PORTFOLIO", "segment_id": "PORTFOLIO",
@@ -575,9 +593,46 @@ def write_report(results: pd.DataFrame) -> None:
 # =========================================================================
 # Entry point
 # =========================================================================
-def build_cutoffs() -> list[pd.Timestamp]:
-    """Quarterly cutoffs from 2019-Q4 to 2024-Q2 (19 cutoffs)."""
-    return list(pd.date_range("2019-12-31", "2024-06-30", freq="QE"))
+def build_cutoffs(claims: pd.DataFrame) -> list[pd.Timestamp]:
+    """Quarter-ends over the last BACKTEST_YEARS of the data, each with at least the shortest
+    scored horizon (3 months) of actuals after it. From the data, so it moves with each extract."""
+    end = claims["ACC_DATE"].max()
+    start = end - pd.DateOffset(years=BACKTEST_YEARS)
+    return [T for T in pd.date_range(start, end, freq="QE") if T + pd.Timedelta(days=91) <= end]
+
+
+def relativity_wape(g: pd.DataFrame) -> float:
+    """Segment WAPE after scaling the predictions to the actual total. Pricing takes only the GLMs'
+    relativities (which segments and policies cost more); the level comes from reserving x trend
+    (step 09), so the window test must not reward or punish the level."""
+    pred, act = g["predicted"], g["actual"]
+    scaled = pred * (act.sum() / pred.sum()) if pred.sum() > 0 else pred
+    return float((scaled - act).abs().sum() / act.abs().sum())
+
+
+def cutoff_errors(results: pd.DataFrame) -> np.ndarray:
+    """Training-window score, one per cut-off: segment relativity WAPE (relativity_wape) of claim
+    count and cost at 3 and 12 months, averaged."""
+    r = results[(results["segment_level"] == "SEGMENT") & results["horizon_label"].isin(["3m", "12m"])]
+    per = r.groupby(["cutoff_date", "target", "horizon_label"]).apply(relativity_wape, include_groups=False)
+    return per.groupby(level="cutoff_date").mean().to_numpy()
+
+
+def select_window(policies: pd.DataFrame, claims: pd.DataFrame, cutoffs: list[pd.Timestamp]) -> int | None:
+    """How many years the GLMs learn from (pipeline/training_window.py), tested on the latest
+    WINDOW_TEST_CUTOFFS cut-offs that have a full 12 months of actuals after them. Steps 02 and 03
+    then fit and score on the chosen window."""
+    end = claims["ACC_DATE"].max()
+    test = [T for T in cutoffs if T + pd.Timedelta(days=365) <= end][-WINDOW_TEST_CUTOFFS:]
+    span = (end - policies["POLICY_EFFECTIVE_DATE"].min()).days / 365.25
+    errors = {}
+    for w in training_window.candidates(span):
+        _log(f"training window test: {training_window.label(w)}")
+        errors[w] = cutoff_errors(run_backtest(policies, claims, test, w, glm_only=True))
+        gc.collect()
+    return training_window.resolve(
+        "glm", errors, f"GLM segment WAPE after level correction (count, cost; 3m, 12m), {len(test)} cut-offs "
+        f"{test[0].date()} to {test[-1].date()}")
 
 
 def main():
@@ -587,10 +642,11 @@ def main():
 
     policies, claims = load_data()
 
-    cutoffs = build_cutoffs()
+    cutoffs = build_cutoffs(claims)
     _log(f"Scheduled {len(cutoffs)} cutoffs: {cutoffs[0].date()} → {cutoffs[-1].date()}")
 
-    results = run_backtest(policies, claims, cutoffs)
+    window = select_window(policies, claims, cutoffs)
+    results = run_backtest(policies, claims, cutoffs, window)
 
     out_path = FACT_DIR / "fact_model_performance.csv"
     results.to_csv(out_path, index=False)

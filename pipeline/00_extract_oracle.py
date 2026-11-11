@@ -61,7 +61,12 @@ def read_sql(path: Path) -> str:
     text = path.read_text(encoding="utf-8").strip().rstrip(";")
     if "SCHEMA_NAME." in text:
         sys.exit(f"{path.name} is still the template: replace SCHEMA_NAME/table/column names.")
-    return text
+    # The models learn from every policy year the warehouse holds unless [oracle] first_policy_year
+    # says otherwise; Power BI still shows only the last [report] years (step 12).
+    first = S.config.get("oracle", {}).get("first_policy_year", 0)
+    if not isinstance(first, int) or first < 0:
+        sys.exit("[oracle] first_policy_year in config.toml must be a whole year, or 0 for all history.")
+    return text.replace("{first_policy_year}", str(first))
 
 
 def main() -> None:
@@ -83,7 +88,8 @@ def main() -> None:
             name, sql = f.stem, read_sql(f)
             cur = conn.cursor()
             if args.check:
-                cur.execute(f"SELECT COUNT(*) FROM ({sql})")
+                # newlines: a query may end with a -- comment, which would swallow the closing bracket
+                cur.execute(f"SELECT COUNT(*) FROM (\n{sql}\n)")
                 print(f"  {name:<12} {cur.fetchone()[0]:>12,} rows available")
                 continue
             t0 = time.time()

@@ -17,4 +17,4 @@ SELECT
     c.RECOVERY_AMT                          AS RECOVERY_AMT
 FROM   DTWCDE.V_CLM_DATA c
 WHERE  c.DEPARTMENT_NAME = 'Motor'
-  AND  c.POLICY_YEAR >= 2019        -- same window as policies.sql, so every claim can find its policy
+  AND  c.POLICY_YEAR >= {first_policy_year}   -- [oracle] first_policy_year in config.toml (0 = all history); same as policies.sql

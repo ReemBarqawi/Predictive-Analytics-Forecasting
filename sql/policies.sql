@@ -24,6 +24,6 @@ SELECT
     SUM(u.VUW_NET_PREM)                     AS NET_PREMIUM
 FROM   DTWCDE.V_UW_DATA u
 WHERE  u.VUW_DEPT_DESC = 'Motor'
-  AND  u.VUW_POL_YEAR >= 2019
+  AND  u.VUW_POL_YEAR >= {first_policy_year}   -- [oracle] first_policy_year in config.toml (0 = all history)
 GROUP  BY u.VUW_OFFICE, u.VUW_DEPT_NO, u.VUW_CLASS, u.VUW_POL_TYPE,
           u.VUW_SOURCE, u.VUW_POL_NO, u.VUW_POL_YEAR

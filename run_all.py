@@ -26,9 +26,9 @@ PIPELINE = ROOT / "pipeline"
 RUN_LOG = ROOT / "data" / "run_log.csv"
 
 MODEL_STEPS = [
+    (4, "04_backtest.py"),           # first: chooses the GLMs' training window that 2 fits on
     (2, "02_glm_refit.py"),
     (3, "03_pure_premium.py"),
-    (4, "04_backtest.py"),
     (14, "14_reserving.py"),         # claims to ultimate: steps 5, 7 and 9 read it
     (11, "11_build_alerts.py"),
     (5, "05_segment_performance_by_year.py"),

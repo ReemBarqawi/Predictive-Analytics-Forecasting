@@ -46,6 +46,7 @@ import statsmodels.api as sm
 # Config — everything you might want to tweak lives here
 # =========================================================================
 from settings import S, pricing_features, is_motor  # folders + motor classes for the active data source
+import training_window
 FACT_DIR = S.facts_dir
 MODELS_DIR = S.models_dir
 OUTPUTS_DIR = S.reports_dir
@@ -84,6 +85,15 @@ def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     claims["POLICY_NO"] = claims["POLICY_NO"].astype(int)
     claims["POLICY_YEAR"] = claims["POLICY_YEAR"].astype(int)
 
+    # Training window chosen by step 04's backtest (pipeline/training_window.py)
+    window = training_window.chosen("glm")
+    if window is not None:
+        end = pd.to_datetime(claims["ACC_DATE"]).max()
+        since = end - pd.DateOffset(years=window)
+        policies = policies[pd.to_datetime(policies["POLICY_EFFECTIVE_DATE"]) > since].copy()
+        claims = claims[pd.to_datetime(claims["ACC_DATE"]) > since]
+        claims = claims.merge(policies[["POLICY_NO", "POLICY_YEAR"]].drop_duplicates(), on=["POLICY_NO", "POLICY_YEAR"])
+    _log(f"  training window: {training_window.label(window)}")
     _log(f"  motor policies: {len(policies):,}")
     _log(f"  matched motor claims: {len(claims):,}")
     return policies, claims

@@ -54,9 +54,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from settings import S, year_basis, expected_claims_basis
+from settings import S, year_basis, expected_claims_basis, current_year
 from development import DEV_DIAGONALS, TRIANGLES, cdf, cumulative, valuation_quarter
 import timesfm_model
+import training_window
 
 warnings.filterwarnings("ignore")
 
@@ -68,6 +69,9 @@ FORECAST_HORIZONS = [3, 6, 12]          # months; one set of rows per horizon fo
 # years of history (two seasonal cycles) and score each horizon where the actuals exist.
 MIN_CONTEXT_MONTHS = 24
 VALIDATION_STEP_MONTHS = 3
+# Method constant: the training window is chosen on the latest 12 quarter-end origins (three years),
+# because the job is to forecast the next year, not 2012 (pipeline/training_window.py).
+WINDOW_TEST_ORIGINS = 12
 # Validation pass rules (method constants, shown with every result in the report and table)
 BIAS_TOLERANCE = 0.10                   # |bias| above this over all origins -> REVIEW
 COVERAGE_RANGE = (0.70, 0.90)           # share of months inside the P10-P90 band
@@ -355,25 +359,76 @@ def forecast(model: str, history: pd.DataFrame, cohorts: pd.DataFrame, horizon: 
 # =========================================================================
 # Rolling validation
 # =========================================================================
-def rolling_backtest(history: pd.DataFrame, cohorts: pd.DataFrame, models: list[str]) -> pd.DataFrame:
+def backtest_origins(history: pd.DataFrame) -> list[pd.Period]:
+    """Quarter-ends with MIN_CONTEXT_MONTHS of history before them and at least the shortest
+    horizon of actuals after them."""
+    last = history.index[-1]
+    return [o for o in history.index[MIN_CONTEXT_MONTHS - 1:]
+            if o.month % VALIDATION_STEP_MONTHS == 0 and o + min(FORECAST_HORIZONS) <= last]
+
+
+def rolling_backtest(history: pd.DataFrame, cohorts: pd.DataFrame, models: list[str],
+                     window_months: int | None = None, origins: list | None = None) -> pd.DataFrame:
     """
-    Forecast from every quarter-end origin with MIN_CONTEXT_MONTHS of history before it and at
-    least the shortest horizon of actuals after it, exactly as the live forecast is made.
+    Forecast from every quarter-end origin (or the given ones), exactly as the live forecast is
+    made: the model sees the history up to the origin, or only its last `window_months`.
     One row per origin x model x month ahead, with forecast and actual for each series.
     """
-    last = history.index[-1]
-    origins = [o for o in history.index[MIN_CONTEXT_MONTHS - 1:]
-               if o.month % VALIDATION_STEP_MONTHS == 0 and o + min(FORECAST_HORIZONS) <= last]
     rows = []
-    for o in origins:
+    for o in origins if origins is not None else backtest_origins(history):
         actual = history.loc[o + 1:o + max(FORECAST_HORIZONS)]
+        context = history.loc[:o] if window_months is None else history.loc[o - window_months + 1:o]
         for m in models:
-            pred = forecast(m, history.loc[:o], cohorts, max(FORECAST_HORIZONS)).loc[actual.index]
+            pred = forecast(m, context, cohorts, max(FORECAST_HORIZONS)).loc[actual.index]
             for step, month in enumerate(actual.index, start=1):
                 rows.append({"ORIGIN": o, "MODEL": m, "STEP": step, "MONTH": month,
                              **{f"PRED_{s}": pred.at[month, s] for s in SERIES + ["WRITTEN_PREMIUM", "COST_RATE"]},
                              **{f"ACT_{s}": actual.at[month, s] for s in SERIES}})
     return pd.DataFrame(rows)
+
+
+def origin_errors(bt: pd.DataFrame) -> np.ndarray:
+    """
+    One error per forecast origin, on what the page and the prices use: the 3, 6 and 12-month
+    totals of premium and claims (absolute error / actual) and the 12-month loss ratio (absolute
+    error / actual), averaged. The trend factor and the cards rest on these, not on single months.
+    """
+    out = []
+    for _, g in bt.groupby("ORIGIN"):
+        terms = []
+        for h in FORECAST_HORIZONS:
+            w = g[g["STEP"] <= h]
+            if len(w) < h:
+                continue
+            for s in ("EARNED_PREMIUM", "CLAIMS_COST"):
+                terms.append(abs(w[f"PRED_{s}"].sum() / w[f"ACT_{s}"].sum() - 1))
+            if h == max(FORECAST_HORIZONS):
+                pred = w["PRED_CLAIMS_COST"].sum() / w["PRED_EARNED_PREMIUM"].sum()
+                act = w["ACT_CLAIMS_COST"].sum() / w["ACT_EARNED_PREMIUM"].sum()
+                terms.append(abs(pred / act - 1))
+        if terms:
+            out.append(float(np.mean(terms)))
+    return np.array(out)
+
+
+def select_window(history: pd.DataFrame, cohorts: pd.DataFrame, models: list[str]) -> int | None:
+    """
+    How many years of history the forecast learns from (pipeline/training_window.py): every
+    candidate forecasts from the same latest WINDOW_TEST_ORIGINS origins, seeing only its own
+    window before each, and is scored per origin by origin_errors. Seasonal naive uses one year
+    whatever the window, so the test uses the model.
+    """
+    model = models[0]
+    origins = backtest_origins(history)[-WINDOW_TEST_ORIGINS:]
+    errors = {}
+    for w in training_window.candidates(len(history) / 12):
+        months = None if w is None else 12 * w
+        if months is not None and months < MIN_CONTEXT_MONTHS:
+            continue
+        errors[w] = origin_errors(rolling_backtest(history, cohorts, [model], months, origins))
+    return training_window.resolve(
+        "forecast", errors, f"{LABEL[model]}: error of 3/6/12-month totals and 12-month loss ratio, "
+        f"latest {len(origins)} origins")
 
 
 def score(bt: pd.DataFrame) -> pd.DataFrame:
@@ -795,12 +850,19 @@ def main() -> None:
     monthly, dev = develop(monthly, data_end)
     cohorts = premium_cohorts()
     monthly["WRITTEN_PREMIUM"] = cohorts.sum(axis=1).reindex(monthly.index, fill_value=0.0)
-    history = monthly.loc[start:end]
+    full_history = monthly.loc[start:end]
 
     models = (["timesfm"] if timesfm_model.available() else []) + ["seasonal_naive"]
     if "timesfm" not in models:
         _log("TimesFM not installed — seasonal naive only")
-    bt = rolling_backtest(history, cohorts, models)
+    # The models learn from the window the backtest chooses; the page still shows the report years.
+    window = select_window(full_history, cohorts, models)
+    history = full_history if window is None else full_history.iloc[-12 * window:]
+    _log(f"training window: {training_window.label(window)} ({history.index[0]} to {history.index[-1]})")
+    # Model choice, bands, card ranges and trend: the same latest origins as the window test, each
+    # forecasting from its own last `window` years, exactly as the live forecast is made.
+    bt = rolling_backtest(full_history, cohorts, models, None if window is None else 12 * window,
+                          backtest_origins(full_history)[-WINDOW_TEST_ORIGINS:])
     scores = score(bt)
     mean_wape = scores.groupby("MODEL")["WAPE"].mean()
     for m, v in mean_wape.items():
@@ -811,13 +873,17 @@ def main() -> None:
     _log(f"selected: {model}")
 
     fc = forecast(model, history, cohorts, max(FORECAST_HORIZONS))
-    trend = trend_factor(history, fc, bt, model)
+    trend = trend_factor(full_history, fc, bt, model)
     pd.DataFrame([trend]).to_csv(FACTS_DIR / "fact_trend_factor.csv", index=False, encoding="utf-8")
     _log(f"trend factor {trend['TREND_FACTOR']:.3f} (forecast {trend['TREND_FACTOR_RAW']:.3f}, past bias "
          f"{trend['BIAS_PTS']:+.1f} pts; error {trend['ERROR_CORRECTED_PTS']:.1f} vs no change "
          f"{trend['ERROR_NO_CHANGE_PTS']:.1f} pts over {trend['N_ORIGINS']} origins)")
-    shown_history, shown_fc = written_month_view(history, fc) if year_basis() == "written_year" else (history, fc)
-    known_months = shown_history.index if year_basis() == "written_year" else shown_history.index[:0]
+    shown_history, shown_fc = (written_month_view(full_history, fc) if year_basis() == "written_year"
+                               else (full_history, fc))
+    # Power BI shows only the last [report] years (as step 12), whatever the model learned from
+    first_shown = current_year()[1] - int(S.config.get("report", {}).get("years", 5)) + 1
+    shown_page = shown_history[shown_history.index.year >= first_shown]
+    known_months = shown_page.index if year_basis() == "written_year" else shown_page.index[:0]
     known_share(known_months, data_end).to_csv(FACTS_DIR / "fact_forecast_known.csv", index=False, encoding="utf-8")
     scale = 1.0
     if year_basis() == "written_year" and expected_claims_basis() == "experience":
@@ -845,7 +911,7 @@ def main() -> None:
          + "".join(f"\n           REVIEW {r.CHECK_GROUP}: {r.MEASURE} {r.HORIZON} = {r.VALUE:.3f} ({r.THRESHOLD})"
                    for r in review.itertuples()))
 
-    out = build_rows(shown_history, shown_fc, model, monthly_wape, bands, seasonal_index(history["CLAIMS_COST"]))
+    out = build_rows(shown_page, shown_fc, model, monthly_wape, bands, seasonal_index(history["CLAIMS_COST"]))
     path = FACTS_DIR / "fact_forecast_seasonal.csv"
     out.to_csv(path, index=False, encoding="utf-8")
     _log(f"wrote {path} ({len(out)} rows: {len(history)} actual months, forecast {fc.index[0]} to {fc.index[-1]})")
