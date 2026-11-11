@@ -69,6 +69,12 @@ FORECAST_HORIZONS = [3, 6, 12]          # months; one set of rows per horizon fo
 # years of history (two seasonal cycles) and score each horizon where the actuals exist.
 MIN_CONTEXT_MONTHS = 24
 VALIDATION_STEP_MONTHS = 3
+# Method constants: the page's months get a seasonal shape of SHAPE_WEIGHTS (chosen each run by the
+# backtest), from each calendar month's share of the year over the last SHAPE_YEARS years. Sales follow
+# a partly repeating cycle (an Aug-Oct peak whose size moves), so a damped shape can beat both the flat
+# path and a full copy of last year (2026-11-11 test: 3M premium error 25.0% flat, 22.4% at 50%).
+SHAPE_WEIGHTS = (0.0, 0.25, 0.5, 0.75, 1.0)
+SHAPE_YEARS = 3
 # Method constant: the training window is chosen on the latest 12 quarter-end origins (three years),
 # because the job is to forecast the next year, not 2012 (pipeline/training_window.py).
 WINDOW_TEST_ORIGINS = 12
@@ -429,6 +435,76 @@ def select_window(history: pd.DataFrame, cohorts: pd.DataFrame, models: list[str
     return training_window.resolve(
         "forecast", errors, f"{LABEL[model]}: error of 3/6/12-month totals and 12-month loss ratio, "
         f"latest {len(origins)} origins")
+
+
+def month_shares(series: pd.Series, origin: pd.Period) -> pd.Series | None:
+    """Each calendar month's share of the year, averaged over the last SHAPE_YEARS full 12-month
+    blocks up to `origin` (None with fewer than two blocks)."""
+    blocks = []
+    for k in range(SHAPE_YEARS):
+        b = series.loc[origin - 12 * (k + 1) + 1:origin - 12 * k]
+        if len(b) == 12 and b.sum() > 0:
+            blocks.append((b / b.sum()).groupby(b.index.month).sum())
+    if len(blocks) < 2:
+        return None
+    s = pd.concat(blocks, axis=1).mean(axis=1)
+    return s / s.sum()
+
+
+def shape_path(path: pd.Series, shares: pd.Series | None, weight: float) -> pd.Series:
+    """Redistribute a forecast path's total over its months: `weight` x the seasonal shares plus
+    (1 - weight) x the model's own shape. The total never changes."""
+    if shares is None or weight == 0 or path.sum() == 0:
+        return path
+    s = shares.reindex(path.index.month).to_numpy()
+    return path.sum() * (weight * s / s.sum() + (1 - weight) * path.to_numpy() / path.sum())
+
+
+def shaped_backtest(bt: pd.DataFrame, model: str, shown: pd.DataFrame, weight: float) -> pd.DataFrame:
+    """The page's written premium and claims of each past origin, reshaped like the live forecast."""
+    b = bt[bt["MODEL"] == model].copy()
+    if weight == 0:
+        return b
+    for o, idx in b.groupby("ORIGIN").groups.items():
+        g = b.loc[idx].set_index("MONTH")
+        prem = shape_path(g["PRED_WRITTEN_PREMIUM"], month_shares(shown["EARNED_PREMIUM"], o), weight)
+        claims = shape_path(g["PRED_COST_RATE"] * g["PRED_WRITTEN_PREMIUM"], month_shares(shown["CLAIMS_COST"], o), weight)
+        b.loc[idx, "PRED_WRITTEN_PREMIUM"] = np.asarray(prem)
+        b.loc[idx, "PRED_COST_RATE"] = np.asarray(claims) / np.asarray(prem)
+    return b
+
+
+def shape_errors(b: pd.DataFrame, shown: pd.DataFrame) -> np.ndarray:
+    """One error per origin, on the page's basis: the 3 and 6-month totals (cards) and the
+    month-by-month error (chart), premium and claims, averaged."""
+    out = []
+    for _, g in b.groupby("ORIGIN"):
+        act = shown.reindex(g["MONTH"])
+        p, c = g["PRED_WRITTEN_PREMIUM"].to_numpy(), (g["PRED_COST_RATE"] * g["PRED_WRITTEN_PREMIUM"]).to_numpy()
+        ap, ac = act["EARNED_PREMIUM"].to_numpy(), act["CLAIMS_COST"].to_numpy()
+        terms = [np.abs(p - ap).sum() / ap.sum(), np.abs(c - ac).sum() / ac.sum()]
+        for h in (3, 6):
+            if len(g) >= h:
+                terms += [abs(p[:h].sum() / ap[:h].sum() - 1), abs(c[:h].sum() / ac[:h].sum() - 1)]
+        out.append(float(np.mean(terms)))
+    return np.array(out)
+
+
+def select_shape(bt: pd.DataFrame, model: str, shown: pd.DataFrame) -> tuple[float, pd.DataFrame]:
+    """How much seasonal shape the page's months get. Each weight is scored per origin; the
+    lowest mean error wins, and of the weights within one standard error of it the smallest is
+    kept (less shape when the test cannot tell them apart)."""
+    errs = {w: shape_errors(shaped_backtest(bt, model, shown, w), shown) for w in SHAPE_WEIGHTS}
+    mean = {w: e.mean() for w, e in errs.items()}
+    best = min(mean, key=mean.get)
+    limit = mean[best] + errs[best].std(ddof=1) / np.sqrt(len(errs[best]))
+    weight = min(w for w in SHAPE_WEIGHTS if mean[w] <= limit)
+    _log("seasonal shape: " + ", ".join(f"{w:.0%} {mean[w]:.1%}" for w in SHAPE_WEIGHTS)
+         + f" -> {weight:.0%} (lowest {best:.0%}; smallest weight within one standard error)")
+    table = pd.DataFrame({"WEIGHT": list(mean), "ERROR": list(mean.values()),
+                          "STD_ERROR": [errs[w].std(ddof=1) / np.sqrt(len(errs[w])) for w in mean],
+                          "N_ORIGINS": [len(errs[w]) for w in mean], "CHOSEN": [w == weight for w in mean]})
+    return weight, table
 
 
 def score(bt: pd.DataFrame) -> pd.DataFrame:
@@ -890,6 +966,19 @@ def main() -> None:
     first_shown = current_year()[1] - int(S.config.get("report", {}).get("years", 5)) + 1
     shown_page = shown_history[shown_history.index.year >= first_shown]
     known_months = shown_page.index if year_basis() == "written_year" else shown_page.index[:0]
+    # Seasonal shape of the page's months, chosen on the backtest; the 12-month totals never change
+    bt_page, shape_weight = bt, 0.0
+    if year_basis() == "written_year":
+        shape_weight, shape_table = select_shape(bt, model, shown_history)
+        shape_table.to_csv(FACTS_DIR / "fact_forecast_shape.csv", index=False, encoding="utf-8")
+        bt_page = shaped_backtest(bt, model, shown_history, shape_weight)
+        if shape_weight > 0:
+            o = full_history.index[-1]
+            prem = shape_path(shown_fc["EARNED_PREMIUM"], month_shares(shown_history["EARNED_PREMIUM"], o), shape_weight)
+            claims = shape_path(shown_fc["CLAIMS_COST"], month_shares(shown_history["CLAIMS_COST"], o), shape_weight)
+            ratio = np.asarray(claims) / shown_fc["CLAIMS_COST"].replace(0, np.nan).to_numpy()
+            shown_fc = shown_fc.assign(EARNED_PREMIUM=np.asarray(prem), CLAIMS_COST=np.asarray(claims),
+                                       CLAIM_COUNT=shown_fc["CLAIM_COUNT"].to_numpy() * np.nan_to_num(ratio, nan=1.0))
     known_share(known_months, data_end).to_csv(FACTS_DIR / "fact_forecast_known.csv", index=False, encoding="utf-8")
     scale = 1.0
     if year_basis() == "written_year" and expected_claims_basis() == "experience":
@@ -899,11 +988,11 @@ def main() -> None:
         head = shown_fc.head(12)
         scale = wanted / (head["CLAIMS_COST"].sum() / head["EARNED_PREMIUM"].sum())
         shown_fc = shown_fc.assign(CLAIMS_COST=shown_fc["CLAIMS_COST"] * scale, CLAIM_COUNT=shown_fc["CLAIM_COUNT"] * scale)
-    ratios = band_ratios(bt, model, shown_history, year_basis() == "written_year", scale)
+    ratios = band_ratios(bt_page, model, shown_history, year_basis() == "written_year", scale)
     bands = {s: band(ratios, s) for s in ("PREMIUM", "CLAIMS", "LOSS_RATIO")}
     for s, (low, high, coverage) in bands.items():
         _log(f"{s.lower()} band: x{low:.2f} to x{high:.2f} of the forecast; {coverage:.0%} of months inside, out of sample")
-    misses = total_misses(bt, model, shown_history, year_basis() == "written_year", scale)
+    misses = total_misses(bt_page, model, shown_history, year_basis() == "written_year", scale)
     misses.to_csv(FACTS_DIR / "fact_forecast_total_miss.csv", index=False, encoding="utf-8")
     _log(f"card ranges: {misses.groupby('HORIZON')['ORIGIN'].nunique().to_dict()} origins by horizon")
 
