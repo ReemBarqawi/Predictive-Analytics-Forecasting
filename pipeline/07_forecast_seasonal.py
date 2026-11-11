@@ -456,10 +456,12 @@ def band_ratios(bt: pd.DataFrame, model: str, shown: pd.DataFrame, written: bool
     b = bt[bt["MODEL"] == model]
     prem = b["PRED_WRITTEN_PREMIUM"] if written else b["PRED_EARNED_PREMIUM"]
     actual = shown.reindex(b["MONTH"])
-    return pd.DataFrame({
+    out = pd.DataFrame({
         "ORIGIN": b["ORIGIN"].to_numpy(),
         "PREMIUM": actual["EARNED_PREMIUM"].to_numpy() / prem.to_numpy(),
         "CLAIMS": actual["CLAIMS_COST"].to_numpy() / (b["PRED_COST_RATE"] * prem * claims_scale).to_numpy()})
+    out["LOSS_RATIO"] = out["CLAIMS"] / out["PREMIUM"]      # actual / forecast loss ratio, same months
+    return out
 
 
 def band(ratios: pd.DataFrame, series: str) -> tuple[float, float, float]:
@@ -641,6 +643,7 @@ def build_rows(history: pd.DataFrame, fc: pd.DataFrame, model: str, model_wape: 
             "MONTH_DATE": m.to_timestamp(), "FORECAST_HORIZON": "ACTUAL", "PERIOD_TYPE": "actual",
             "FORECAST_CLAIMS": r["CLAIMS_COST"], "FORECAST_PREMIUM": r["EARNED_PREMIUM"],
             "CLAIMS_P10": np.nan, "CLAIMS_P90": np.nan, "PREMIUM_P10": np.nan, "PREMIUM_P90": np.nan,
+            "LOSS_RATIO_P10": np.nan, "LOSS_RATIO_P90": np.nan,
             "FORECAST_CLAIM_COUNT": r["CLAIM_COUNT"],
             "SEASONAL_INDEX": 1.0, "MODEL_TYPE": "actual", "MODEL_WAPE": np.nan, "BIAS_CORRECTION": np.nan,
         })
@@ -652,6 +655,8 @@ def build_rows(history: pd.DataFrame, fc: pd.DataFrame, model: str, model_wape: 
                 "FORECAST_CLAIMS": r["CLAIMS_COST"], "FORECAST_PREMIUM": prem,
                 "CLAIMS_P10": r["CLAIMS_COST"] * bands["CLAIMS"][0], "CLAIMS_P90": r["CLAIMS_COST"] * bands["CLAIMS"][1],
                 "PREMIUM_P10": prem * bands["PREMIUM"][0], "PREMIUM_P90": prem * bands["PREMIUM"][1],
+                "LOSS_RATIO_P10": r["CLAIMS_COST"] / prem * bands["LOSS_RATIO"][0] if prem > 0 else np.nan,
+                "LOSS_RATIO_P90": r["CLAIMS_COST"] / prem * bands["LOSS_RATIO"][1] if prem > 0 else np.nan,
                 "FORECAST_CLAIM_COUNT": r["CLAIM_COUNT"],
                 "SEASONAL_INDEX": season.get(m.month, 1.0), "MODEL_TYPE": model,
                 "MODEL_WAPE": model_wape, "BIAS_CORRECTION": 1.0,
@@ -666,7 +671,8 @@ def build_rows(history: pd.DataFrame, fc: pd.DataFrame, model: str, model_wape: 
     cols = ["SEGMENT_ID", "MONTH_DATE", "FORECAST_HORIZON", "PERIOD_TYPE", "FORECAST_CLAIMS",
             "FORECAST_PREMIUM", "FORECAST_LOSS_RATIO", "CLAIMS_P10", "CLAIMS_P90", "PREMIUM_P10", "PREMIUM_P90",
             "FORECAST_CLAIM_COUNT", "FORECAST_AVG_SEVERITY", "SEASONAL_INDEX", "MODEL_TYPE",
-            "MODEL_WAPE", "BIAS_CORRECTION"]
+            "MODEL_WAPE", "BIAS_CORRECTION",
+            "LOSS_RATIO_P10", "LOSS_RATIO_P90"]     # added 2026-11-11: last, so older report queries still read the first 17
     return out[cols]
 
 
@@ -694,7 +700,7 @@ def validation_table(scores: pd.DataFrame, model: str, bands: dict, dev: dict,
             f"within ±{BIAS_TOLERANCE:.0%}", abs(r.BIAS) <= BIAS_TOLERANCE, f"{r.HORIZON}M")
     for series, (_, _, coverage) in bands.items():
         add("band", "Months inside the P10-P90 band (each origin tested on a band from the others)",
-            series.capitalize(), coverage, f"{COVERAGE_RANGE[0]:.0%} to {COVERAGE_RANGE[1]:.0%}",
+            series.replace("_", " ").capitalize(), coverage, f"{COVERAGE_RANGE[0]:.0%} to {COVERAGE_RANGE[1]:.0%}",
             COVERAGE_RANGE[0] <= coverage <= COVERAGE_RANGE[1])
     add("inputs", "Earned premium rebuilt from policy dates / fact_earned_premium", "Earned premium",
         premium_check, f"within ±{INPUT_TOLERANCE:.0%}", abs(premium_check - 1) <= INPUT_TOLERANCE)
@@ -894,7 +900,7 @@ def main() -> None:
         scale = wanted / (head["CLAIMS_COST"].sum() / head["EARNED_PREMIUM"].sum())
         shown_fc = shown_fc.assign(CLAIMS_COST=shown_fc["CLAIMS_COST"] * scale, CLAIM_COUNT=shown_fc["CLAIM_COUNT"] * scale)
     ratios = band_ratios(bt, model, shown_history, year_basis() == "written_year", scale)
-    bands = {s: band(ratios, s) for s in ("PREMIUM", "CLAIMS")}
+    bands = {s: band(ratios, s) for s in ("PREMIUM", "CLAIMS", "LOSS_RATIO")}
     for s, (low, high, coverage) in bands.items():
         _log(f"{s.lower()} band: x{low:.2f} to x{high:.2f} of the forecast; {coverage:.0%} of months inside, out of sample")
     misses = total_misses(bt, model, shown_history, year_basis() == "written_year", scale)

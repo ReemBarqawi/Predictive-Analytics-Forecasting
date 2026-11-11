@@ -96,7 +96,7 @@ the rolling backtest** (12 origins at 3M, 9 at 12M) before it replaces it, and t
 | C2 | Claims = frequency × severity × exposure from B1's book, rather than a cost rate on premium | When price changes, the cost-on-premium rate breaks. Claims follow cars, not riyals | Medium |
 | C3 | Trend factor: more origins (A1), and split into frequency and severity inflation | 9 origins; the raw forecast ran 13.5 points high and got the direction right 5 times out of 9 | Small |
 | C4 | Large-loss cap and reload in the monthly series | Single large months drive the 57%–121% monthly loss ratio swings | Small |
-| C5 | **P10–P90 band on the Loss Ratio tab** | The flat line looks certain; the 12-month range is about 74%–129% | Small |
+| C5 | **P10–P90 band on the Loss Ratio tab** ✅ *2026-11-11* | The flat line looks certain. Built like the premium and claims bands (past months' actual / forecast loss ratio, coverage 74% out of sample): about ×0.58 to ×1.53 of each month, i.e. 57%–155% around ~102%. Columns LOSS_RATIO_P10 / P90 at the end of fact_forecast_seasonal; `Chart CI Upper / Lower` draw it | Small |
 
 ### D. Pricing (frequency and severity GLMs)
 
@@ -129,7 +129,7 @@ the rolling backtest** (12 origins at 3M, 9 at 12M) before it replaces it, and t
 |---|---|---|
 | G1 | One measure per figure (already the rule in `docs/METRIC_STANDARD.md`): chart and cards read the same measure | This page's issue |
 | G2 | Backtest gate: a model change ships only if it beats the current model and "repeat last year" at 3, 6 and 12 months | 12M premium fails today |
-| G3 | Reconciliation (step 13) also checks card = chart for the Forecast page | Would have caught this automatically |
+| G3 | Reconciliation (step 13) also checks card = chart for the Forecast page ✅ *2026-11-11* | Would have caught this automatically. Now: 3M and 6M cards = the first 3 / 6 months of the 12-month line (premium, claims), and every forecast month inside its own band (premium, claims, loss ratio). 92 of 92 checks pass. The What-if slider is DAX only, so the chart's adjusted line is outside this check by design |
 | G4 | Manager-review items stay parked in `docs/TASK_PLAN.md` and are reviewed together at the end of the prototype | Unchanged rule |
 
 ## 3. Tools and starting code

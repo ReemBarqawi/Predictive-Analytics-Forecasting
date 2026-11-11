@@ -105,6 +105,20 @@ forecast = pd.read_csv(F / "fact_forecast_seasonal.csv", parse_dates=["MONTH_DAT
 actual = forecast[forecast["PERIOD_TYPE"] == "actual"]
 ahead = forecast[(forecast["PERIOD_TYPE"] == "forecast") & (forecast["FORECAST_HORIZON"] == "12M")]
 check_true("forecast", "Forecast has 12 months", len(ahead) == 12, f"{len(ahead)} months")
+# Cards = chart: each horizon's card is the first months of the same 12-month line
+line = ahead.sort_values("MONTH_DATE")
+for h in ("3M", "6M"):
+    card = forecast[(forecast["PERIOD_TYPE"] == "forecast") & (forecast["FORECAST_HORIZON"] == h)]
+    n = int(h[:-1])
+    for col, name in (("FORECAST_PREMIUM", "premium"), ("FORECAST_CLAIMS", "claims")):
+        check("forecast", f"{h} card {name} = first {n} months of the chart", card[col].sum(), line[col].head(n).sum())
+# Every forecast month sits inside its own P10-P90 band
+for value, low, high in (("FORECAST_PREMIUM", "PREMIUM_P10", "PREMIUM_P90"), ("FORECAST_CLAIMS", "CLAIMS_P10", "CLAIMS_P90"),
+                         ("FORECAST_LOSS_RATIO", "LOSS_RATIO_P10", "LOSS_RATIO_P90")):
+    if low in ahead:
+        inside = ahead[value].between(ahead[low] - 1e-9, ahead[high] + 1e-9)
+        check_true("forecast", f"Forecast {value.split('_', 1)[1].lower().replace('_', ' ')} inside its band every month",
+                   inside.all(), f"{int((~inside).sum())} months outside")
 if written_year:
     known = pd.read_csv(F / "fact_forecast_known.csv", parse_dates=["MONTH_DATE"])
     for year, g in actual.groupby(actual["MONTH_DATE"].dt.year):
