@@ -71,8 +71,10 @@ and the run log):
    - **Order:** the Power BI scheduled refresh runs *after* Python, with a safe time gap.
 3. **Results:** written to a folder that Report Server can read. Power BI's `DataFolder`
    parameter points at it.
-4. **Failure handling:** check the run log after each run; email IT on failure (a small wrapper
-   script around `run_all.py`).
+4. **Failure handling and alerts email:** every run is in `data/run_log.csv`. Step 16 emails the
+   management alerts after a run that passed the reconcile gate, and a failure notice otherwise,
+   through Microsoft 365 (Microsoft Graph). Report Server's own subscriptions are not used: they need
+   the SQL Agent, which SQL Server Express does not have. Setup in `docs/ALERTS_METHOD.md` §11.
 5. **Runbook:** how to rerun, where the logs are, who to call (part of Task 10).
 
 ## 5. Option B: production (future)

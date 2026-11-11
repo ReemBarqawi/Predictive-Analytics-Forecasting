@@ -6,6 +6,9 @@ openpyxl>=3.1        # reads ORIGINAL_DATA/*.xlsx (synthetic source)
 matplotlib>=3.8      # 07_forecast_seasonal validation chart
 oracledb>=2.0        # warehouse extract (thin mode: no Oracle client needed)
 pyarrow>=15          # raw extracts stored as Parquet in data/raw/
+msal>=1.28           # 16_email_alerts: Microsoft 365 sign-in for Microsoft Graph (method = graph)
+keyring>=25          # 16_email_alerts: reads the Graph client secret from Windows Credential Manager
+# Optional: pywin32 for 16_email_alerts method = "outlook" (testing from a laptop's Outlook)
 # Optional: Google's TimesFM. 07_forecast_seasonal forecasts with it (falls back to seasonal
 # naive if missing); 04_backtest scores it as a challenger (skipped if missing)
 # timesfm[torch]>=3.0.2

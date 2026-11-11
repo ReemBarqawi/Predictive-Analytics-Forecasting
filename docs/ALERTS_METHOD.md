@@ -252,3 +252,55 @@ model agrees) and **14 Warning**. The largest by SAR above target is Central · 
 (combined ratio 139%, SAR 2.2M above target). Only 3 of the 15 have credibility ≥ 0.30, so most
 alerts carry "review (low credibility)". That is a true statement about the book: the loss-making
 classes (Motor Commercial, Rent a Car) are made of small segments.
+
+## 11. The alerts email (built 2026-11-11)
+
+The report decides the alerts in DAX so that the Target CR slider updates them at once. A scheduled
+email cannot follow a slider, so two pipeline steps send the alerts **at the approved target**
+(`config.toml` `[business] target_combined_ratio`, the slider's default).
+
+**Step 15, `pipeline/15_official_alerts.py`:** the measures of folder `12 Management Alerts`, rule for
+rule, in Python (`Current Flag`, `Future Flag`, `Alert Level`, the trend test, `Alert SAR Above Target`,
+`Alert Headline`, `Alert Issue`, `Alert Action`, `Alert Evidence`, `Alert Period`, `Alert Sort`). It
+reads the files the report reads (`fact_alert_basis`, `fact_segment_performance_by_year` for the current
+year, `fact_optimal_scenarios` base case, `dim_report_window`), so it runs after step 12. Writes
+`fact_alerts_official.csv`: one row per alert with the card text and the figures behind it. Only the
+sentence patterns are fixed (`WORDING` at the top of the file); every value comes from the data.
+
+**Checked against the report (clean model, 2026-11-11):** at 95%, 13 alerts (2 Critical, 11 Warning),
+every card's text identical, same order; at 85%, 15 alerts, same segments and severities as the slider
+at 85%. **If a DAX alert measure changes, step 15 must change with it**, and this check repeated
+(DAX query on the panel's measures by segment, compared with the file).
+
+**Step 16, `pipeline/16_email_alerts.py`:** sends `fact_alerts_official.csv` as cards (the panel's
+layout) in an HTML email. `run_all.py` runs it only after the reconcile gate (step 13) passed, on a full
+run or `--only 16`. After a failed run no alerts email goes out; `[email] admin_to` gets a failure notice.
+
+| Setting | Where | What |
+|---|---|---|
+| `enabled`, `to`, `cc`, `send_when`, `subject` | `config.toml` `[alerts_email]` | Company rules. **Recipients and frequency: manager decision, pending.** Off until then |
+| `method` | `config.local.toml` `[email]` | `preview` (HTML file only, default), `graph` (Microsoft 365, the server), `outlook` (own Outlook, laptop testing) |
+| `tenant_id`, `client_id`, `sender` | `config.local.toml` `[email]` | Microsoft Entra app registration with the **Mail.Send application permission**, limited to the sending mailbox by an application access policy |
+| client secret | Windows Credential Manager | Never in a file. Service `aman-alerts-graph`, user = client_id; or env `AMAN_GRAPH_SECRET` |
+| `test_to`, `admin_to` | `config.local.toml` `[email]` | `--to-me` test address; failure notices |
+
+The same alerts are never sent twice (`reports/alert_email_state.json` keeps the last data cut-off,
+target and content; `--force` resends). `--preview` writes `reports/alert_email_preview.html`.
+
+### 11.1 Email layout: four priority groups (2026-11-11)
+
+The email groups the alerts by what management should do, not by severity. Step 15 writes the group
+in `PRIORITY`; the rule is **provisional, for manager review**:
+
+| Priority | Rule (first match wins) | Group action |
+|---|---|---|
+| 4 Monitor only | claims in the window < `[credibility] full_claims` (30) | None: too few claims to conclude |
+| 1 Act now | credibility at or above the low band (`reliability_low`, 0.30) | Per segment: reprice (recommended %), and tighten underwriting when getting worse |
+| 2 Pricing review before renewal | low credibility, outlook above target (`Future Flag`) | Review price manually, confirm with Underwriting |
+| 3 Claims investigation | low credibility, outlook within target or improving | Review large claims; reprice only if the risk changed |
+
+The email shows **only the Priority 1 (Act now) alerts**, in the report's card style (Deneb panel layout and colours). Each card: severity, segment, the issue (`Alert Headline`), then one line each, key number in bold, in the report's terms: **Actual so far** (In-Year combined ratio and premium, against last year), **Estimated** (Today combined ratio on the year's written premium, SAR above target), **Expected** (next year, no price change), **Reliability** (confidence, claims) and **Action** (`Alert Action` without the drill-through hint). A link (`[email] report_url`, per machine) opens the report for the other alerts. The other groups are one sentence each under "Also open in the report": the count, what to do, and the largest by SAR above target (Monitor only: the count).
+premium with the SAR gap, worded as the report's `Alert Issue`), **Outlook** (`Expected Combined Ratio`
+next year), **Reliability** (confidence band, claims) and, for Priority 1, **Action**; Priority 2 shows the
+indicated price change "to be confirmed". Owners per group are company settings in
+`config.toml` `[alerts_email.owners]`. Real data 2026-11-11: 2 / 8 / 0 / 3.

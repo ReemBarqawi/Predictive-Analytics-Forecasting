@@ -177,6 +177,19 @@ pct = 0.05                    # share of the No-change line
 share_of_premium = 0.01       # share of No-change portfolio premium
 ratio_pts = 1.0               # points, for ratio lines
 
+[alerts_email]
+# Step 16 emails the management alerts after a full run that passed the reconcile gate.
+# [MANAGER DECISION, pending] who receives it, how often the pipeline runs, and when to send.
+# The alerts are decided at target_combined_ratio above, not at the report's slider.
+# How the email is sent (Microsoft 365 app, test address) is set per machine in config.local.toml [email].
+enabled   = false             # true once the recipients are agreed
+to        = []                # e.g. ["ceo@company.com", "pricing.manager@company.com"]
+cc        = []
+# The email shows only the alerts to act on now (step 15 PRIORITY 1), as the report's cards; the rest are in the report.
+send_when = "if_any"          # "always" (also "No segment needs action now") | "if_any" | "if_critical"
+# Fields: {act_now} {open} {critical} {warning} {cutoff}
+subject   = "Management alerts: {act_now} to act on now · data to {cutoff}"
+
 [reconcile]
 # Step 13: two amounts agree within the larger of these
 tolerance_sar = 1.0

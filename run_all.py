@@ -8,6 +8,9 @@ run_all.py — runs the Aman Prediction pipeline end to end, in dependency order
     python run_all.py --from 5                 # every step numbered 5 or more, in run order (earlier outputs must exist)
     python run_all.py --only 9 10              # run just these steps
     python run_all.py --source oracle --check-connection   # test the warehouse login only
+    python run_all.py --only 16                # (re)send the alerts email from the last run's results
+
+A full run ends with step 16, the alerts email, but only when the reconcile gate (13) passed.
 
 Results go to the output folder of the chosen source (config.toml [profiles]); point Power BI's
 DataFolder parameter at it. Every run is recorded in data/run_log.csv.
@@ -38,14 +41,16 @@ MODEL_STEPS = [
     (9, "09_profit_optimizer.py"),
     (10, "10_underwriting_pnl.py"),
     (12, "12_report_window.py"),
+    (15, "15_official_alerts.py"),   # the alerts at the approved target: needs steps 5, 9, 11 and 12
 ]
 GATE = (13, "13_reconcile.py")      # always closes a run: a failure means do not refresh the report
+AFTER_GATE = (16, "16_email_alerts.py")   # only after the gate passed, on a full run or when asked for
 STEPS = {
     "synthetic": [(1, "01_build_synthetic_data.py")] + MODEL_STEPS,
     "oracle": [(0, "00_extract_oracle.py"), (1, "01_prepare_real.py")] + MODEL_STEPS,
 }
 KEY_TABLES = ["fact_policy", "fact_claim", "fact_earned_premium", "fact_segment_performance",
-              "fact_optimal_scenarios", "fact_alerts"]
+              "fact_optimal_scenarios", "fact_alerts", "fact_alerts_official"]
 
 
 def git_commit() -> str:
@@ -77,12 +82,21 @@ def write_run_log(source: str, steps: list, status: str, seconds: float) -> None
            "seconds": round(seconds), "git": git_commit(), "output_root": str(s.output_root)}
     row.update({t: row_count(s.facts_dir / f"{t}.csv") for t in KEY_TABLES})
     RUN_LOG.parent.mkdir(parents=True, exist_ok=True)
-    new = not RUN_LOG.exists()
-    with open(RUN_LOG, "a", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=list(row))
-        if new:
+    old_fields, rows = [], []
+    if RUN_LOG.exists():
+        with open(RUN_LOG, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            old_fields, rows = reader.fieldnames or [], list(reader)
+    if old_fields == list(row):
+        with open(RUN_LOG, "a", newline="", encoding="utf-8") as f:
+            csv.DictWriter(f, fieldnames=old_fields).writerow(row)
+    else:
+        # New file, or a table was added to KEY_TABLES: rewrite with the wider header.
+        fields = list(row) + [c for c in old_fields if c not in row]
+        with open(RUN_LOG, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=fields, restval="", extrasaction="ignore")
             w.writeheader()
-        w.writerow(row)
+            w.writerows(rows + [row])
     print(f"Run recorded in {RUN_LOG}")
 
 
@@ -111,8 +125,12 @@ def main():
     steps = [s for s in STEPS[source] if (s[0] in args.only if args.only else s[0] >= args.start)]
     if args.skip_extract:
         steps = [s for s in steps if s[0] != 0]
+    steps = [s for s in steps if s != AFTER_GATE]
     if GATE not in steps:
         steps.append(GATE)
+    # The alerts email goes out only after a full run passed the gate, or when asked for with --only 16.
+    if (args.only and AFTER_GATE[0] in args.only) or (not args.only and args.start == 0):
+        steps.append(AFTER_GATE)
     print(f"Source: {source}   steps: {' '.join(str(n) for n, _ in steps)}")
 
     total_start, status = time.time(), "ok"
@@ -125,6 +143,9 @@ def main():
             status = f"failed at step {num}"
             break
         print(f"--- step {num} done in {time.time() - t0:.0f}s", flush=True)
+    if status != "ok" and AFTER_GATE in steps:
+        # No alerts email after a failed run; tell [email] admin_to instead (if configured).
+        subprocess.run([sys.executable, str(PIPELINE / AFTER_GATE[1]), "--failure", status], cwd=ROOT)
     seconds = time.time() - total_start
     print(f"\nPipeline {status}: {len(steps)} steps planned, {seconds:.0f}s")
     write_run_log(source, steps, status, seconds)
