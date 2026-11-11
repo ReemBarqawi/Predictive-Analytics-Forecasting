@@ -56,6 +56,7 @@ import pandas as pd
 
 from settings import S, year_basis, expected_claims_basis, current_year
 from development import DEV_DIAGONALS, TRIANGLES, cdf, cumulative, valuation_quarter
+import premium_drivers
 import timesfm_model
 import training_window
 
@@ -341,20 +342,30 @@ def seasonal_naive(history: pd.Series, horizon: int) -> np.ndarray:
     return history.iloc[-12:].to_numpy()[np.arange(horizon) % 12]
 
 
-def forecast(model: str, history: pd.DataFrame, cohorts: pd.DataFrame, horizon: int) -> pd.DataFrame:
+def forecast(model: str, history: pd.DataFrame, cohorts: pd.DataFrame, horizon: int,
+             drivers=None) -> pd.DataFrame:
     """
     Written premium and claims per unit of earned premium are forecast; earned premium comes
     from the run-off plus new business, and claims = rate x earned premium, so the claims
     follow the book's known growth or shrinkage instead of extending the past trend.
+    With `drivers` (premium_drivers.Drivers, plan B1) written premium = renewals of the policies
+    expiring each month (known at the origin) + new business, and the model forecasts new business.
     """
     h = history.assign(CLAIM_RATE=history["CLAIM_COUNT"] / history["EARNED_PREMIUM"],
                        COST_RATE=history["CLAIMS_COST"] / history["EARNED_PREMIUM"])
+    series = [h[s] for s in MODELLED]
+    if drivers is not None:
+        series[MODELLED.index("WRITTEN_PREMIUM")] = drivers.new_business(h["WRITTEN_PREMIUM"])
     if model == "timesfm":
-        preds = timesfm_model.predict([h[s].to_numpy() for s in MODELLED], horizon)
+        preds = timesfm_model.predict([s.to_numpy() for s in series], horizon)
     else:
-        preds = [seasonal_naive(h[s], horizon) for s in MODELLED]
+        preds = [seasonal_naive(s, horizon) for s in series]
     index = pd.period_range(history.index[-1] + 1, periods=horizon, freq="M")
     fc = pd.DataFrame({s: np.clip(p, 0, None) for s, p in zip(MODELLED, preds)}, index=index)
+    if drivers is not None:
+        fc["NEW_BUSINESS"] = fc["WRITTEN_PREMIUM"]
+        fc["RENEWALS"] = drivers.renewals(history.index[-1], index).to_numpy()
+        fc["WRITTEN_PREMIUM"] = fc["NEW_BUSINESS"] + fc["RENEWALS"]
     fc["EARNED_PREMIUM"], fc["RUNOFF_PREMIUM"] = earned_premium(cohorts, history.index[-1],
                                                                 fc["WRITTEN_PREMIUM"])
     fc["CLAIM_COUNT"] = fc["CLAIM_RATE"] * fc["EARNED_PREMIUM"]
@@ -374,7 +385,8 @@ def backtest_origins(history: pd.DataFrame) -> list[pd.Period]:
 
 
 def rolling_backtest(history: pd.DataFrame, cohorts: pd.DataFrame, models: list[str],
-                     window_months: int | None = None, origins: list | None = None) -> pd.DataFrame:
+                     window_months: int | None = None, origins: list | None = None,
+                     drivers=None) -> pd.DataFrame:
     """
     Forecast from every quarter-end origin (or the given ones), exactly as the live forecast is
     made: the model sees the history up to the origin, or only its last `window_months`.
@@ -385,7 +397,7 @@ def rolling_backtest(history: pd.DataFrame, cohorts: pd.DataFrame, models: list[
         actual = history.loc[o + 1:o + max(FORECAST_HORIZONS)]
         context = history.loc[:o] if window_months is None else history.loc[o - window_months + 1:o]
         for m in models:
-            pred = forecast(m, context, cohorts, max(FORECAST_HORIZONS)).loc[actual.index]
+            pred = forecast(m, context, cohorts, max(FORECAST_HORIZONS), drivers).loc[actual.index]
             for step, month in enumerate(actual.index, start=1):
                 rows.append({"ORIGIN": o, "MODEL": m, "STEP": step, "MONTH": month,
                              **{f"PRED_{s}": pred.at[month, s] for s in SERIES + ["WRITTEN_PREMIUM", "COST_RATE"]},
@@ -505,6 +517,40 @@ def select_shape(bt: pd.DataFrame, model: str, shown: pd.DataFrame) -> tuple[flo
                           "STD_ERROR": [errs[w].std(ddof=1) / np.sqrt(len(errs[w])) for w in mean],
                           "N_ORIGINS": [len(errs[w]) for w in mean], "CHOSEN": [w == weight for w in mean]})
     return weight, table
+
+
+def written_errors(bt: pd.DataFrame, history: pd.DataFrame) -> pd.Series:
+    """One error per origin for written premium: 3 / 6 / 12-month totals and the monthly error, averaged."""
+    out = {}
+    for o, g in bt.groupby("ORIGIN"):
+        p = g["PRED_WRITTEN_PREMIUM"].to_numpy()
+        a = history["WRITTEN_PREMIUM"].reindex(g["MONTH"]).to_numpy()
+        terms = [np.abs(p - a).sum() / a.sum()]
+        terms += [abs(p[:h].sum() / a[:h].sum() - 1) for h in FORECAST_HORIZONS if len(g) >= h]
+        out[o] = float(np.mean(terms))
+    return pd.Series(out)
+
+
+def select_premium_method(full_history, cohorts, model, window_months, bt, drivers) -> tuple[str, pd.DataFrame]:
+    """Plan B1 against the total-premium forecast, on the same origins: the driver model is kept only
+    when its written-premium error is lower by more than its standard error (G2 gate)."""
+    nb_start = drivers.first_classified + MIN_CONTEXT_MONTHS - 1
+    origins = [o for o in bt["ORIGIN"].unique() if o >= nb_start]
+    if len(origins) < 4:
+        _log(f"premium drivers: only {len(origins)} origins with {MIN_CONTEXT_MONTHS} months of new-business "
+             "history; total-premium forecast kept")
+        return "total", pd.DataFrame()
+    b_tot = bt[(bt["MODEL"] == model) & bt["ORIGIN"].isin(origins)]
+    b_drv = rolling_backtest(full_history, cohorts, [model], window_months, origins, drivers)
+    e_tot, e_drv = written_errors(b_tot, full_history), written_errors(b_drv, full_history)
+    se = lambda e: e.std(ddof=1) / np.sqrt(len(e))
+    method = "drivers" if e_drv.mean() < e_tot.mean() - se(e_drv) else "total"
+    table = pd.DataFrame({"METHOD": ["total", "drivers"], "ERROR": [e_tot.mean(), e_drv.mean()],
+                          "STD_ERROR": [se(e_tot), se(e_drv)], "N_ORIGINS": len(origins),
+                          "CHOSEN": [method == "total", method == "drivers"]})
+    _log(f"premium method: total {e_tot.mean():.1%} ±{se(e_tot):.1%}, renewals + new business "
+         f"{e_drv.mean():.1%} ±{se(e_drv):.1%} over {len(origins)} origins -> {method}")
+    return method, table
 
 
 def score(bt: pd.DataFrame) -> pd.DataFrame:
@@ -950,11 +996,29 @@ def main() -> None:
     for m, v in mean_wape.items():
         _log(f"validation {m}: mean WAPE {v:.1%} over {bt[bt['MODEL'] == m]['ORIGIN'].nunique()} origins")
     model = mean_wape.idxmin()
+    # Plan B1: written premium = renewals of known expiries + new business, if it beats the total forecast
+    drivers = premium_drivers.Drivers(list(pd.read_csv(FACTS_DIR / "fact_earned_premium.csv",
+                                                       usecols=["CLASS_DESC"])["CLASS_DESC"].unique()))
+    premium_method = "total"
+    if drivers.available:
+        months = None if window is None else 12 * window
+        premium_method, method_table = select_premium_method(full_history, cohorts, model, months, bt, drivers)
+        method_table.to_csv(FACTS_DIR / "fact_forecast_premium_method.csv", index=False, encoding="utf-8")
+        if premium_method == "drivers":
+            bt = rolling_backtest(full_history, cohorts, models, months,
+                                  backtest_origins(full_history)[-WINDOW_TEST_ORIGINS:], drivers)
+            scores = score(bt)
+    else:
+        _log("premium drivers: no fact_vehicle.parquet; total-premium forecast")
+    drivers = drivers if premium_method == "drivers" else None
     b = bt[bt["MODEL"] == model]
     monthly_wape = float((b["PRED_CLAIMS_COST"] - b["ACT_CLAIMS_COST"]).abs().sum() / b["ACT_CLAIMS_COST"].sum())
     _log(f"selected: {model}")
 
-    fc = forecast(model, history, cohorts, max(FORECAST_HORIZONS))
+    fc = forecast(model, history, cohorts, max(FORECAST_HORIZONS), drivers)
+    if drivers is not None:
+        _log(f"next 12 months written premium: renewals {fc['RENEWALS'].sum() / 1e6:,.1f}M + new business "
+             f"{fc['NEW_BUSINESS'].sum() / 1e6:,.1f}M")
     trend = trend_factor(full_history, fc, bt, model)
     pd.DataFrame([trend]).to_csv(FACTS_DIR / "fact_trend_factor.csv", index=False, encoding="utf-8")
     _log(f"trend factor {trend['TREND_FACTOR']:.3f} (forecast {trend['TREND_FACTOR_RAW']:.3f}, past bias "

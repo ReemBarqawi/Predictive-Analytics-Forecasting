@@ -60,8 +60,9 @@ default_office_city = "Riyadh"
 # The password is never stored in a file: it is read from the environment variable
 # AMAN_ORACLE_PASSWORD, or asked for when the extract runs.
 sql_dir = "sql"               # one .sql file per extract (policies, claims, claims_dev_*)
-vehicles_years = 4            # sql/vehicles.sql: the last N motor policy years (the vehicle view is slow;
-                              # renewal needs ~2 years, the GLMs their training window)
+vehicles_years = 7            # sql/vehicles.sql: the last N motor policy years (the vehicle view is slow:
+                              # all history ran over an hour, 4 years ~7 minutes). Renewal needs ~2 years;
+                              # the driver premium model (B1) needs ~6 to backtest renewals vs new business
 first_policy_year = 0         # first policy year extracted; 0 = all history (the models learn from it all,
                               # Power BI shows only the last [report] years)
 fetch_batch_rows = 50000
