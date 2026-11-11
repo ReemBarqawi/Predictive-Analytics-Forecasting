@@ -88,6 +88,10 @@ check_segments("levers", "Claims", levers["baseline_ultimate_claims"], now["ULTI
 
 # ---- optimizer: its today book = segment results
 renewal = S.config["optimizer"]["baseline_renewal"]
+rates_path = F / "fact_renewal_rates.csv"
+if rates_path.exists():       # E1: each segment's measured renewal rate (step 17), as the optimizer uses it
+    rates = pd.read_csv(rates_path)
+    renewal = rates.set_index(SEG)["RENEWAL_RATE"].reindex(now.index).fillna(float(rates["PORTFOLIO_RATE"].iloc[0]))
 trend = float(pd.read_csv(F / "fact_trend_factor.csv")["TREND_FACTOR"].iloc[0]) if experience and (F / "fact_trend_factor.csv").exists() else 1.0
 optimal = pd.read_csv(F / "fact_optimal_scenarios.csv")
 base = optimal[optimal["sensitivity_case"] == "base"].set_index(SEG)

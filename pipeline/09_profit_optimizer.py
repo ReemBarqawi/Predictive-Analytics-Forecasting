@@ -43,7 +43,15 @@ ASSUMPTIONS = {
     "policy_year": None,            # None = latest complete POLICY_YEAR (see complete_years)
     # C. 1% steps from -10% to +50% (method constant)
     "premium_grid": [round(x, 2) for x in np.arange(-0.10, 0.5001, 0.01)],
+    # E1: each segment's renewal rate is measured by step 17 (fact_renewal_rates.csv); this is the
+    # fallback when there is no vehicle extract
     "baseline_renewal": _o["baseline_renewal"],
+    # E2: the sensitivity cases' k were set against this renewal rate; k is rescaled to each segment's
+    # measured rate so customers react to a price change as strongly as before (semi-elasticity
+    # k x (1 - P0) at no change held fixed). Without it k=5 at 16% renewal would mean 6x the reaction.
+    "price_reaction_reference_renewal": _o.get("price_reaction_reference_renewal", _o["baseline_renewal"]),
+    # E4: "relative" = the floors are the share of no-change renewers kept; "absolute" = share of the book
+    "floor_basis": _o.get("floor_basis", "absolute"),
     "sensitivity_cases": _o["sensitivity_cases"],
     "risk_gamma": _o["risk_gamma"],
     "admin_rate_of_baseline_premium": S.config["business"]["admin_expense_rate"],   # fixed PER POLICY
@@ -140,7 +148,24 @@ def load_policies(a):
     # risk percentile inside segment (0 = lowest risk, 1 = highest) from pure premium
     df["risk_pct"] = (df.groupby(SEG)["pure_premium_per_year"]
                         .rank(pct=True, method="average"))
+    df["p0"] = renewal_rates(df, a)
     return df, yr
+
+
+def renewal_rates(df, a):
+    """E1: chance each policy renews at an unchanged price = its segment's measured renewal rate
+    (step 17); config.toml baseline_renewal when the rates are missing."""
+    path = os.path.join(BASE, "fact_renewal_rates.csv")
+    if not os.path.exists(path):
+        print(f"Renewal: no fact_renewal_rates.csv - using baseline_renewal {a['baseline_renewal']:.0%} for every segment")
+        return pd.Series(a["baseline_renewal"], index=df.index)
+    rates = pd.read_csv(path)
+    p0 = df[SEG].merge(rates[SEG + ["RENEWAL_RATE"]], on=SEG, how="left")["RENEWAL_RATE"]
+    p0 = p0.fillna(float(rates["PORTFOLIO_RATE"].iloc[0])).to_numpy()
+    w = df["EXPOSURE_YEARS"].to_numpy()
+    print(f"Renewal: measured per segment (step 17), exposure-weighted {np.average(p0, weights=w):.1%}, "
+          f"range {p0.min():.1%} to {p0.max():.1%}")
+    return pd.Series(p0, index=df.index)
 
 
 # ------------------------------------------------------------------ RETENTION
@@ -148,23 +173,27 @@ def logit(p):
     return np.log(p / (1 - p))
 
 
-def retention_prob(pc, k, risk_pct, a):
-    """P(renewal_i) = 1/(1+exp(-Z)); Z = logit(P0) - k_i * pc"""
-    k_i = k * (1 + a["risk_gamma"] * (0.5 - risk_pct) * 2)   # avg ~ k
-    z = logit(a["baseline_renewal"]) - k_i * pc
+def effective_k(k, p0, a):
+    """E2: rescale k from the reference renewal rate to p0, holding k x (1 - P0) fixed."""
+    return k * (1 - a["price_reaction_reference_renewal"]) / (1 - p0)
+
+
+def retention_prob(pc, k, risk_pct, a, p0):
+    """P(renewal_i) = 1/(1+exp(-Z)); Z = logit(P0_i) - k_i * pc"""
+    k_i = effective_k(k, p0, a) * (1 + a["risk_gamma"] * (0.5 - risk_pct) * 2)   # avg ~ k
+    z = logit(p0) - k_i * pc
     return 1 / (1 + np.exp(-z))
 
 
-def implied_arc_elasticity(k, a, pc=0.10):
+def implied_arc_elasticity(k, a, p0, pc=0.10):
     """Sanity check: % change in retention / % change in price."""
-    p0 = a["baseline_renewal"]
-    p1 = 1 / (1 + np.exp(-(logit(p0) - k * pc)))
+    p1 = 1 / (1 + np.exp(-(logit(p0) - effective_k(k, p0, a) * pc)))
     return ((p1 - p0) / p0) / pc
 
 
 # ------------------------------------------------------------------ SCENARIOS
 def evaluate(g, pc, k, a):
-    p = retention_prob(pc, k, g["risk_pct"].values, a)
+    p = retention_prob(pc, k, g["risk_pct"].values, a, g["p0"].values)
     expo = g["EXPOSURE_YEARS"].values
     retained_expo = expo * p
     premium = (g["base_premium"].values * (1 + pc) * p).sum()
@@ -206,8 +235,11 @@ def run_segment(g, seg_key, case, k, a):
 
     res["profit_change"] = res["underwriting_profit"] - base["underwriting_profit"]
     res["exposure_change_vs_base"] = res["retained_exposure"] / base["retained_exposure"] - 1
+    # E4: share of the customers who would renew at no change that are still kept at this price
+    vs_nochange = res["retained_exposure"] / base["retained_exposure"]
+    floor_measure = vs_nochange if a["floor_basis"] == "relative" else res["retention"]
     # each rule kept separately so we can say which one binds
-    res["pass_retention"] = res["retention"] >= a["retention_floor"]
+    res["pass_retention"] = floor_measure >= a["retention_floor"]
     res["pass_range"] = res["premium_change"].between(a["premium_change_min"], a["premium_change_max"])
     res["pass_technical"] = res["premium_change"] <= tech_cap + 1e-9
     res["pass_profit"] = res["profit_change"] >= a["min_profit_improvement"]
@@ -229,6 +261,7 @@ def run_segment(g, seg_key, case, k, a):
     res["nochange_profit"] = base["underwriting_profit"]
     res["nochange_combined_ratio"] = base["combined_ratio"]
     res["nochange_retained_exposure"] = base["retained_exposure"]
+    res["retention_vs_nochange"] = vs_nochange     # moved to the end of the file when it is written (main)
     return res
 
 
@@ -285,7 +318,11 @@ def pick_optimal(res):
     return r
 
 
-def port_retention(o):
+def port_retention(o, a=None):
+    """Portfolio retention as the floor reads it: share of the book kept, or (E4, floor_basis
+    "relative") share of the no-change renewers kept."""
+    if (a or ASSUMPTIONS)["floor_basis"] == "relative":
+        return o["retained_exposure"].sum() / o["nochange_retained_exposure"].sum()
     return o["retained_exposure"].sum() / o["original_exposure"].sum()
 
 
@@ -404,9 +441,14 @@ def main():
     df, yr = load_policies(a)
     print(f"Policy year {yr}: {len(df):,} policies, "
           f"{df['base_premium'].sum():,.0f} baseline premium")
+    p0_avg = float(np.average(df["p0"], weights=df["EXPOSURE_YEARS"]))
+    print(f"Floors: {a['retention_floor']:.0%} segment / {a['portfolio_retention_floor']:.0%} portfolio, "
+          + ("share of the no-change renewers kept (relative)" if a["floor_basis"] == "relative"
+             else "share of the book kept (absolute)"))
     for case, k in a["sensitivity_cases"].items():
-        print(f"  case {case:5s} k={k}: implied arc elasticity at +10% = "
-              f"{implied_arc_elasticity(k, a):.2f}")
+        print(f"  case {case:5s} k={k} (at {a['price_reaction_reference_renewal']:.0%} renewal; "
+              f"{effective_k(k, p0_avg, a):.2f} at {p0_avg:.1%}): implied arc elasticity at +10% = "
+              f"{implied_arc_elasticity(k, a, p0_avg):.2f}")
 
     # A. coverage of the credibility rule
     sizes = df.groupby(SEG).size()
@@ -454,8 +496,14 @@ def main():
                   "model_version", "optimization_date"]
     opt = opt[keep]
 
-    run = pd.DataFrame([{**{k: str(v) for k, v in a.items() if k != "selection_rule"}, "policy_year": yr,
-                         "run_ts": pd.Timestamp.now()}])
+    added = ("price_reaction_reference_renewal", "floor_basis")     # 2026-11-11: after the original columns
+    run = pd.DataFrame([{**{k: str(v) for k, v in a.items() if k != "selection_rule" and k not in added},
+                         "policy_year": yr, "run_ts": pd.Timestamp.now(),
+                         **{k: str(a[k]) for k in added},
+                         "measured_renewal": float(np.average(df["p0"], weights=df["EXPOSURE_YEARS"]))}])
+    # Power BI reads this file by column position: columns added after 2026-11-10 go last
+    late = ["retention_vs_nochange"]
+    results = results[[c for c in results.columns if c not in late] + late]
     results.to_csv(os.path.join(BASE, "fact_scenario_results.csv"), index=False, encoding="utf-8")
     opt.to_csv(os.path.join(BASE, "fact_optimal_scenarios.csv"), index=False, encoding="utf-8")
     run.to_csv(os.path.join(BASE, "fact_optimizer_run.csv"), index=False, encoding="utf-8")

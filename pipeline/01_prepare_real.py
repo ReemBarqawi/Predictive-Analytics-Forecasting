@@ -166,6 +166,31 @@ def normalize_keys(p: pd.DataFrame, c: pd.DataFrame) -> tuple[pd.DataFrame, pd.D
     return p, c
 
 
+# ---------------------------------------------------------------------------- vehicles
+def prepare_vehicles(raw: pd.DataFrame, policies: pd.DataFrame, key_map: dict) -> pd.DataFrame:
+    """One row per vehicle x policy-year (sql/vehicles.sql), keyed like fact_policy. VEHICLE_ID is a
+    one-way hash of the chassis number: it links a car to its next policy (step 17). Ages outside a
+    plausible range are typing errors and left empty."""
+    v = raw.copy()
+    for c in ("COVER_START", "COVER_END", "STATUS_DATE"):
+        v[c] = pd.to_datetime(v[c], errors="coerce")
+    v["POLICY_YEAR"] = pd.to_numeric(v["POLICY_YEAR"], errors="coerce").astype("Int64")
+    v["POLICY_NO"] = v["POLICY_NO"].astype(str).str.strip().map(key_map).astype("Int64")
+    keys = policies[["POLICY_NO", "POLICY_YEAR"]].drop_duplicates()
+    v = v.merge(keys.assign(_P=1), on=["POLICY_NO", "POLICY_YEAR"], how="left")
+    matched = v.pop("_P").notna()
+    log(f"vehicles: {len(v):,} rows, {matched.mean():.1%} matched to a policy-year"
+        + ("  <-- LOW: check the policy key in sql/vehicles.sql" if matched.mean() < 0.9 else ""))
+    v = v[matched & v["COVER_START"].notna() & v["COVER_END"].notna()].copy()
+    v["POLICY_NO"] = v["POLICY_NO"].astype("int64")
+    v["POLICY_YEAR"] = v["POLICY_YEAR"].astype("int64")
+    for c in ("GROSS_PREMIUM", "SUM_INSURED", "YEAR_OF_MAKE", "DRIVER_AGE"):
+        v[c] = pd.to_numeric(v[c], errors="coerce")
+    v["DRIVER_AGE"] = v["DRIVER_AGE"].where(v["DRIVER_AGE"].between(16, 100))
+    v["VEHICLE_AGE"] = (v["COVER_START"].dt.year - v["YEAR_OF_MAKE"]).where(lambda a: a.between(-1, 60))
+    return v
+
+
 # ---------------------------------------------------------------------------- claims
 def prepare_claims(raw: pd.DataFrame, policies: pd.DataFrame, as_of: pd.Timestamp) -> pd.DataFrame:
     """raw has already passed check_contract and normalize_keys."""
@@ -277,8 +302,16 @@ def main() -> None:
 
     policies = prepare_policies(pd.read_parquet(raw_pol))
     B.ASSUMPTIONS["MOTOR_CLASSES"] = S.motor_classes or sorted(policies["CLASS_DESC"].dropna().unique())
+    original_keys = policies["POLICY_NO"].astype(str).str.strip().to_numpy()
     policies, raw_claims = normalize_keys(policies, check_contract(pd.read_parquet(raw_clm), CLAIMS, "claims"))
     claims = prepare_claims(raw_claims, policies, as_of)
+    raw_veh = S.raw_dir / "vehicles.parquet"
+    if raw_veh.exists():      # optional: renewal rates (step 17) and vehicle rating factors need it
+        key_map = dict(zip(original_keys, policies["POLICY_NO"].to_numpy()))
+        prepare_vehicles(pd.read_parquet(raw_veh), policies, key_map).to_parquet(
+            S.facts_dir / "fact_vehicle.parquet", index=False)
+    else:
+        log("vehicles: no extract (sql/vehicles.sql) - renewal rates fall back to config.toml")
 
     ep = B.build_earned_premium(policies)
     triangles = B.build_triangles(claims)

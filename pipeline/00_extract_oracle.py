@@ -66,12 +66,17 @@ def read_sql(path: Path) -> str:
     first = S.config.get("oracle", {}).get("first_policy_year", 0)
     if not isinstance(first, int) or first < 0:
         sys.exit("[oracle] first_policy_year in config.toml must be a whole year, or 0 for all history.")
-    return text.replace("{first_policy_year}", str(first))
+    vehicles = S.config.get("oracle", {}).get("vehicles_years", 4)
+    if not isinstance(vehicles, int) or vehicles < 1:
+        sys.exit("[oracle] vehicles_years in config.toml must be a whole number of years, 1 or more.")
+    return text.replace("{first_policy_year}", str(first)).replace("{vehicles_years}", str(vehicles))
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     ap.add_argument("--check", action="store_true", help="connect and count rows only")
+    ap.add_argument("--only", nargs="+", metavar="NAME",
+                    help="extract only these sql files (names without .sql), e.g. --only vehicles")
     args = ap.parse_args()
 
     if S.source != "oracle":
@@ -82,9 +87,15 @@ def main() -> None:
 
     conn = connect()
     print(f"Connected (Oracle {conn.version}).")
+    manifest_path = raw_dir / "extract_manifest.json"
     manifest = {"extracted_at": datetime.now().isoformat(timespec="seconds"), "tables": {}}
+    if args.only and manifest_path.exists():      # keep the other tables' entries
+        manifest["tables"] = json.loads(manifest_path.read_text(encoding="utf-8")).get("tables", {})
+    files = [f for f in sql_files() if not args.only or f.stem in args.only]
+    if args.only and len(files) < len(args.only):
+        sys.exit(f"Unknown sql file in --only: {sorted(set(args.only) - {f.stem for f in files})}")
     with conn:
-        for f in sql_files():
+        for f in files:
             name, sql = f.stem, read_sql(f)
             cur = conn.cursor()
             if args.check:
@@ -113,8 +124,8 @@ def main() -> None:
                 "seconds": round(time.time() - t0, 1)}
             print(f"  {name:<12} {len(df):>12,} rows  {len(cols)} columns  -> {out}")
     if not args.check:
-        (raw_dir / "extract_manifest.json").write_text(json.dumps(manifest, indent=1), encoding="utf-8")
-        print(f"Manifest: {raw_dir / 'extract_manifest.json'}")
+        manifest_path.write_text(json.dumps(manifest, indent=1), encoding="utf-8")
+        print(f"Manifest: {manifest_path}")
 
 
 if __name__ == "__main__":

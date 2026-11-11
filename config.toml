@@ -60,6 +60,8 @@ default_office_city = "Riyadh"
 # The password is never stored in a file: it is read from the environment variable
 # AMAN_ORACLE_PASSWORD, or asked for when the extract runs.
 sql_dir = "sql"               # one .sql file per extract (policies, claims, claims_dev_*)
+vehicles_years = 4            # sql/vehicles.sql: the last N motor policy years (the vehicle view is slow;
+                              # renewal needs ~2 years, the GLMs their training window)
 first_policy_year = 0         # first policy year extracted; 0 = all history (the models learn from it all,
                               # Power BI shows only the last [report] years)
 fetch_batch_rows = 50000
@@ -124,19 +126,30 @@ mix_share_of_gap = 0.10       # share of a Loss segment's gap closed by mix shif
 glide_uw_share_month_9 = 0.60 # share of the UW lever reached by month 9 of the timeline
 
 [optimizer]
-# [ASSUMPTIONS] Retention is hand-set until a stable renewal link exists (docs/TASK_PLAN.md)
-baseline_renewal = 0.90       # chance of renewal at an unchanged price
+# [PROVISIONAL, NEEDS MANAGER REVIEW 2026-11-11] Renewal at an unchanged price is measured per segment
+# by step 17 (the same car insured again, chassis link; fact_renewal_rates.csv). baseline_renewal is
+# only the fallback when there is no vehicle extract.
+baseline_renewal = 0.90       # fallback chance of renewal at an unchanged price
+# The sensitivity cases' k below were set against this renewal rate. k is rescaled to each segment's
+# measured rate so customers react to price as strongly as before (k x (1 - renewal) held fixed).
+price_reaction_reference_renewal = 0.90
 risk_gamma = 0.5              # low-risk customers react more to price, high-risk less; 0 = off
 target_margin = 0.05          # profit loading in the technical price
 tech_tolerance = 0.05         # may price up to this many points above the technical change
-retention_floor = 0.80        # segment
-portfolio_retention_floor = 0.85
+# floor_basis: "relative" = a floor is the share of the customers who would renew at no change that a
+# price keeps; "absolute" = share of the whole book. With a measured renewal of ~14%, absolute floors
+# can never be met, so "relative" until the manager sets floors on the real renewal rate.
+# The relative floors keep the old strictness: 80% and 85% of the book at an assumed 90% renewal let a
+# price lose 11% and 6% of the renewers, i.e. keep 0.80/0.90 = 89% and 0.85/0.90 = 94% of them.
+floor_basis = "relative"
+retention_floor = 0.89        # segment
+portfolio_retention_floor = 0.94
+floor_sensitivity = [0.89, 0.91, 0.94, 0.96]   # relative floors compared in fact_floor_sensitivity
 premium_change_min = -0.20
 premium_change_max = 0.50
 min_profit_improvement = 0.0
 contraction_flag_threshold = 0.10
 min_segment_policies = 30     # smaller segments take the price of their parent group
-floor_sensitivity = [0.80, 0.82, 0.85, 0.88]
 
 [optimizer.sensitivity_cases]
 # Logit slope per +100% price change: bigger = customers more price sensitive

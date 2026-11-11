@@ -33,6 +33,7 @@ MODEL_STEPS = [
     (2, "02_glm_refit.py"),
     (3, "03_pure_premium.py"),
     (14, "14_reserving.py"),         # claims to ultimate: steps 5, 7 and 9 read it
+    (17, "17_renewal.py"),           # renewal rate per segment (vehicle link): step 9 reads it
     (11, "11_build_alerts.py"),
     (5, "05_segment_performance_by_year.py"),
     (6, "06_lever_allocation.py"),
