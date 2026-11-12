@@ -26,12 +26,16 @@ from settings import S
 SEG = ["ZONE", "CLASS_DESC", "POLICY_TYPE_DESC"]
 RENEW_BEFORE_DAYS = 30      # same window as 17_renewal.py
 RENEW_AFTER_DAYS = 60
+# Plan B2 (method constant): a sales channel (SOURCE_DESC) is forecast on its own when it brought at
+# least this share of new business in the 12 months before the origin; smaller ones are grouped.
+CHANNEL_MIN_SHARE = 0.05
 
 
 class Drivers:
-    def __init__(self, classes: list[str] | None = None):
+    def __init__(self, classes: list[str] | None = None, by_channel: bool = False):
         path = S.facts_dir / "fact_vehicle.parquet"
         self.available = path.exists()
+        self.by_channel = by_channel        # plan B2: forecast new business per sales channel
         if not self.available:
             return
         v = pd.read_parquet(path, columns=["VEHICLE_ID", "POLICY_NO", "POLICY_YEAR", "COVER_START", "COVER_END",
@@ -46,7 +50,8 @@ class Drivers:
 
         p = pd.read_csv(S.facts_dir / "fact_policy.csv",
                         usecols=["POLICY_NO", "POLICY_YEAR", "POLICY_EFFECTIVE_DATE", "POLICY_EXPIRY_DATE",
-                                 "TOTAL_PREMIUM"] + SEG, parse_dates=["POLICY_EFFECTIVE_DATE", "POLICY_EXPIRY_DATE"],
+                                 "TOTAL_PREMIUM", "SOURCE_DESC"] + SEG,
+                        parse_dates=["POLICY_EFFECTIVE_DATE", "POLICY_EXPIRY_DATE"],
                         low_memory=False)
         if classes is not None:
             p = p[p["CLASS_DESC"].isin(classes)]
@@ -55,8 +60,23 @@ class Drivers:
         p["W"] = p["POLICY_EFFECTIVE_DATE"].dt.to_period("M")
         p["E"] = p["POLICY_EXPIRY_DATE"].dt.to_period("M")
         p["RENEWAL_PREMIUM"] = p["TOTAL_PREMIUM"] * p["RENEWAL_SHARE"]
+        p["SOURCE_DESC"] = p["SOURCE_DESC"].fillna("Unknown")
         self.p = p
         self.renewal_written = p.groupby("W")["RENEWAL_PREMIUM"].sum()
+        self.nb_by_channel = (p.assign(NB=p["TOTAL_PREMIUM"] - p["RENEWAL_PREMIUM"])
+                               .groupby(["W", "SOURCE_DESC"])["NB"].sum().unstack(fill_value=0.0))
+
+    def new_business_channels(self, index: pd.PeriodIndex) -> pd.DataFrame:
+        """Plan B2: new business per sales channel over `index` (from the first month renewals can be
+        told). Channels under CHANNEL_MIN_SHARE of the last 12 months are summed as "Other"."""
+        nb = self.nb_by_channel.reindex(index, fill_value=0.0).loc[self.first_classified:].clip(lower=0.0)
+        share = nb.iloc[-12:].sum() / max(nb.iloc[-12:].sum().sum(), 1e-9)
+        main = share[share >= CHANNEL_MIN_SHARE].index.tolist()
+        out = nb[main].copy()
+        rest = nb.drop(columns=main).sum(axis=1)
+        if rest.sum() > 0:
+            out["Other"] = rest
+        return out
 
     def new_business(self, written: pd.Series) -> pd.Series:
         """New-business history = written premium - renewals, from the first month renewals can be told."""

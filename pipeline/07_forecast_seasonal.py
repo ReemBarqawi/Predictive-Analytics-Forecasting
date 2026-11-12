@@ -372,16 +372,24 @@ def forecast(model: str, history: pd.DataFrame, cohorts: pd.DataFrame, horizon: 
     h = history.assign(CLAIM_RATE=history["CLAIM_COUNT"] / history["EARNED_PREMIUM"],
                        COST_RATE=cost / history["EARNED_PREMIUM"])
     series = [h[s] for s in MODELLED]
+    channels = pd.DataFrame()
     if drivers is not None:
         series[MODELLED.index("WRITTEN_PREMIUM")] = drivers.new_business(h["WRITTEN_PREMIUM"])
+        if drivers.by_channel:            # plan B2: each sales channel's new business on its own
+            channels = drivers.new_business_channels(h.index)
+    batch = series + [channels[c] for c in channels.columns]
     if model == "timesfm":
-        preds = timesfm_model.predict([s.to_numpy() for s in series], horizon)
+        preds = timesfm_model.predict([s.to_numpy() for s in batch], horizon)
     else:
-        preds = [seasonal_naive(s, horizon) for s in series]
+        preds = [seasonal_naive(s, horizon) for s in batch]
     index = pd.period_range(history.index[-1] + 1, periods=horizon, freq="M")
     fc = pd.DataFrame({s: np.clip(p, 0, None) for s, p in zip(MODELLED, preds)}, index=index)
     if drivers is not None:
         fc["NEW_BUSINESS"] = fc["WRITTEN_PREMIUM"]
+        if len(channels.columns):
+            for c, p in zip(channels.columns, preds[len(series):]):
+                fc[f"NB_{c}"] = np.clip(p, 0, None)
+            fc["NEW_BUSINESS"] = fc[[f"NB_{c}" for c in channels.columns]].sum(axis=1)
         fc["RENEWALS"] = drivers.renewals(history.index[-1], index).to_numpy()
         fc["WRITTEN_PREMIUM"] = fc["NEW_BUSINESS"] + fc["RENEWALS"]
     fc["EARNED_PREMIUM"], fc["RUNOFF_PREMIUM"] = earned_premium(cohorts, history.index[-1],
@@ -558,16 +566,27 @@ def select_premium_method(full_history, cohorts, model, window_months, bt, drive
         _log(f"premium drivers: only {len(origins)} origins with {MIN_CONTEXT_MONTHS} months of new-business "
              "history; total-premium forecast kept")
         return "total", pd.DataFrame()
-    b_tot = bt[(bt["MODEL"] == model) & bt["ORIGIN"].isin(origins)]
-    b_drv = rolling_backtest(full_history, cohorts, [model], window_months, origins, drivers)
-    e_tot, e_drv = written_errors(b_tot, full_history), written_errors(b_drv, full_history)
-    se = lambda e: e.std(ddof=1) / np.sqrt(len(e))
-    method = "drivers" if e_drv.mean() < e_tot.mean() - se(e_drv) else "total"
-    table = pd.DataFrame({"METHOD": ["total", "drivers"], "ERROR": [e_tot.mean(), e_drv.mean()],
-                          "STD_ERROR": [se(e_tot), se(e_drv)], "N_ORIGINS": len(origins),
-                          "CHOSEN": [method == "total", method == "drivers"]})
-    _log(f"premium method: total {e_tot.mean():.1%} ±{se(e_tot):.1%}, renewals + new business "
-         f"{e_drv.mean():.1%} ±{se(e_drv):.1%} over {len(origins)} origins -> {method}")
+    import copy
+    by_channel = copy.copy(drivers)
+    by_channel.by_channel = True
+    errors = {"total": written_errors(bt[(bt["MODEL"] == model) & bt["ORIGIN"].isin(origins)], full_history)}
+    for name, d in (("drivers", copy.copy(drivers)), ("channels", by_channel)):
+        if name == "drivers":
+            d.by_channel = False
+        errors[name] = written_errors(rolling_backtest(full_history, cohorts, [model], window_months, origins, d),
+                                      full_history)
+    se = {k: e.std(ddof=1) / np.sqrt(len(e)) for k, e in errors.items()}
+    # from the simplest to the most detailed: a step is taken only when it wins by more than its noise
+    method = "total"
+    for nxt in ("drivers", "channels"):
+        if errors[nxt].mean() < errors[method].mean() - se[nxt]:
+            method = nxt
+    table = pd.DataFrame({"METHOD": list(errors), "ERROR": [e.mean() for e in errors.values()],
+                          "STD_ERROR": list(se.values()), "N_ORIGINS": len(origins),
+                          "CHOSEN": [k == method for k in errors]})
+    label = {"total": "total", "drivers": "renewals + new business", "channels": "renewals + new business by channel"}
+    _log("premium method: " + ", ".join(f"{label[k]} {e.mean():.1%} ±{se[k]:.1%}" for k, e in errors.items())
+         + f" over {len(origins)} origins -> {label[method]}")
     return method, table
 
 
@@ -1054,13 +1073,14 @@ def main() -> None:
     if drivers.available:
         premium_method, method_table = select_premium_method(full_history, cohorts, model, months, bt, drivers)
         method_table.to_csv(FACTS_DIR / "fact_forecast_premium_method.csv", index=False, encoding="utf-8")
-        if premium_method == "drivers":
+        drivers.by_channel = premium_method == "channels"
+        if premium_method != "total":
             bt = rolling_backtest(full_history, cohorts, models, months,
                                   backtest_origins(full_history)[-WINDOW_TEST_ORIGINS:], drivers)
             scores = score(bt)
     else:
         _log("premium drivers: no fact_vehicle.parquet; total-premium forecast")
-    drivers = drivers if premium_method == "drivers" else None
+    drivers = drivers if premium_method != "total" else None
     # Plan C4: large-loss cap on the claims rate the model learns, if it beats the raw claims
     _log(f"large-loss cap: SAR {large_loss_cap:,.0f} "
          f"per claim ({LARGE_LOSS_QUANTILE:.1%} of claim size, last {LARGE_LOSS_YEARS} years)")
@@ -1076,8 +1096,10 @@ def main() -> None:
 
     fc = forecast(model, history, cohorts, max(FORECAST_HORIZONS), drivers, large_loss)
     if drivers is not None:
+        parts = [c for c in fc.columns if c.startswith("NB_")]
         _log(f"next 12 months written premium: renewals {fc['RENEWALS'].sum() / 1e6:,.1f}M + new business "
-             f"{fc['NEW_BUSINESS'].sum() / 1e6:,.1f}M")
+             f"{fc['NEW_BUSINESS'].sum() / 1e6:,.1f}M"
+             + (" (" + ", ".join(f"{c[3:]} {fc[c].sum() / 1e6:,.1f}M" for c in parts) + ")" if parts else ""))
     trend = trend_factor(full_history, fc, bt, model)
     pd.DataFrame([trend]).to_csv(FACTS_DIR / "fact_trend_factor.csv", index=False, encoding="utf-8")
     _log(f"trend factor {trend['TREND_FACTOR']:.3f} (forecast {trend['TREND_FACTOR_RAW']:.3f}, past bias "
