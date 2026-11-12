@@ -119,7 +119,7 @@ the rolling backtest** (12 origins at 3M, 9 at 12M) before it replaces it, and t
 | # | Item | Why | Size |
 |---|---|---|---|
 | F1 | FGA (Fire, Liability, Engineering, General Accident) and Marine: credibility loss-ratio pricing, development from C1's method, large-loss cap. Flow in section 3 | 1,289 and 241 claims over 6 years: too few for GLMs | Medium |
-| F2 | Checks first: Fire's 1,149M premium gross vs net; the 15% of FGA claims that don't match a policy | The wrong premium basis or a broken key would give wrong prices | Small |
+| F2 | Checks first: Fire's 1,149M premium gross vs net; the 15% of FGA claims that don't match a policy ✅ *checked 2026-11-12, `docs/OTHER_LINES_CHECKS.md`; DBA questions open* | The wrong premium basis or a broken key would give wrong prices. Found: 1,079M of Fire's 1,149M is policy year 2026 with impossible gross premium and sum insured (trillions); real Fire is about 10–15M a year. Premium and claims are both gross of reinsurance (consistent); the company keeps about 14% of Fire. FGA 2024 is about three quarters missing from `V_UW_DATA` (Fire 7.5M vs 29.0M in the reinsurance bordereau), and every unmatched claim is policy year 2024 (30 claims, 96M, find their key in another year; 164 match on number + year + class). DBA: what are the 2026 rows, and where are the 2024 FGA policies? | Small |
 | F3 | Medical: find the claims source (`MEDCDE` has policies and renewal fields) | No medical claims in `V_CLM_DATA` | DBA |
 
 ### G. Checks and governance
