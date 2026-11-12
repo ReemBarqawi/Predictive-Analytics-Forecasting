@@ -143,7 +143,24 @@ GENERAL_RATING_FACTORS = ["POLICY_TYPE_DESC", "CLASS_DESC", "SOURCE_DESC", "ZONE
 PROTECTED_RATING_FACTORS = {"use_gender": "GENDER", "use_nationality": "NATIONALITY"}
 
 
-def pricing_features() -> list[str]:
-    """General rating factors, plus each protected factor the manager has allowed."""
+# Vehicle rating factors (plan D1-D2), built by step 01 from sql/vehicles.sql. Used only when step 04's
+# backtest finds they improve the GLMs (fact_rating_factors.csv).
+# CLASS_OF_USE is built but not rated on: one code covers 99% of policies, so its other levels are
+# too thin and the fit ran unstable (relativities 0.04 / 10 against a rare baseline, 2026-11-12).
+VEHICLE_RATING_FACTORS = ["VEHICLE_AGE_BAND", "DRIVER_AGE_BAND", "PRIOR_CLAIMS"]
+
+
+def pricing_features(vehicle: bool | None = None) -> list[str]:
+    """General rating factors, each protected factor the manager has allowed, and the vehicle factors
+    when `vehicle` is True, or (None) when step 04 chose them (fact_rating_factors.csv)."""
     cfg = S.config.get("pricing", {})
-    return GENERAL_RATING_FACTORS + [col for key, col in PROTECTED_RATING_FACTORS.items() if cfg.get(key)]
+    base = GENERAL_RATING_FACTORS + [col for key, col in PROTECTED_RATING_FACTORS.items() if cfg.get(key)]
+    if vehicle is None:
+        path = S.facts_dir / "fact_rating_factors.csv"
+        if path.exists():
+            import pandas as pd
+            r = pd.read_csv(path)
+            vehicle = bool(r.loc[r["CHOSEN"], "FACTOR_SET"].eq("general + vehicle").any())
+        else:
+            vehicle = False
+    return base + (VEHICLE_RATING_FACTORS if vehicle else [])

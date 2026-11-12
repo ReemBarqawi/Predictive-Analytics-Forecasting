@@ -139,6 +139,15 @@ def encode_features(
             df2[col], mapping = _group_rare(df2[col])
             encoder_meta["category_maps"][col] = mapping
         X = pd.get_dummies(df2[feature_cols], drop_first=True, dtype=int)
+        # Drop dummy columns identical to an earlier one (factors 'Unknown' on the same policies):
+        # a GLM cannot separate them and its coefficients run to infinity (see 04_backtest)
+        seen, keep = set(), []
+        for c in X.columns:
+            key = (int(X[c].sum()), int(pd.util.hash_array(X[c].to_numpy()).sum()))
+            if key not in seen:
+                seen.add(key)
+                keep.append(c)
+        X = X[keep]
         encoder_meta["columns"] = X.columns.tolist()
         return X, encoder_meta
 
@@ -325,6 +334,12 @@ def save_coefficients(bundle: dict, out_path: Path) -> pd.DataFrame:
     df.index.name = "term"
     df = df.round({"coefficient": 4, "std_error": 4, "z": 3, "p_value": 4, "multiplier": 4})
     df.to_csv(out_path)
+    # Guard: a rating relativity beyond x1,000 either way means the fit could not separate two
+    # factors (near-identical columns) or a level is far too thin; prices would be unreliable.
+    bad = df[(df.index != "const") & (df["coefficient"].abs() > np.log(1000))]
+    if len(bad):
+        _log(f"WARNING {out_path.name}: unstable relativities, check the rating factors: "
+             + ", ".join(f"{t} x{m:,.3g}" for t, m in bad["multiplier"].items()))
     return df
 
 

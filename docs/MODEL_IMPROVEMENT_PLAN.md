@@ -102,8 +102,8 @@ the rolling backtest** (12 origins at 3M, 9 at 12M) before it replaces it, and t
 
 | # | Item | Why | Size |
 |---|---|---|---|
-| D1 | Add vehicle factors from the vehicle table: vehicle age (`VVCL_YEAR_OF_MAKE`, 99.9% filled), class of use (99%), driver age (`VVCL_CUST_BIRTH_DT`, 85%), vehicle value (`VVCL_SI`, 73%) | Today only generic fields (cover type, class, source, zone, sum-insured band) | Medium |
-| D2 | **Previous claims of the car** through the chassis link | Usually the strongest single motor predictor | Medium |
+| D1 | Add vehicle factors from the vehicle table: vehicle age (`VVCL_YEAR_OF_MAKE`, 99.9% filled), class of use (99%), driver age (`VVCL_CUST_BIRTH_DT`, 85%), vehicle value (`VVCL_SI`, 73%) ✅ *2026-11-12: vehicle age and driver age bands* | Today only generic fields (cover type, class, source, zone, sum-insured band). Built in step 01 (fleets: mean vehicle age, median driver age); 96.7% of 2022–24 policies covered. Class of use is built but not rated on: one code is 99%, and its thin levels made the fit unstable. Vehicle value: sum-insured band already rates it | Medium |
+| D2 | **Previous claims of the car** through the chassis link ✅ *2026-11-12* | Usually the strongest single motor predictor. `PRIOR_CLAIMS` = claims on the car's previous policy with the company ("new to us" when none known): 1+ → frequency ×1.98, driver <25 ×1.27, 65+ ×0.83. Step 04 tests the GLMs with and without the vehicle factors (relativity WAPE, chosen window): 10.2% ±1.0% → **9.2% ±0.8%**, kept (`fact_rating_factors.csv`; steps 02/03 follow it). Fixes on the way: duplicate dummy columns are dropped (identical "Unknown" columns sent coefficients to 1e11), and the refit warns on any relativity beyond ×1,000. Segment prices barely move (levels come from reserving × trend); per-policy pure premiums do | Medium |
 | D3 | Protected factors (gender, nationality) stay off unless `[pricing]` switches them on | Unchanged rule | — |
 
 ### E. Retention and the optimizer

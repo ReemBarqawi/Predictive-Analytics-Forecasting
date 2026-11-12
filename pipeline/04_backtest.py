@@ -54,7 +54,8 @@ FACT_DIR = S.facts_dir
 OUTPUTS_DIR = S.reports_dir
 
 
-PRICING_FEATURES = pricing_features()   # same rating factors as 02_glm_refit
+PRICING_FEATURES = pricing_features(vehicle=False)   # general factors; main() tests the vehicle factors
+VEHICLE_FEATURES = [c for c in pricing_features(vehicle=True) if c not in PRICING_FEATURES]
 
 RARE_THRESHOLD = 30
 MIN_TRAIN_EXPOSURE_DAYS = 30       # skip policies with less than 30 days observed
@@ -107,13 +108,26 @@ def _group_rare(series: pd.Series, threshold: int = RARE_THRESHOLD):
     return series.apply(_map), {"kept": kept, "threshold": threshold}
 
 
+def drop_duplicate_columns(X: pd.DataFrame) -> pd.DataFrame:
+    """Drop dummy columns identical to an earlier one. Factors that are all 'Unknown' on the same
+    policies (e.g. the vehicle factors where there is no vehicle data) give identical columns, and a
+    GLM cannot separate them: the coefficients run to +-1e11 and predictions to infinity."""
+    seen, keep = set(), []
+    for c in X.columns:
+        key = (int(X[c].sum()), int(pd.util.hash_array(X[c].to_numpy()).sum()))
+        if key not in seen:
+            seen.add(key)
+            keep.append(c)
+    return X[keep]
+
+
 def fit_encoder(df: pd.DataFrame, feature_cols: list[str]) -> tuple[pd.DataFrame, dict]:
     df2 = df.copy()
     encoder_meta = {"category_maps": {}, "columns": []}
     for col in feature_cols:
         df2[col], mapping = _group_rare(df2[col])
         encoder_meta["category_maps"][col] = mapping
-    X = pd.get_dummies(df2[feature_cols], drop_first=True, dtype=int)
+    X = drop_duplicate_columns(pd.get_dummies(df2[feature_cols], drop_first=True, dtype=int))
     encoder_meta["columns"] = X.columns.tolist()
     return X, encoder_meta
 
@@ -138,7 +152,9 @@ def apply_encoder(df: pd.DataFrame, encoder_meta: dict) -> pd.DataFrame:
 # =========================================================================
 def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     _log("Loading fact_policy and fact_claim")
-    p = pd.read_csv(FACT_DIR / "fact_policy.csv", usecols=POLICY_COLS, low_memory=False)
+    header = pd.read_csv(FACT_DIR / "fact_policy.csv", nrows=0).columns
+    p = pd.read_csv(FACT_DIR / "fact_policy.csv", low_memory=False,
+                    usecols=POLICY_COLS + [c for c in VEHICLE_FEATURES if c in header])
     c = pd.read_csv(FACT_DIR / "fact_claim.csv", usecols=CLAIM_COLS, low_memory=False)
 
     p["POLICY_EFFECTIVE_DATE"] = pd.to_datetime(p["POLICY_EFFECTIVE_DATE"])
@@ -635,6 +651,38 @@ def select_window(policies: pd.DataFrame, claims: pd.DataFrame, cutoffs: list[pd
         f"{test[0].date()} to {test[-1].date()}")
 
 
+def select_factors(policies: pd.DataFrame, claims: pd.DataFrame, cutoffs: list[pd.Timestamp],
+                   window: int | None) -> None:
+    """Plan D1-D2: the GLMs with and without the vehicle rating factors, on the chosen window and the
+    window test's cut-offs, scored on relativities. The vehicle factors are kept only when their
+    error is lower by more than its standard error (G2 gate); fact_rating_factors.csv records it and
+    steps 02 / 03 read it through settings.pricing_features()."""
+    global PRICING_FEATURES
+    general = list(PRICING_FEATURES)
+    path = FACT_DIR / "fact_rating_factors.csv"
+    if not all(c in policies.columns for c in VEHICLE_FEATURES):
+        _log("rating factors: no vehicle factors in fact_policy (no vehicle extract); general factors")
+        pd.DataFrame([{"FACTOR_SET": "general", "ERROR": np.nan, "STD_ERROR": np.nan, "N_CUTOFFS": 0,
+                       "CHOSEN": True}]).to_csv(path, index=False)
+        return
+    end = claims["ACC_DATE"].max()
+    test = [T for T in cutoffs if T + pd.Timedelta(days=365) <= end][-WINDOW_TEST_CUTOFFS:]
+    errors = {}
+    for name, feats in (("general", general), ("general + vehicle", general + VEHICLE_FEATURES)):
+        PRICING_FEATURES = feats
+        _log(f"rating factors test: {name}")
+        errors[name] = cutoff_errors(run_backtest(policies, claims, test, window, glm_only=True))
+        gc.collect()
+    se = {k: e.std(ddof=1) / np.sqrt(len(e)) for k, e in errors.items()}
+    use = errors["general + vehicle"].mean() < errors["general"].mean() - se["general + vehicle"]
+    chosen = "general + vehicle" if use else "general"
+    pd.DataFrame([{"FACTOR_SET": k, "ERROR": e.mean(), "STD_ERROR": se[k], "N_CUTOFFS": len(e), "CHOSEN": k == chosen}
+                  for k, e in errors.items()]).to_csv(path, index=False)
+    _log("rating factors: " + ", ".join(f"{k} {e.mean():.1%} ±{se[k]:.1%}" for k, e in errors.items())
+         + f" -> {chosen}")
+    PRICING_FEATURES = general + (VEHICLE_FEATURES if use else [])
+
+
 def main():
     _log("=" * 60)
     _log("Rolling backtest (Phase 3) starting")
@@ -646,6 +694,7 @@ def main():
     _log(f"Scheduled {len(cutoffs)} cutoffs: {cutoffs[0].date()} → {cutoffs[-1].date()}")
 
     window = select_window(policies, claims, cutoffs)
+    select_factors(policies, claims, cutoffs, window)
     results = run_backtest(policies, claims, cutoffs, window)
 
     out_path = FACT_DIR / "fact_model_performance.csv"

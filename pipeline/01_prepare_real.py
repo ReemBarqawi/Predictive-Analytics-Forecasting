@@ -61,8 +61,12 @@ def check_contract(df: pd.DataFrame, contract: dict, name: str) -> pd.DataFrame:
     return df
 
 
+# Columns the real data adds beyond the synthetic template, kept after the template's columns
+EXTRA_COLUMNS = {"fact_policy": ["VEHICLE_AGE_BAND", "DRIVER_AGE_BAND", "CLASS_OF_USE", "PRIOR_CLAIMS"]}
+
+
 def conform(df: pd.DataFrame, table: str, folder: str = "02_facts") -> pd.DataFrame:
-    """Give the table exactly the columns (and order) of the synthetic version."""
+    """Give the table the columns (and order) of the synthetic version, then any EXTRA_COLUMNS."""
     template = TEMPLATE_DIR / folder / f"{table}.csv"
     if not template.exists():
         return df
@@ -72,7 +76,7 @@ def conform(df: pd.DataFrame, table: str, folder: str = "02_facts") -> pd.DataFr
         log(f"{table}: columns not available from the warehouse, left empty: {', '.join(filled)}")
     for c in filled:
         df[c] = np.nan
-    return df[cols]
+    return df[cols + [c for c in EXTRA_COLUMNS.get(table, []) if c in df.columns]]
 
 
 # ---------------------------------------------------------------------------- policies
@@ -189,6 +193,43 @@ def prepare_vehicles(raw: pd.DataFrame, policies: pd.DataFrame, key_map: dict) -
     v["DRIVER_AGE"] = v["DRIVER_AGE"].where(v["DRIVER_AGE"].between(16, 100))
     v["VEHICLE_AGE"] = (v["COVER_START"].dt.year - v["YEAR_OF_MAKE"]).where(lambda a: a.between(-1, 60))
     return v
+
+
+# Method constants: the bands of the vehicle rating factors (plan D1), standard motor bands.
+VEHICLE_AGE_BANDS = ([-1, 2, 5, 10, 15, 100], ["0-2", "3-5", "6-10", "11-15", "16+"])
+DRIVER_AGE_BANDS = ([15, 24, 34, 44, 54, 64, 120], ["<25", "25-34", "35-44", "45-54", "55-64", "65+"])
+# A car's previous policy counts for prior claims when it ended at most this long before the next began
+PRIOR_POLICY_MAX_GAP_DAYS = 400
+
+
+def vehicle_factors(v: pd.DataFrame, claims: pd.DataFrame) -> pd.DataFrame:
+    """Policy-level rating factors from the vehicles (plan D1-D2), one row per POLICY_NO x POLICY_YEAR:
+    VEHICLE_AGE_BAND (mean vehicle age), DRIVER_AGE_BAND (median driver age), CLASS_OF_USE (most common)
+    and PRIOR_CLAIMS: the claims on the car's previous policy with the company ("new to us" when it
+    had none; a fleet's previous claims are shared over its cars)."""
+    v = v.sort_values(["VEHICLE_ID", "COVER_START", "POLICY_YEAR"]).copy()
+    per_pol = claims[claims["POLICY_MATCHED"]].groupby(["POLICY_NO", "POLICY_YEAR"]).size().rename("N_CLAIMS")
+    cars = v.groupby(["POLICY_NO", "POLICY_YEAR"]).size().rename("N_CARS")
+    rate = (per_pol / cars).reindex(cars.index).fillna(0.0).rename("CLAIMS_PER_CAR").reset_index()
+    prev = v.groupby("VEHICLE_ID")[["POLICY_NO", "POLICY_YEAR", "COVER_END"]].shift(1)
+    linked = (v["COVER_START"] - prev["COVER_END"]).dt.days.between(-366, PRIOR_POLICY_MAX_GAP_DAYS)
+    prev = prev.assign(POLICY_NO=prev["POLICY_NO"].astype("Int64"), POLICY_YEAR=prev["POLICY_YEAR"].astype("Int64"))
+    prior = prev.merge(rate.astype({"POLICY_NO": "Int64", "POLICY_YEAR": "Int64"}), on=["POLICY_NO", "POLICY_YEAR"],
+                       how="left")["CLAIMS_PER_CAR"].to_numpy()
+    v["PRIOR"] = np.where(linked.to_numpy(), np.nan_to_num(prior, nan=0.0), np.nan)
+
+    g = v.groupby(["POLICY_NO", "POLICY_YEAR"])
+    out = pd.DataFrame({
+        "VEHICLE_AGE": g["VEHICLE_AGE"].mean(), "DRIVER_AGE": g["DRIVER_AGE"].median(),
+        "CLASS_OF_USE": g["CLASS_OF_USE"].agg(lambda s: s.mode().iloc[0] if s.notna().any() else np.nan),
+        "PRIOR_SUM": g["PRIOR"].sum(min_count=1)}).reset_index()
+    out["VEHICLE_AGE_BAND"] = pd.cut(out["VEHICLE_AGE"], bins=VEHICLE_AGE_BANDS[0],
+                                     labels=VEHICLE_AGE_BANDS[1]).astype(object).fillna("Unknown")
+    out["DRIVER_AGE_BAND"] = pd.cut(out["DRIVER_AGE"], bins=DRIVER_AGE_BANDS[0],
+                                    labels=DRIVER_AGE_BANDS[1]).astype(object).fillna("Unknown")
+    out["CLASS_OF_USE"] = out["CLASS_OF_USE"].map(lambda x: "Unknown" if pd.isna(x) else f"use {int(x)}")
+    out["PRIOR_CLAIMS"] = np.select([out["PRIOR_SUM"].isna(), out["PRIOR_SUM"] < 0.5], ["new to us", "0"], "1+")
+    return out[["POLICY_NO", "POLICY_YEAR", "VEHICLE_AGE_BAND", "DRIVER_AGE_BAND", "CLASS_OF_USE", "PRIOR_CLAIMS"]]
 
 
 # ---------------------------------------------------------------------------- claims
@@ -308,8 +349,18 @@ def main() -> None:
     raw_veh = S.raw_dir / "vehicles.parquet"
     if raw_veh.exists():      # optional: renewal rates (step 17) and vehicle rating factors need it
         key_map = dict(zip(original_keys, policies["POLICY_NO"].to_numpy()))
-        prepare_vehicles(pd.read_parquet(raw_veh), policies, key_map).to_parquet(
-            S.facts_dir / "fact_vehicle.parquet", index=False)
+        vehicles = prepare_vehicles(pd.read_parquet(raw_veh), policies, key_map)
+        vehicles.to_parquet(S.facts_dir / "fact_vehicle.parquet", index=False)
+        # plan D1-D2: vehicle rating factors, added after the existing fact_policy columns
+        policies = policies.merge(vehicle_factors(vehicles, claims), on=["POLICY_NO", "POLICY_YEAR"], how="left")
+        for c in ("VEHICLE_AGE_BAND", "DRIVER_AGE_BAND", "CLASS_OF_USE"):
+            policies[c] = policies[c].fillna("Unknown")
+        # No vehicle history known = no prior claims known: "new to us", not a separate "Unknown" that
+        # would nearly duplicate the other factors' Unknown and destabilise the GLM
+        policies["PRIOR_CLAIMS"] = policies["PRIOR_CLAIMS"].fillna("new to us")
+        known = (policies["VEHICLE_AGE_BAND"] != "Unknown").mean()
+        log(f"vehicle factors: {known:.1%} of policies have vehicle data; prior claims "
+            + ", ".join(f"{k} {v:.1%}" for k, v in policies["PRIOR_CLAIMS"].value_counts(normalize=True).items()))
     else:
         log("vehicles: no extract (sql/vehicles.sql) - renewal rates fall back to config.toml")
 
