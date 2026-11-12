@@ -139,15 +139,6 @@ def load_monthly() -> tuple[pd.DataFrame, pd.Timestamp, pd.Timestamp]:
     return monthly, premium.index.min(), cl["ACC_DATE"].max()
 
 
-def car_years() -> pd.Series:
-    """Earned exposure in car-years per month (policy days in force / 365.25); empty without the column."""
-    path = FACTS_DIR / "fact_earned_premium.csv"
-    if "DAYS_IN_MONTH_EXPOSED" not in pd.read_csv(path, nrows=0).columns:
-        return pd.Series(dtype=float)
-    ep = pd.read_csv(path, usecols=["MONTH_DATE", "DAYS_IN_MONTH_EXPOSED"], parse_dates=["MONTH_DATE"])
-    return ep.groupby(ep["MONTH_DATE"].dt.to_period("M"))["DAYS_IN_MONTH_EXPOSED"].sum() / 365.25
-
-
 def history_window(first_premium: pd.Period, data_end: pd.Timestamp) -> tuple[pd.Period, pd.Period]:
     """First and last month of the modelling window: the source's forecast_window setting
     when it has one (config.toml), otherwise derived from the data."""
@@ -305,10 +296,16 @@ def develop(monthly: pd.DataFrame, data_end: pd.Timestamp) -> tuple[pd.DataFrame
 # =========================================================================
 # Premium: run-off of written policies + new business
 # =========================================================================
-def premium_cohorts() -> pd.DataFrame:
+# Car-years by written x earned month (plans C2 / C3), filled once in main(); kept apart from the premium
+# cohorts so their many slices do not copy it.
+CAR_COHORTS: dict[str, pd.DataFrame] = {}
+
+
+def premium_cohorts(cars: bool = False) -> pd.DataFrame:
     """
     Earned premium by written month (rows) x earned month (columns): each policy's premium
     split over the months it is in force, pro rata to days, as in fact_earned_premium.
+    With `cars`, the same for car-years in force (policy days / 365.25) instead of premium.
     """
     p = pd.read_csv(FACTS_DIR / "fact_policy.csv",
                     usecols=["CLASS_DESC", "POLICY_EFFECTIVE_DATE", "POLICY_EXPIRY_DATE", "TOTAL_PREMIUM"],
@@ -316,12 +313,14 @@ def premium_cohorts() -> pd.DataFrame:
     # Same classes as fact_earned_premium (its builder may use another class list than this run)
     classes = pd.read_csv(FACTS_DIR / "fact_earned_premium.csv", usecols=["CLASS_DESC"])["CLASS_DESC"].unique()
     p = p[p["CLASS_DESC"].isin(classes) & (p["POLICY_EXPIRY_DATE"] > p["POLICY_EFFECTIVE_DATE"])]
+    p = p.assign(N=1.0)
     # Policies sharing both dates earn identically: total them first (millions -> thousands)
-    g = p.groupby(["POLICY_EFFECTIVE_DATE", "POLICY_EXPIRY_DATE"])["TOTAL_PREMIUM"].sum().reset_index()
+    g = p.groupby(["POLICY_EFFECTIVE_DATE", "POLICY_EXPIRY_DATE"])[["TOTAL_PREMIUM", "N"]].sum().reset_index()
 
     eff = g["POLICY_EFFECTIVE_DATE"].to_numpy("datetime64[D]")
     exp = g["POLICY_EXPIRY_DATE"].to_numpy("datetime64[D]")
-    per_day = g["TOTAL_PREMIUM"].to_numpy(dtype=float) / (exp - eff).astype(np.int64)
+    per_day = (g["N"].to_numpy(dtype=float) / 365.25 if cars
+               else g["TOTAL_PREMIUM"].to_numpy(dtype=float) / (exp - eff).astype(np.int64))
     m0 = eff.astype("datetime64[M]")
     n_months = (exp.astype("datetime64[M]") - m0).astype(np.int64) + 1
     row = np.repeat(np.arange(len(g)), n_months)
@@ -374,7 +373,8 @@ def forecast(model: str, history: pd.DataFrame, cohorts: pd.DataFrame, horizon: 
     expiring each month (known at the origin) + new business, and the model forecasts new business.
     `claims` (plan C3, CLAIMS_METHODS): "rate" forecasts the cost per riyal of premium directly;
     "split" forecasts claims per riyal and the cost per claim, each on its own; "per_car" forecasts
-    claims per car-year, the cost per claim and the premium per car-year.
+    claims per car-year, the cost per claim and the premium per car-year; "book_cars" (plan C2) forecasts
+    claims per car-year and the cost per claim, times the car-years the book will earn.
     """
     cost = history["CLAIMS_COST"]
     if large_loss and "CLAIMS_EXCESS" in history:
@@ -388,11 +388,11 @@ def forecast(model: str, history: pd.DataFrame, cohorts: pd.DataFrame, horizon: 
         # severity of months without claims: the median, so the series stays continuous
         severity = (cost / h["CLAIM_COUNT"].where(h["CLAIM_COUNT"] > 0)).pipe(lambda s: s.fillna(s.median()))
         series[MODELLED.index("COST_RATE")] = severity
-        if claims == "per_car":
+        if claims in ("per_car", "book_cars"):
             car_years = h["CAR_YEARS"].where(h["CAR_YEARS"] > 0)
-            per_car = (h["EARNED_PREMIUM"] / car_years).pipe(lambda s: s.fillna(s.median()))
             series[MODELLED.index("CLAIM_RATE")] = (h["CLAIM_COUNT"] / car_years).fillna(0.0)
-            series.append(per_car)
+        if claims == "per_car":
+            series.append((h["EARNED_PREMIUM"] / car_years).pipe(lambda s: s.fillna(s.median())))
     channels = pd.DataFrame()
     if drivers is not None:
         series[MODELLED.index("WRITTEN_PREMIUM")] = drivers.new_business(h["WRITTEN_PREMIUM"])
@@ -405,7 +405,7 @@ def forecast(model: str, history: pd.DataFrame, cohorts: pd.DataFrame, horizon: 
         preds = [seasonal_naive(s, horizon) for s in batch]
     index = pd.period_range(history.index[-1] + 1, periods=horizon, freq="M")
     fc = pd.DataFrame({s: np.clip(p, 0, None) for s, p in zip(MODELLED, preds)}, index=index)
-    if claims != "rate":
+    if claims in ("split", "per_car"):        # book_cars waits for the earned car-years below
         severity = fc["COST_RATE"]
         if claims == "per_car":         # claims per riyal = claims per car-year / premium per car-year
             fc["CLAIM_RATE"] = fc["CLAIM_RATE"] / np.clip(preds[len(MODELLED)], 1e-9, None)
@@ -418,8 +418,16 @@ def forecast(model: str, history: pd.DataFrame, cohorts: pd.DataFrame, horizon: 
             fc["NEW_BUSINESS"] = fc[[f"NB_{c}" for c in channels.columns]].sum(axis=1)
         fc["RENEWALS"] = drivers.renewals(history.index[-1], index).to_numpy()
         fc["WRITTEN_PREMIUM"] = fc["NEW_BUSINESS"] + fc["RENEWALS"]
-    fc["EARNED_PREMIUM"], fc["RUNOFF_PREMIUM"] = earned_premium(cohorts, history.index[-1],
-                                                                fc["WRITTEN_PREMIUM"])
+    origin = history.index[-1]
+    fc["EARNED_PREMIUM"], fc["RUNOFF_PREMIUM"] = earned_premium(cohorts, origin, fc["WRITTEN_PREMIUM"])
+    if claims == "book_cars":
+        # Plan C2: cars from the book. Car-years of the policies already written run off exactly (their dates);
+        # new policies bring the car-years per riyal written in the 12 months to the origin, earned the same way.
+        cars = CAR_COHORTS["cars"]
+        per_riyal = cars.loc[origin - 11:origin].to_numpy().sum() / max(cohorts.loc[origin - 11:origin].to_numpy().sum(), 1e-9)
+        car_years, _ = earned_premium(cars, origin, fc["WRITTEN_PREMIUM"] * per_riyal)
+        fc["CLAIM_RATE"] = fc["CLAIM_RATE"] * car_years / fc["EARNED_PREMIUM"].replace(0, np.nan)
+        fc["COST_RATE"] = fc["CLAIM_RATE"] * fc["COST_RATE"]          # COST_RATE holds the cost per claim here
     fc["CLAIM_COUNT"] = fc["CLAIM_RATE"] * fc["EARNED_PREMIUM"]
     fc["CLAIMS_COST"] = fc["COST_RATE"] * fc["EARNED_PREMIUM"]
     return fc
@@ -649,7 +657,8 @@ def select_large_loss(full_history, cohorts, model, window_months, origins, driv
 
 
 CLAIMS_METHODS = {"rate": "cost per riyal", "split": "claims per riyal x cost per claim",
-                  "per_car": "claims per car-year x cost per claim / premium per car-year"}
+                  "per_car": "claims per car-year x cost per claim / premium per car-year",
+                  "book_cars": "claims per car-year x cost per claim x the book's car-years"}
 
 
 def select_claims_method(full_history, cohorts, model, window_months, origins, drivers, large_loss,
@@ -658,7 +667,8 @@ def select_claims_method(full_history, cohorts, model, window_months, origins, d
     (per riyal, then per car-year when the exposure is there). From the simplest, a step is taken only
     when its error against the real claims is lower by more than its standard error."""
     errors = {"rate": claims_errors(bt[(bt["MODEL"] == model) & bt["ORIGIN"].isin(origins)])}
-    candidates = ["split"] + (["per_car"] if full_history.get("CAR_YEARS", pd.Series(dtype=float)).gt(0).all() else [])
+    has_cars = full_history.get("CAR_YEARS", pd.Series(dtype=float)).gt(0).all() and "cars" in CAR_COHORTS
+    candidates = ["split"] + (["per_car", "book_cars"] if has_cars else [])
     for name in candidates:
         errors[name] = claims_errors(rolling_backtest(full_history, cohorts, [model], window_months, origins,
                                                       drivers, large_loss, name))
@@ -1114,7 +1124,9 @@ def main() -> None:
     monthly, dev = develop(monthly, data_end)
     cohorts = premium_cohorts()
     monthly["WRITTEN_PREMIUM"] = cohorts.sum(axis=1).reindex(monthly.index, fill_value=0.0)
-    monthly["CAR_YEARS"] = car_years().reindex(monthly.index)       # plan C3's per-car candidate
+    # Plans C2 / C3: car-years from the same policies and dates as the premium cohorts
+    CAR_COHORTS["cars"] = premium_cohorts(cars=True)
+    monthly["CAR_YEARS"] = CAR_COHORTS["cars"].sum().reindex(monthly.index)
     full_history = monthly.loc[start:end]
 
     models = (["timesfm"] if timesfm_model.available() else []) + ["seasonal_naive"]
