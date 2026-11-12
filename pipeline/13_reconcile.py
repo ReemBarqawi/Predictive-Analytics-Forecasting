@@ -95,9 +95,21 @@ if rates_path.exists():       # E1: each segment's measured renewal rate (step 1
 trend = float(pd.read_csv(F / "fact_trend_factor.csv")["TREND_FACTOR"].iloc[0]) if experience and (F / "fact_trend_factor.csv").exists() else 1.0
 optimal = pd.read_csv(F / "fact_optimal_scenarios.csv")
 base = optimal[optimal["sensitivity_case"] == "base"].set_index(SEG)
-check_segments("optimizer", "Today premium", base["nochange_premium"] / renewal, now["EARNED_PREMIUM"])
-check_segments("optimizer", "Today claims", base["nochange_claims"] / (renewal * trend), now["ULTIMATE_CLAIMS"])
-check_segments("optimizer", "Today expenses", base["nochange_expenses"] / renewal, now["COMMISSION_SUM"] + now["ADMIN_EXPENSE"])
+# E4: the no-change book = renewals + new business. The renewal part is today's book x renewal (x trend for
+# claims); the new-business part is the forecast's, split by segment (step 07)
+ren = "nochange_renewal_" if "nochange_renewal_premium" in base else "nochange_"
+check_segments("optimizer", "Today premium", base[f"{ren}premium"] / renewal, now["EARNED_PREMIUM"])
+check_segments("optimizer", "Today claims", base[f"{ren}claims"] / (renewal * trend), now["ULTIMATE_CLAIMS"])
+check_segments("optimizer", "Today expenses", base[f"{ren}expenses"] / renewal, now["COMMISSION_SUM"] + now["ADMIN_EXPENSE"])
+if "nochange_nb_premium" in base:
+    check("optimizer", "No-change book = renewals + new business",
+          base["nochange_premium"].sum(), (base["nochange_renewal_premium"] + base["nochange_nb_premium"]).sum())
+    nb_path = F / "fact_new_business.csv"
+    if nb_path.exists():
+        nb = pd.read_csv(nb_path).set_index(SEG)["NB_PREMIUM"]
+        priced = nb.reindex(base.index).fillna(0.0)
+        check("optimizer", "New business at no change = the forecast's, on the priced segments",
+              base["nochange_nb_premium"].sum(), priced.sum())
 scenarios = pd.read_csv(F / "fact_scenario_results.csv", usecols=["segment_id", "sensitivity_case", "premium_change", "scenario_premium"])
 scenarios["PRICE"] = scenarios["premium_change"].round(4)
 picked = optimal.assign(PRICE=optimal["optimal_premium_change"].round(4)).merge(scenarios, on=["segment_id", "sensitivity_case", "PRICE"], how="left")

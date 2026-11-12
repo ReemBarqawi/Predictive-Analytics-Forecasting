@@ -66,6 +66,13 @@ class Drivers:
         self.nb_by_channel = (p.assign(NB=p["TOTAL_PREMIUM"] - p["RENEWAL_PREMIUM"])
                                .groupby(["W", "SOURCE_DESC"])["NB"].sum().unstack(fill_value=0.0))
 
+    def new_business_share(self, origin: pd.Period) -> pd.Series:
+        """Each segment's share of the new business written in the 12 months to the origin (E4: how
+        next year's new business is split across the optimizer's segments)."""
+        p = self.p[(self.p["W"] > origin - 12) & (self.p["W"] <= origin)]
+        nb = (p["TOTAL_PREMIUM"] - p["RENEWAL_PREMIUM"]).clip(lower=0.0).groupby([p[c] for c in SEG]).sum()
+        return (nb / nb.sum()).rename("NB_SHARE")
+
     def new_business_channels(self, index: pd.PeriodIndex) -> pd.DataFrame:
         """Plan B2: new business per sales channel over `index` (from the first month renewals can be
         told). Channels under CHANNEL_MIN_SHARE of the last 12 months are summed as "Other"."""

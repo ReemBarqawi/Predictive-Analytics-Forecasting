@@ -1080,6 +1080,7 @@ def main() -> None:
             scores = score(bt)
     else:
         _log("premium drivers: no fact_vehicle.parquet; total-premium forecast")
+    split = drivers                      # kept for the new-business split even when the total forecast wins
     drivers = drivers if premium_method != "total" else None
     # Plan C4: large-loss cap on the claims rate the model learns, if it beats the raw claims
     _log(f"large-loss cap: SAR {large_loss_cap:,.0f} "
@@ -1150,6 +1151,20 @@ def main() -> None:
     _log(f"checks: {(checks['STATUS'] == 'PASS').sum()} pass, {len(review)} need review"
          + "".join(f"\n           REVIEW {r.CHECK_GROUP}: {r.MEASURE} {r.HORIZON} = {r.VALUE:.3f} ({r.THRESHOLD})"
                    for r in review.itertuples()))
+
+    # E4: next year's new business per segment, for the optimizer's no-change book (renewals + new business)
+    nb_path = FACTS_DIR / "fact_new_business.csv"
+    if split.available:
+        origin = full_history.index[-1]
+        nb_total = (fc["NEW_BUSINESS"].head(12).sum() if "NEW_BUSINESS" in fc
+                    else max(0.0, fc["WRITTEN_PREMIUM"].head(12).sum() - split.renewals(origin, fc.index[:12]).sum()))
+        share = split.new_business_share(origin)
+        nb = share.reset_index().assign(NB_PREMIUM=lambda d: d["NB_SHARE"] * nb_total, FORECAST_MONTHS=12,
+                                        ORIGIN=str(origin))
+        nb.to_csv(nb_path, index=False, encoding="utf-8")
+        _log(f"new business next 12 months: {nb_total / 1e6:,.1f}M over {len(nb)} segments (by their last 12 months' share)")
+    else:
+        nb_path.unlink(missing_ok=True)
 
     out = build_rows(shown_page, shown_fc, model, monthly_wape, bands, seasonal_index(history["CLAIMS_COST"]))
     path = FACTS_DIR / "fact_forecast_seasonal.csv"

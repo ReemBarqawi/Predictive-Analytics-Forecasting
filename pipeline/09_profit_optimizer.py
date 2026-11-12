@@ -152,6 +152,19 @@ def load_policies(a):
     return df, yr
 
 
+def load_new_business():
+    """E4: next year's new business per segment from the forecast (step 07, fact_new_business.csv). Empty
+    when there is none: the no-change book is then the renewals only, as before."""
+    path = os.path.join(BASE, "fact_new_business.csv")
+    if not os.path.exists(path):
+        print("New business: no fact_new_business.csv - the no-change book is renewals only")
+        return {}
+    nb = pd.read_csv(path)
+    print(f"New business: {nb['NB_PREMIUM'].sum():,.0f} next 12 months over {len(nb)} segments (step 07), "
+          "in the no-change book with the renewals")
+    return {tuple(r[c] for c in SEG): float(r["NB_PREMIUM"]) for _, r in nb.iterrows()}
+
+
 def renewal_rates(df, a):
     """E1: chance each policy renews at an unchanged price = its segment's measured renewal rate
     (step 17); config.toml baseline_renewal when the rates are missing."""
@@ -192,14 +205,27 @@ def implied_arc_elasticity(k, a, p0, pc=0.10):
 
 
 # ------------------------------------------------------------------ SCENARIOS
-def evaluate(g, pc, k, a):
+def evaluate(g, pc, k, a, nb0=0.0):
     p = retention_prob(pc, k, g["risk_pct"].values, a, g["p0"].values)
+    p0 = g["p0"].values
     expo = g["EXPOSURE_YEARS"].values
     retained_expo = expo * p
-    premium = (g["base_premium"].values * (1 + pc) * p).sum()
-    claims = (g["claims_if_retained"].values * p).sum()
-    commission = (g["base_premium"].values * (1 + pc) * p * g["commission_rate"].values).sum()
-    admin = (g["admin_per_policy"].values * p).sum()          # per retained policy
+    base = g["base_premium"].values
+    ren_premium = (base * (1 + pc) * p).sum()
+    ren_claims = (g["claims_if_retained"].values * p).sum()
+    ren_commission = (base * (1 + pc) * p * g["commission_rate"].values).sum()
+    ren_admin = (g["admin_per_policy"].values * p).sum()          # per retained policy
+    # E4: next year's new business for these segments (step 07), at the same relative volume reaction as the
+    # renewers (no quote data: an assumption, the sensitivity cases give the range), with the renewers'
+    # no-change claims and expense rates per riyal
+    prem0 = (base * p0).sum()
+    volume = (expo * p).sum() / max((expo * p0).sum(), 1e-9)
+    nb_premium = nb0 * (1 + pc) * volume
+    nb_claims = nb0 * volume * (g["claims_if_retained"].values * p0).sum() / max(prem0, 1e-9)
+    nb_commission = nb_premium * (base * p0 * g["commission_rate"].values).sum() / max(prem0, 1e-9)
+    nb_admin = nb0 * volume * a["admin_rate_of_baseline_premium"]
+    premium, claims = ren_premium + nb_premium, ren_claims + nb_claims
+    commission, admin = ren_commission + nb_commission, ren_admin + nb_admin
     expenses = commission + admin
     profit = premium - claims - expenses
     ret_expo_total = retained_expo.sum()
@@ -223,11 +249,21 @@ def evaluate(g, pc, k, a):
         "expense_ratio": expenses / premium if premium > 0 else np.nan,
         "combined_ratio": (claims + expenses) / premium if premium > 0 else np.nan,
         "underwriting_profit": profit,
+        # E4 parts, after the original columns (written last: Power BI reads these files by position)
+        "renewal_premium": ren_premium, "renewal_claims": ren_claims, "renewal_expenses": ren_commission + ren_admin,
+        "nb_premium": nb_premium, "nb_claims": nb_claims, "nb_expenses": nb_commission + nb_admin,
     }
 
 
+def new_business_for(g, a):
+    """E4: next year's new business of the segments in this group (step 07's fact_new_business.csv)."""
+    keys = g[SEG].drop_duplicates().itertuples(index=False, name=None)
+    return float(sum(a["new_business"].get(tuple(k), 0.0) for k in keys))
+
+
 def run_segment(g, seg_key, case, k, a):
-    rows = [evaluate(g, pc, k, a) for pc in a["premium_grid"]]
+    nb0 = new_business_for(g, a)
+    rows = [evaluate(g, pc, k, a, nb0) for pc in a["premium_grid"]]
     res = pd.DataFrame(rows)
     base = res.loc[np.isclose(res["premium_change"], 0.0)].iloc[0]   # 0%-change, same retention basis
     tech_change = g["technical_premium"].sum() / g["base_premium"].sum() - 1
@@ -262,6 +298,9 @@ def run_segment(g, seg_key, case, k, a):
     res["nochange_combined_ratio"] = base["combined_ratio"]
     res["nochange_retained_exposure"] = base["retained_exposure"]
     res["retention_vs_nochange"] = vs_nochange     # moved to the end of the file when it is written (main)
+    # E4: the two parts of the no-change book, so reports and the gate can show them apart
+    for part in ("renewal_premium", "renewal_claims", "renewal_expenses", "nb_premium", "nb_claims", "nb_expenses"):
+        res[f"nochange_{part}"] = base[part]
     return res
 
 
@@ -441,6 +480,7 @@ def floor_sensitivity(picks, results, case, a):
 # ------------------------------------------------------------------ MAIN
 def main():
     a = ASSUMPTIONS
+    a["new_business"] = load_new_business()
     df, yr = load_policies(a)
     print(f"Policy year {yr}: {len(df):,} policies, "
           f"{df['base_premium'].sum():,.0f} baseline premium")
@@ -496,16 +536,22 @@ def main():
                   "nochange_profit", "nochange_combined_ratio", "nochange_retained_exposure",
                   "contraction_flag", "selection_note", "binding_constraint",
                   "credibility_level", "decision_source", "portfolio_floor_breached", "remaining_profitability_gap_pts",
-                  "model_version", "optimization_date"]
+                  "model_version", "optimization_date",
+                  # E4 parts (2026-11-12), last: Power BI reads this file by position
+                  "renewal_premium", "renewal_claims", "renewal_expenses", "nb_premium", "nb_claims", "nb_expenses",
+                  "nochange_renewal_premium", "nochange_renewal_claims", "nochange_renewal_expenses",
+                  "nochange_nb_premium", "nochange_nb_claims", "nochange_nb_expenses"]
     opt = opt[keep]
 
     added = ("price_reaction_reference_renewal", "floor_basis")     # 2026-11-11: after the original columns
-    run = pd.DataFrame([{**{k: str(v) for k, v in a.items() if k != "selection_rule" and k not in added},
+    run = pd.DataFrame([{**{k: str(v) for k, v in a.items()
+                            if k not in ("selection_rule", "new_business") and k not in added},
                          "policy_year": yr, "run_ts": pd.Timestamp.now(),
                          **{k: str(a[k]) for k in added},
                          "measured_renewal": float(np.average(df["p0"], weights=df["EXPOSURE_YEARS"]))}])
     # Power BI reads this file by column position: columns added after 2026-11-10 go last
-    late = ["retention_vs_nochange"]
+    parts = ["renewal_premium", "renewal_claims", "renewal_expenses", "nb_premium", "nb_claims", "nb_expenses"]
+    late = ["retention_vs_nochange"] + parts + [f"nochange_{c}" for c in parts]
     results = results[[c for c in results.columns if c not in late] + late]
     results.to_csv(os.path.join(BASE, "fact_scenario_results.csv"), index=False, encoding="utf-8")
     opt.to_csv(os.path.join(BASE, "fact_optimal_scenarios.csv"), index=False, encoding="utf-8")
