@@ -834,6 +834,7 @@ def build_rows(history: pd.DataFrame, fc: pd.DataFrame, model: str, model_wape: 
             "FORECAST_CLAIMS": r["CLAIMS_COST"], "FORECAST_PREMIUM": r["EARNED_PREMIUM"],
             "CLAIMS_P10": np.nan, "CLAIMS_P90": np.nan, "PREMIUM_P10": np.nan, "PREMIUM_P90": np.nan,
             "LOSS_RATIO_P10": np.nan, "LOSS_RATIO_P90": np.nan,
+            "FORECAST_RENEWALS": np.nan, "FORECAST_NEW_BUSINESS": np.nan,
             "FORECAST_CLAIM_COUNT": r["CLAIM_COUNT"],
             "SEASONAL_INDEX": 1.0, "MODEL_TYPE": "actual", "MODEL_WAPE": np.nan, "BIAS_CORRECTION": np.nan,
         })
@@ -847,6 +848,12 @@ def build_rows(history: pd.DataFrame, fc: pd.DataFrame, model: str, model_wape: 
                 "PREMIUM_P10": prem * bands["PREMIUM"][0], "PREMIUM_P90": prem * bands["PREMIUM"][1],
                 "LOSS_RATIO_P10": r["CLAIMS_COST"] / prem * bands["LOSS_RATIO"][0] if prem > 0 else np.nan,
                 "LOSS_RATIO_P90": r["CLAIMS_COST"] / prem * bands["LOSS_RATIO"][1] if prem > 0 else np.nan,
+                # B3: the month's premium split into renewals and new business (driver model), for the
+                # Forecast page's plan inputs; empty when the total forecast is used
+                "FORECAST_RENEWALS": prem * r["RENEWALS"] / r["WRITTEN_PREMIUM"]
+                                     if "RENEWALS" in r and r["WRITTEN_PREMIUM"] > 0 else np.nan,
+                "FORECAST_NEW_BUSINESS": prem * (1 - r["RENEWALS"] / r["WRITTEN_PREMIUM"])
+                                         if "RENEWALS" in r and r["WRITTEN_PREMIUM"] > 0 else np.nan,
                 "FORECAST_CLAIM_COUNT": r["CLAIM_COUNT"],
                 "SEASONAL_INDEX": season.get(m.month, 1.0), "MODEL_TYPE": model,
                 "MODEL_WAPE": model_wape, "BIAS_CORRECTION": 1.0,
@@ -862,7 +869,8 @@ def build_rows(history: pd.DataFrame, fc: pd.DataFrame, model: str, model_wape: 
             "FORECAST_PREMIUM", "FORECAST_LOSS_RATIO", "CLAIMS_P10", "CLAIMS_P90", "PREMIUM_P10", "PREMIUM_P90",
             "FORECAST_CLAIM_COUNT", "FORECAST_AVG_SEVERITY", "SEASONAL_INDEX", "MODEL_TYPE",
             "MODEL_WAPE", "BIAS_CORRECTION",
-            "LOSS_RATIO_P10", "LOSS_RATIO_P90"]     # added 2026-11-11: last, so older report queries still read the first 17
+            "LOSS_RATIO_P10", "LOSS_RATIO_P90",     # added 2026-11-11: last, so older report queries still read the first 17
+            "FORECAST_RENEWALS", "FORECAST_NEW_BUSINESS"]   # added 2026-11-12 (plan B3)
     return out[cols]
 
 
