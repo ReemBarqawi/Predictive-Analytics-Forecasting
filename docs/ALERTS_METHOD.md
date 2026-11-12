@@ -304,3 +304,26 @@ premium with the SAR gap, worded as the report's `Alert Issue`), **Outlook** (`E
 next year), **Reliability** (confidence band, claims) and, for Priority 1, **Action**; Priority 2 shows the
 indicated price change "to be confirmed". Owners per group are company settings in
 `config.toml` `[alerts_email.owners]`. Real data 2026-11-11: 2 / 8 / 0 / 3.
+
+### 11.2 The paginated alerts report in the email (2026-11-12)
+
+Report Server's own email subscriptions need the SQL Agent, which SQL Server Express does not have. So the
+pipeline emails the paginated report itself: free, and the email and the report are the same document.
+
+```
+step 15  fact_alerts_official.csv
+gate 13  reconcile passes
+step 18  pipeline/18_load_results_db.py   -> SQL Server  AmanResults.dbo.AlertsOfficial   ([results_db])
+step 16  asks Report Server for /Management Alerts as MHTML (body) and PDF (attachment), sends it
+```
+
+- **The report** is `powerbi/paginated/Management Alerts.rdl`: layout only (one SELECT, text boxes, the alert
+  panel's colours), no rules. Open it in Power BI Report Builder to restyle it, then save it to Report Server
+  under the same path. The `ReportUrl` parameter (hidden) is the "Open the report" link; step 16 fills it.
+- **Settings** (`config.local.toml` `[email]`): `body = "paginated"`, `report_server_url` (the Web Service URL,
+  e.g. `/ReportServer`, not the portal), `paginated_report`, `attach_pdf`. If Report Server cannot be reached,
+  step 16 sends the built-in cards instead and says so in the log.
+- **Sign-in:** Report Server and SQL Server with the Windows account that runs the pipeline; no password in a
+  file. That account needs read access to `AmanResults` and Browser rights on the report.
+- **Publishing note:** this Report Server ignores a REST `PATCH` of a report's content (returns 204, keeps the
+  old file). Replace the item (delete, then upload) or save from Report Builder.

@@ -17,6 +17,17 @@ method   = "preview"
 test_to  = "you@company.com"        # python pipeline/16_email_alerts.py --to-me
 admin_to = []                       # who gets "pipeline run failed"
 report_url = "http://reportserver.company.local/Reports/powerbi/Aman%20Prediction"   # "Open the report" link
+# Email body: "cards" (built by step 16) or "paginated" (the paginated report rendered by Report Server;
+# falls back to the cards if Report Server cannot be reached)
+body              = "cards"
+report_server_url = "http://reportserver.company.local/ReportServer"   # the Web Service URL, not the portal
+paginated_report  = "/Management Alerts"
+attach_pdf        = true
+
+[results_db]
+# Step 18 copies the finished alerts into SQL Server for the paginated report. Empty server: step 18 skips.
+# server   = "localhost\\SQLEXPRESS"
+# database = "AmanResults"
 # For method = "graph": the app registration in Microsoft Entra (Azure). The client secret is
 # never stored here: keep it in Windows Credential Manager (see pipeline/16_email_alerts.py).
 # tenant_id = "00000000-0000-0000-0000-000000000000"

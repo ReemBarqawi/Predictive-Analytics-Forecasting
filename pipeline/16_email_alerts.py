@@ -9,6 +9,12 @@ recipients, when to send and how are settings, not code:
     config.toml        [alerts_email]   company rules: enabled, recipients, send_when, subject
     config.local.toml  [email]          this machine: method, Microsoft 365 app details, test address
 
+Body ([email] body):
+    "cards"      built here from the alert rows (default)
+    "paginated"  the paginated report [email] paginated_report, rendered by Report Server (its MHTML export,
+                 the format Report Server uses for email), plus a PDF if [email] attach_pdf. Its table is
+                 loaded by step 18. If Report Server cannot be reached, the cards are sent instead.
+
 Methods ([email] method):
     "preview"  write the email to <reports_dir>/alert_email_preview.html and send nothing (default)
     "graph"    Microsoft 365 through Microsoft Graph (production). Needs an app registration with the
@@ -30,12 +36,14 @@ Usage:
     python pipeline/16_email_alerts.py --to-me         # test send to [email] test_to
 """
 import argparse
+import base64
 import hashlib
 import html
 import importlib
 import json
 import os
 import sys
+import tempfile
 import urllib.request
 from datetime import datetime
 from pathlib import Path
@@ -228,7 +236,35 @@ def graph_secret(client_id: str) -> str:
     return secret
 
 
-def send_graph(local: dict, to: list, cc: list, subject: str, body: str) -> None:
+def render_paginated(local: dict) -> tuple[str, bytes | None]:
+    """The paginated report rendered by Report Server: HTML for the email body (from its MHTML export,
+    the format Report Server itself uses for email) and, if [email] attach_pdf, a PDF. Signs in as the
+    Windows account that runs the pipeline."""
+    import email
+    import requests
+    from requests_negotiate_sspi import HttpNegotiateAuth
+    for k in ("report_server_url", "paginated_report"):
+        if not local.get(k):
+            raise RuntimeError(f"[email] {k} is missing in config.local.toml (body = paginated)")
+    params = {"ReportUrl": local.get("report_url") or None}
+    base = f"{local['report_server_url']}?{local['paginated_report']}"
+
+    def get(fmt: str) -> bytes:
+        r = requests.get(base, params={**params, "rs:Format": fmt}, auth=HttpNegotiateAuth(), timeout=120)
+        if r.status_code != 200:
+            raise RuntimeError(f"Report Server returned {r.status_code} for {fmt}: {r.text[:300]}")
+        return r.content
+
+    mhtml = email.message_from_bytes(get("MHTML"))
+    part = next((p for p in mhtml.walk() if p.get_content_type() == "text/html"), None)
+    if part is None:
+        raise RuntimeError("Report Server's MHTML export has no HTML part")
+    body = part.get_payload(decode=True).decode(part.get_content_charset() or "utf-8")
+    pdf = get("PDF") if local.get("attach_pdf") else None
+    return body, pdf
+
+
+def send_graph(local: dict, to: list, cc: list, subject: str, body: str, attachments: list) -> None:
     for k in ("tenant_id", "client_id", "sender"):
         if not local.get(k):
             sys.exit(f"[email] {k} is missing in config.local.toml (method = graph)")
@@ -245,6 +281,9 @@ def send_graph(local: dict, to: list, cc: list, subject: str, body: str) -> None
             "body": {"contentType": "HTML", "content": body},
             "toRecipients": [{"emailAddress": {"address": a}} for a in to],
             "ccRecipients": [{"emailAddress": {"address": a}} for a in cc],
+            "attachments": [{"@odata.type": "#microsoft.graph.fileAttachment", "name": name,
+                             "contentType": "application/pdf", "contentBytes": base64.b64encode(data).decode()}
+                            for name, data in attachments],
         },
         "saveToSentItems": True,
     }
@@ -260,7 +299,7 @@ def send_graph(local: dict, to: list, cc: list, subject: str, body: str) -> None
         sys.exit(f"Microsoft Graph refused the email ({e.code}): {e.read().decode('utf-8', 'replace')[:500]}")
 
 
-def send_outlook(to: list, cc: list, subject: str, body: str) -> None:
+def send_outlook(to: list, cc: list, subject: str, body: str, attachments: list) -> None:
     try:
         import win32com.client
     except ImportError:
@@ -270,15 +309,20 @@ def send_outlook(to: list, cc: list, subject: str, body: str) -> None:
     mail.CC = "; ".join(cc)
     mail.Subject = subject
     mail.HTMLBody = body
-    mail.Send()
+    with tempfile.TemporaryDirectory() as tmp:
+        for name, data in attachments:
+            path = Path(tmp) / name
+            path.write_bytes(data)
+            mail.Attachments.Add(str(path))
+        mail.Send()
 
 
-def send(local: dict, to: list, cc: list, subject: str, body: str) -> None:
-    method = local["method"]
+def send(local: dict, to: list, cc: list, subject: str, body: str, attachments: list | None = None) -> None:
+    method, attachments = local["method"], attachments or []
     if method == "graph":
-        send_graph(local, to, cc, subject, body)
+        send_graph(local, to, cc, subject, body, attachments)
     elif method == "outlook":
-        send_outlook(to, cc, subject, body)
+        send_outlook(to, cc, subject, body, attachments)
     else:
         sys.exit(f"[email] method must be preview, graph or outlook, not '{method}'")
 
@@ -323,6 +367,15 @@ def main():
     alerts = pd.read_csv(S.facts_dir / "fact_alerts_official.csv")
     c = counts(alerts)
     subject, body = build_email(alerts, rules, local.get("report_url", ""))
+    attachments = []
+    if local.get("body", "cards") == "paginated":
+        try:
+            body, pdf = render_paginated(local)
+            if pdf:
+                attachments.append((f"{local['paginated_report'].strip('/').split('/')[-1]}.pdf", pdf))
+            print(f"  body: the paginated report {local['paginated_report']}" + (" (+ PDF)" if pdf else ""))
+        except Exception as e:   # never lose an alert because Report Server is down: send the cards instead
+            print(f"  WARNING paginated report not available ({e}); sending the built-in cards instead")
     preview = reports / PREVIEW_FILE
     preview.write_text(body, encoding="utf-8")
     print(f"  {c['open']} to act on now ({c['critical']} critical, {c['warning']} warning) of {len(alerts)} alerts;"
@@ -360,7 +413,7 @@ def main():
             print(f"  these alerts were already sent on {last.get('sent_at')}: nothing sent (--force to resend)")
             return
 
-    send(local, to, cc, subject, body)
+    send(local, to, cc, subject, body, attachments)
     print(f"  sent '{subject}' to {', '.join(to)}" + (f" (cc {', '.join(cc)})" if cc else ""))
     if not args.to_me:
         state_path.write_text(json.dumps({**key, "sent_at": datetime.now().isoformat(timespec="seconds"),

@@ -8,9 +8,10 @@ run_all.py — runs the Aman Prediction pipeline end to end, in dependency order
     python run_all.py --from 5                 # every step numbered 5 or more, in run order (earlier outputs must exist)
     python run_all.py --only 9 10              # run just these steps
     python run_all.py --source oracle --check-connection   # test the warehouse login only
-    python run_all.py --only 16                # (re)send the alerts email from the last run's results
+    python run_all.py --only 18 16             # reload the paginated report's table, (re)send the alerts email
 
-A full run ends with step 16, the alerts email, but only when the reconcile gate (13) passed.
+A full run ends with step 18 (results into SQL Server for the paginated report) and step 16 (the alerts
+email), but only when the reconcile gate (13) passed.
 
 Results go to the output folder of the chosen source (config.toml [profiles]); point Power BI's
 DataFolder parameter at it. Every run is recorded in data/run_log.csv.
@@ -46,7 +47,10 @@ MODEL_STEPS = [
     (19, "19_data_breaks.py"),       # report only: changes in the data and the training windows chosen
 ]
 GATE = (13, "13_reconcile.py")      # always closes a run: a failure means do not refresh the report
-AFTER_GATE = (16, "16_email_alerts.py")   # only after the gate passed, on a full run or when asked for
+# Only after the gate passed, on a full run or when asked for: load the results for the paginated
+# report, then email the alerts (which may render that report).
+EMAIL = (16, "16_email_alerts.py")
+AFTER_GATE = [(18, "18_load_results_db.py"), EMAIL]
 STEPS = {
     "synthetic": [(1, "01_build_synthetic_data.py")] + MODEL_STEPS,
     "oracle": [(0, "00_extract_oracle.py"), (1, "01_prepare_real.py")] + MODEL_STEPS,
@@ -127,12 +131,13 @@ def main():
     steps = [s for s in STEPS[source] if (s[0] in args.only if args.only else s[0] >= args.start)]
     if args.skip_extract:
         steps = [s for s in steps if s[0] != 0]
-    steps = [s for s in steps if s != AFTER_GATE]
+    steps = [s for s in steps if s not in AFTER_GATE]
     if GATE not in steps:
         steps.append(GATE)
-    # The alerts email goes out only after a full run passed the gate, or when asked for with --only 16.
-    if (args.only and AFTER_GATE[0] in args.only) or (not args.only and args.start == 0):
-        steps.append(AFTER_GATE)
+    # The results load and the alerts email run only after a full run passed the gate, or when asked
+    # for by number (--only 18 16).
+    full_run = not args.only and args.start == 0
+    steps += [s for s in AFTER_GATE if full_run or (args.only and s[0] in args.only)]
     print(f"Source: {source}   steps: {' '.join(str(n) for n, _ in steps)}")
 
     total_start, status = time.time(), "ok"
@@ -145,9 +150,9 @@ def main():
             status = f"failed at step {num}"
             break
         print(f"--- step {num} done in {time.time() - t0:.0f}s", flush=True)
-    if status != "ok" and AFTER_GATE in steps:
+    if status != "ok" and EMAIL in steps:
         # No alerts email after a failed run; tell [email] admin_to instead (if configured).
-        subprocess.run([sys.executable, str(PIPELINE / AFTER_GATE[1]), "--failure", status], cwd=ROOT)
+        subprocess.run([sys.executable, str(PIPELINE / EMAIL[1]), "--failure", status], cwd=ROOT)
     seconds = time.time() - total_start
     print(f"\nPipeline {status}: {len(steps)} steps planned, {seconds:.0f}s")
     write_run_log(source, steps, status, seconds)

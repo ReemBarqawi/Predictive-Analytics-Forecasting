@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner">
+  <Description>Management alerts to act on now, in the style of the report's alert panel. Reads AmanResults.dbo.AlertsOfficial (pipeline step 18). Layout only: no rules or formulas.</Description>
+  <AutoRefresh>0</AutoRefresh>
+  <DataSources>
+    <DataSource Name="AmanResults">
+      <ConnectionProperties>
+        <DataProvider>SQL</DataProvider>
+        <ConnectString>Data Source=localhost\SQLEXPRESS;Initial Catalog=AmanResults</ConnectString>
+        <IntegratedSecurity>true</IntegratedSecurity>
+      </ConnectionProperties>
+      <rd:SecurityType>Integrated</rd:SecurityType>
+    </DataSource>
+  </DataSources>
+  <DataSets>
+    <DataSet Name="Alerts">
+      <Query>
+        <DataSourceName>AmanResults</DataSourceName>
+        <CommandText>SELECT ALERT_RANK, SEVERITY, PRIORITY, SEGMENT_LABEL, HEADLINE, ISSUE, ACTION, EVIDENCE, PERIOD
+FROM dbo.AlertsOfficial
+ORDER BY ALERT_RANK</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="ALERT_RANK"><DataField>ALERT_RANK</DataField><rd:TypeName>System.Int64</rd:TypeName></Field>
+        <Field Name="SEVERITY"><DataField>SEVERITY</DataField><rd:TypeName>System.String</rd:TypeName></Field>
+        <Field Name="PRIORITY"><DataField>PRIORITY</DataField><rd:TypeName>System.Int64</rd:TypeName></Field>
+        <Field Name="SEGMENT_LABEL"><DataField>SEGMENT_LABEL</DataField><rd:TypeName>System.String</rd:TypeName></Field>
+        <Field Name="HEADLINE"><DataField>HEADLINE</DataField><rd:TypeName>System.String</rd:TypeName></Field>
+        <Field Name="ISSUE"><DataField>ISSUE</DataField><rd:TypeName>System.String</rd:TypeName></Field>
+        <Field Name="ACTION"><DataField>ACTION</DataField><rd:TypeName>System.String</rd:TypeName></Field>
+        <Field Name="EVIDENCE"><DataField>EVIDENCE</DataField><rd:TypeName>System.String</rd:TypeName></Field>
+        <Field Name="PERIOD"><DataField>PERIOD</DataField><rd:TypeName>System.String</rd:TypeName></Field>
+      </Fields>
+    </DataSet>
+  </DataSets>
+  <ReportParameters>
+    <ReportParameter Name="ReportUrl">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <AllowBlank>true</AllowBlank>
+      <DefaultValue><Values><Value xsi:nil="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" /></Values></DefaultValue>
+      <Prompt>Link to the full report</Prompt>
+      <Hidden>true</Hidden>
+    </ReportParameter>
+  </ReportParameters>
+  <ReportSections>
+    <ReportSection>
+      <Body>
+        <ReportItems>
+          <Textbox Name="Title">
+            <CanGrow>true</CanGrow>
+            <KeepTogether>true</KeepTogether>
+            <Paragraphs><Paragraph>
+              <TextRuns><TextRun><Value>Management alerts</Value>
+                <Style><FontFamily>Segoe UI Semibold</FontFamily><FontSize>12pt</FontSize><Color>#1A1A1A</Color></Style>
+              </TextRun></TextRuns>
+              <Style><TextAlign>Center</TextAlign></Style>
+            </Paragraph></Paragraphs>
+            <Top>0in</Top><Left>0in</Left><Height>0.3in</Height><Width>7.3in</Width>
+            <Style><PaddingTop>2pt</PaddingTop><PaddingBottom>2pt</PaddingBottom></Style>
+          </Textbox>
+          <Textbox Name="Summary">
+            <CanGrow>true</CanGrow>
+            <KeepTogether>true</KeepTogether>
+            <Paragraphs><Paragraph>
+              <TextRuns><TextRun><Value>=Sum(IIF(Fields!PRIORITY.Value = 1, 1, 0), "Alerts") &amp; " to act on now · " &amp; CountRows("Alerts") &amp; " open in the report"</Value>
+                <Style><FontFamily>Segoe UI</FontFamily><FontSize>8.5pt</FontSize><Color>#5C5C5C</Color></Style>
+              </TextRun></TextRuns>
+              <Style><TextAlign>Center</TextAlign></Style>
+            </Paragraph></Paragraphs>
+            <Top>0.3in</Top><Left>0in</Left><Height>0.2in</Height><Width>7.3in</Width>
+            <Style />
+          </Textbox>
+          <Textbox Name="Period">
+            <CanGrow>true</CanGrow>
+            <KeepTogether>true</KeepTogether>
+            <Paragraphs><Paragraph>
+              <TextRuns><TextRun><Value>=First(Fields!PERIOD.Value, "Alerts")</Value>
+                <Style><FontFamily>Segoe UI</FontFamily><FontSize>8pt</FontSize><Color>#8C8C8C</Color></Style>
+              </TextRun></TextRuns>
+              <Style><TextAlign>Center</TextAlign></Style>
+            </Paragraph></Paragraphs>
+            <Top>0.5in</Top><Left>0in</Left><Height>0.2in</Height><Width>7.3in</Width>
+            <Style />
+          </Textbox>
+          <Tablix Name="Cards">
+            <TablixBody>
+              <TablixColumns><TablixColumn><Width>7.3in</Width></TablixColumn></TablixColumns>
+              <TablixRows>
+                <TablixRow>
+                  <Height>1.62in</Height>
+                  <TablixCells><TablixCell><CellContents>
+                    <Rectangle Name="CardCell">
+                      <ReportItems>
+                        <Rectangle Name="Card">
+                          <ReportItems>
+                            <Textbox Name="Tag">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs><Paragraph>
+                                <TextRuns><TextRun><Value>="●  " &amp; UCase(Fields!SEVERITY.Value)</Value>
+                                  <Style><FontFamily>Segoe UI Semibold</FontFamily><FontSize>9pt</FontSize>
+                                    <Color>=IIF(Fields!SEVERITY.Value = "Critical", "#DB0032", "#9A6A00")</Color></Style>
+                                </TextRun></TextRuns>
+                                <Style />
+                              </Paragraph></Paragraphs>
+                              <Top>0.08in</Top><Left>0.15in</Left><Height>0.24in</Height><Width>2in</Width>
+                              <Style />
+                            </Textbox>
+                            <Textbox Name="Headline">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs><Paragraph>
+                                <TextRuns><TextRun><Value>=Fields!HEADLINE.Value</Value>
+                                  <Style><FontFamily>Segoe UI</FontFamily><FontSize>9pt</FontSize><Color>#3A3A3A</Color></Style>
+                                </TextRun></TextRuns>
+                                <Style><TextAlign>Right</TextAlign></Style>
+                              </Paragraph></Paragraphs>
+                              <Top>0.08in</Top><Left>2.2in</Left><Height>0.24in</Height><Width>4.95in</Width>
+                              <Style />
+                            </Textbox>
+                            <Textbox Name="Segment">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs><Paragraph>
+                                <TextRuns><TextRun><Value>=Fields!SEGMENT_LABEL.Value</Value>
+                                  <Style><FontFamily>Segoe UI Semibold</FontFamily><FontSize>10pt</FontSize><Color>#1A1A1A</Color></Style>
+                                </TextRun></TextRuns>
+                                <Style />
+                              </Paragraph></Paragraphs>
+                              <Top>0.34in</Top><Left>0.15in</Left><Height>0.26in</Height><Width>7in</Width>
+                              <Style />
+                            </Textbox>
+                            <Textbox Name="Risk">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs><Paragraph>
+                                <TextRuns>
+                                  <TextRun><Value>Risk: </Value>
+                                    <Style><FontFamily>Segoe UI Semibold</FontFamily><FontSize>9.5pt</FontSize>
+                                      <Color>=IIF(Fields!SEVERITY.Value = "Critical", "#DB0032", "#9A6A00")</Color></Style>
+                                  </TextRun>
+                                  <TextRun><Value>=Fields!ISSUE.Value</Value>
+                                    <Style><FontFamily>Segoe UI</FontFamily><FontSize>9.5pt</FontSize><Color>#1A1A1A</Color></Style>
+                                  </TextRun>
+                                </TextRuns>
+                                <Style />
+                              </Paragraph></Paragraphs>
+                              <Top>0.62in</Top><Left>0.15in</Left><Height>0.26in</Height><Width>7in</Width>
+                              <Style />
+                            </Textbox>
+                            <Textbox Name="Action">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs><Paragraph>
+                                <TextRuns>
+                                  <TextRun><Value>Action: </Value>
+                                    <Style><FontFamily>Segoe UI Semibold</FontFamily><FontSize>9.5pt</FontSize><Color>#1A1A1A</Color></Style>
+                                  </TextRun>
+                                  <TextRun><Value>=Fields!ACTION.Value</Value>
+                                    <Style><FontFamily>Segoe UI</FontFamily><FontSize>9.5pt</FontSize><Color>#1A1A1A</Color></Style>
+                                  </TextRun>
+                                </TextRuns>
+                                <Style />
+                              </Paragraph></Paragraphs>
+                              <Top>0.92in</Top><Left>0.15in</Left><Height>0.26in</Height><Width>7in</Width>
+                              <Style />
+                            </Textbox>
+                            <Textbox Name="Evidence">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs><Paragraph>
+                                <TextRuns><TextRun><Value>=Fields!EVIDENCE.Value</Value>
+                                  <Style><FontFamily>Segoe UI</FontFamily><FontSize>8pt</FontSize><Color>#737373</Color></Style>
+                                </TextRun></TextRuns>
+                                <Style />
+                              </Paragraph></Paragraphs>
+                              <Top>1.2in</Top><Left>0.15in</Left><Height>0.22in</Height><Width>7in</Width>
+                              <Style />
+                            </Textbox>
+                          </ReportItems>
+                          <KeepTogether>true</KeepTogether>
+                          <Top>0in</Top><Left>0in</Left><Height>1.5in</Height><Width>7.3in</Width>
+                          <Style>
+                            <Border><Color>#E0E0E0</Color><Style>Solid</Style><Width>1pt</Width></Border>
+                            <LeftBorder><Color>=IIF(Fields!SEVERITY.Value = "Critical", "#DB0032", "#F2A900")</Color><Style>Solid</Style><Width>4pt</Width></LeftBorder>
+                            <BackgroundColor>White</BackgroundColor>
+                          </Style>
+                        </Rectangle>
+                      </ReportItems>
+                      <KeepTogether>true</KeepTogether>
+                      <Style />
+                    </Rectangle>
+                  </CellContents></TablixCell></TablixCells>
+                </TablixRow>
+              </TablixRows>
+            </TablixBody>
+            <TablixColumnHierarchy><TablixMembers><TablixMember /></TablixMembers></TablixColumnHierarchy>
+            <TablixRowHierarchy><TablixMembers><TablixMember><Group Name="Details" /></TablixMember></TablixMembers></TablixRowHierarchy>
+            <DataSetName>Alerts</DataSetName>
+            <NoRowsMessage>No segment needs action now.</NoRowsMessage>
+            <Filters>
+              <Filter>
+                <FilterExpression>=Fields!PRIORITY.Value</FilterExpression>
+                <Operator>Equal</Operator>
+                <FilterValues><FilterValue DataType="Integer">1</FilterValue></FilterValues>
+              </Filter>
+            </Filters>
+            <Top>0.85in</Top><Left>0in</Left><Height>1.62in</Height><Width>7.3in</Width>
+            <Style><FontFamily>Segoe UI</FontFamily></Style>
+          </Tablix>
+          <Textbox Name="Others">
+            <CanGrow>true</CanGrow>
+            <KeepTogether>true</KeepTogether>
+            <Paragraphs>
+              <Paragraph>
+                <TextRuns><TextRun><Value>=IIF(CountRows("Alerts") - Sum(IIF(Fields!PRIORITY.Value = 1, 1, 0), "Alerts") &gt; 0, "Also open in the report", "")</Value>
+                  <Style><FontFamily>Segoe UI Semibold</FontFamily><FontSize>9pt</FontSize><Color>#1A1A1A</Color></Style>
+                </TextRun></TextRuns>
+                <Style />
+              </Paragraph>
+              <Paragraph>
+                <TextRuns><TextRun><Value>=IIF(Sum(IIF(Fields!PRIORITY.Value = 2, 1, 0), "Alerts") &gt; 0, Sum(IIF(Fields!PRIORITY.Value = 2, 1, 0), "Alerts") &amp; " segments look underpriced, but the data behind them is limited. Review their prices before renewal." &amp; vbCrLf, "") &amp; IIF(Sum(IIF(Fields!PRIORITY.Value = 3, 1, 0), "Alerts") &gt; 0, Sum(IIF(Fields!PRIORITY.Value = 3, 1, 0), "Alerts") &amp; " segments have high claims while the price looks adequate. Review the large claims before changing any rate." &amp; vbCrLf, "") &amp; IIF(Sum(IIF(Fields!PRIORITY.Value = 4, 1, 0), "Alerts") &gt; 0, Sum(IIF(Fields!PRIORITY.Value = 4, 1, 0), "Alerts") &amp; " segments have too few claims to judge yet and are kept under watch.", "")</Value>
+                  <Style><FontFamily>Segoe UI</FontFamily><FontSize>9pt</FontSize><Color>#3A3A3A</Color></Style>
+                </TextRun></TextRuns>
+                <Style><LineHeight>16pt</LineHeight></Style>
+              </Paragraph>
+            </Paragraphs>
+            <Top>2.6in</Top><Left>0in</Left><Height>0.8in</Height><Width>7.3in</Width>
+            <Style />
+          </Textbox>
+          <Textbox Name="OpenReport">
+            <CanGrow>true</CanGrow>
+            <KeepTogether>true</KeepTogether>
+            <Paragraphs><Paragraph>
+              <TextRuns><TextRun><Value>="Open the report for every alert and the details."</Value>
+                <ActionInfo><Actions><Action><Hyperlink>=Parameters!ReportUrl.Value</Hyperlink></Action></Actions></ActionInfo>
+                <Style><FontFamily>Segoe UI</FontFamily><FontSize>9pt</FontSize><Color>#1A1A1A</Color>
+                  <TextDecoration>=IIF(IsNothing(Parameters!ReportUrl.Value), "None", "Underline")</TextDecoration></Style>
+              </TextRun></TextRuns>
+              <Style><TextAlign>Center</TextAlign></Style>
+            </Paragraph></Paragraphs>
+            <Top>3.5in</Top><Left>0in</Left><Height>0.25in</Height><Width>7.3in</Width>
+            <Style />
+          </Textbox>
+        </ReportItems>
+        <Height>3.8in</Height>
+        <Style />
+      </Body>
+      <Width>7.3in</Width>
+      <Page>
+        <PageHeight>11.69in</PageHeight>
+        <PageWidth>8.27in</PageWidth>
+        <LeftMargin>0.48in</LeftMargin>
+        <RightMargin>0.48in</RightMargin>
+        <TopMargin>0.5in</TopMargin>
+        <BottomMargin>0.5in</BottomMargin>
+        <Style />
+      </Page>
+    </ReportSection>
+  </ReportSections>
+  <rd:ReportUnitType>Inch</rd:ReportUnitType>
+</Report>
