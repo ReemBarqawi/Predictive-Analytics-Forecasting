@@ -76,6 +76,11 @@ VALIDATION_STEP_MONTHS = 3
 # path and a full copy of last year (2026-11-11 test: 3M premium error 25.0% flat, 22.4% at 50%).
 SHAPE_WEIGHTS = (0.0, 0.25, 0.5, 0.75, 1.0)
 SHAPE_YEARS = 3
+# Method constants (plan C4): claims above the 99.5th percentile of claim size over the last 5 years are
+# a large-loss excess. The model can learn its claims rate from capped claims plus an even load (the
+# excess / capped ratio of its own history), kept only when that beats the raw rate on the backtest.
+LARGE_LOSS_QUANTILE = 0.995
+LARGE_LOSS_YEARS = 5
 # Method constant: the training window is chosen on the latest 12 quarter-end origins (three years),
 # because the job is to forecast the next year, not 2012 (pipeline/training_window.py).
 WINDOW_TEST_ORIGINS = 12
@@ -123,9 +128,14 @@ def load_monthly() -> tuple[pd.DataFrame, pd.Timestamp, pd.Timestamp]:
 
     premium = ep.groupby(ep["MONTH_DATE"].dt.to_period("M"))["EARNED_PREMIUM"].sum()
     month = cl["ACC_DATE"].dt.to_period("M")
+    # Plan C4: claims above the large-loss cap, kept apart so the model can learn a steadier rate
+    recent = cl[cl["ACC_DATE"] > cl["ACC_DATE"].max() - pd.DateOffset(years=LARGE_LOSS_YEARS)]["ULTIMATE_CLAIM"]
+    cap = float(recent[recent > 0].quantile(LARGE_LOSS_QUANTILE))
+    cl = cl.assign(EXCESS=(cl["ULTIMATE_CLAIM"] - cap).clip(lower=0.0))
     claims = cl.groupby(month).agg(CLAIM_COUNT=("CLM_NO", "nunique"),
-                                   CLAIMS_COST=("ULTIMATE_CLAIM", "sum"))
+                                   CLAIMS_COST=("ULTIMATE_CLAIM", "sum"), CLAIMS_EXCESS=("EXCESS", "sum"))
     monthly = premium.to_frame().join(claims, how="left").fillna(0.0)
+    monthly.attrs["large_loss_cap"] = cap
     return monthly, premium.index.min(), cl["ACC_DATE"].max()
 
 
@@ -260,7 +270,10 @@ def develop(monthly: pd.DataFrame, data_end: pd.Timestamp) -> tuple[pd.DataFrame
         cdf, ratio, elr = development(tri, value_col, last_q, *bf)
         # Accident quarters outside the triangle (before its history, or the partial quarter
         # after last_q, which the forecast window never uses) stay as recorded.
-        out[col] = out[col] * ratio.reindex(out.index.asfreq("Q")).fillna(1.0).to_numpy()
+        factor = ratio.reindex(out.index.asfreq("Q")).fillna(1.0).to_numpy()
+        out[col] = out[col] * factor
+        if col == "CLAIMS_COST" and "CLAIMS_EXCESS" in out:      # the large-loss part develops with the rest
+            out["CLAIMS_EXCESS"] = out["CLAIMS_EXCESS"] * factor
         info["cdf"][col] = cdf[:8]
         info["method"][col] = "Bornhuetter-Ferguson" if np.isfinite(elr) else "chain-ladder"
         info["elr"][col] = elr
@@ -343,7 +356,7 @@ def seasonal_naive(history: pd.Series, horizon: int) -> np.ndarray:
 
 
 def forecast(model: str, history: pd.DataFrame, cohorts: pd.DataFrame, horizon: int,
-             drivers=None) -> pd.DataFrame:
+             drivers=None, large_loss: bool = False) -> pd.DataFrame:
     """
     Written premium and claims per unit of earned premium are forecast; earned premium comes
     from the run-off plus new business, and claims = rate x earned premium, so the claims
@@ -351,8 +364,13 @@ def forecast(model: str, history: pd.DataFrame, cohorts: pd.DataFrame, horizon: 
     With `drivers` (premium_drivers.Drivers, plan B1) written premium = renewals of the policies
     expiring each month (known at the origin) + new business, and the model forecasts new business.
     """
+    cost = history["CLAIMS_COST"]
+    if large_loss and "CLAIMS_EXCESS" in history:
+        # Plan C4: capped claims plus the large-loss excess spread evenly (its share of this history)
+        capped = cost - history["CLAIMS_EXCESS"]
+        cost = capped * (1 + history["CLAIMS_EXCESS"].sum() / max(capped.sum(), 1e-9))
     h = history.assign(CLAIM_RATE=history["CLAIM_COUNT"] / history["EARNED_PREMIUM"],
-                       COST_RATE=history["CLAIMS_COST"] / history["EARNED_PREMIUM"])
+                       COST_RATE=cost / history["EARNED_PREMIUM"])
     series = [h[s] for s in MODELLED]
     if drivers is not None:
         series[MODELLED.index("WRITTEN_PREMIUM")] = drivers.new_business(h["WRITTEN_PREMIUM"])
@@ -386,7 +404,7 @@ def backtest_origins(history: pd.DataFrame) -> list[pd.Period]:
 
 def rolling_backtest(history: pd.DataFrame, cohorts: pd.DataFrame, models: list[str],
                      window_months: int | None = None, origins: list | None = None,
-                     drivers=None) -> pd.DataFrame:
+                     drivers=None, large_loss: bool = False) -> pd.DataFrame:
     """
     Forecast from every quarter-end origin (or the given ones), exactly as the live forecast is
     made: the model sees the history up to the origin, or only its last `window_months`.
@@ -397,7 +415,7 @@ def rolling_backtest(history: pd.DataFrame, cohorts: pd.DataFrame, models: list[
         actual = history.loc[o + 1:o + max(FORECAST_HORIZONS)]
         context = history.loc[:o] if window_months is None else history.loc[o - window_months + 1:o]
         for m in models:
-            pred = forecast(m, context, cohorts, max(FORECAST_HORIZONS), drivers).loc[actual.index]
+            pred = forecast(m, context, cohorts, max(FORECAST_HORIZONS), drivers, large_loss).loc[actual.index]
             for step, month in enumerate(actual.index, start=1):
                 rows.append({"ORIGIN": o, "MODEL": m, "STEP": step, "MONTH": month,
                              **{f"PRED_{s}": pred.at[month, s] for s in SERIES + ["WRITTEN_PREMIUM", "COST_RATE"]},
@@ -551,6 +569,37 @@ def select_premium_method(full_history, cohorts, model, window_months, bt, drive
     _log(f"premium method: total {e_tot.mean():.1%} ±{se(e_tot):.1%}, renewals + new business "
          f"{e_drv.mean():.1%} ±{se(e_drv):.1%} over {len(origins)} origins -> {method}")
     return method, table
+
+
+def claims_errors(bt: pd.DataFrame) -> pd.Series:
+    """One error per origin for claims, against the real (uncapped) claims: the monthly error, the
+    3 / 6 / 12-month totals and the 12-month loss ratio, averaged."""
+    out = {}
+    for o, g in bt.groupby("ORIGIN"):
+        p, a = g["PRED_CLAIMS_COST"].to_numpy(), g["ACT_CLAIMS_COST"].to_numpy()
+        terms = [np.abs(p - a).sum() / a.sum()]
+        terms += [abs(p[:h].sum() / a[:h].sum() - 1) for h in FORECAST_HORIZONS if len(g) >= h]
+        if len(g) >= max(FORECAST_HORIZONS):
+            lr_p = p.sum() / g["PRED_EARNED_PREMIUM"].sum()
+            lr_a = a.sum() / g["ACT_EARNED_PREMIUM"].sum()
+            terms.append(abs(lr_p / lr_a - 1))
+        out[o] = float(np.mean(terms))
+    return pd.Series(out)
+
+
+def select_large_loss(full_history, cohorts, model, window_months, origins, drivers, bt) -> tuple[bool, pd.DataFrame]:
+    """Plan C4: learn the claims rate from capped claims + an even large-loss load, or from the raw
+    claims. Kept only when its error against the real claims is lower by more than its standard error."""
+    b_raw = bt[(bt["MODEL"] == model) & bt["ORIGIN"].isin(origins)]
+    b_cap = rolling_backtest(full_history, cohorts, [model], window_months, origins, drivers, True)
+    e_raw, e_cap = claims_errors(b_raw), claims_errors(b_cap)
+    se = lambda e: e.std(ddof=1) / np.sqrt(len(e))
+    use = e_cap.mean() < e_raw.mean() - se(e_cap)
+    table = pd.DataFrame({"METHOD": ["raw claims", "capped + load"], "ERROR": [e_raw.mean(), e_cap.mean()],
+                          "STD_ERROR": [se(e_raw), se(e_cap)], "N_ORIGINS": len(origins), "CHOSEN": [not use, use]})
+    _log(f"large-loss cap: raw {e_raw.mean():.1%} ±{se(e_raw):.1%}, capped + load {e_cap.mean():.1%} "
+         f"±{se(e_cap):.1%} over {len(origins)} origins -> {'capped + load' if use else 'raw claims'}")
+    return use, table
 
 
 def score(bt: pd.DataFrame) -> pd.DataFrame:
@@ -972,6 +1021,7 @@ def write_report(history: pd.DataFrame, fc: pd.DataFrame, scores: pd.DataFrame, 
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     monthly, first_premium, data_end = load_monthly()
+    large_loss_cap = monthly.attrs.get("large_loss_cap", np.nan)
     start, end = history_window(first_premium, data_end)
     _log(f"claims data to {data_end.date()}; history {start} to {end}")
 
@@ -1000,8 +1050,8 @@ def main() -> None:
     drivers = premium_drivers.Drivers(list(pd.read_csv(FACTS_DIR / "fact_earned_premium.csv",
                                                        usecols=["CLASS_DESC"])["CLASS_DESC"].unique()))
     premium_method = "total"
+    months = None if window is None else 12 * window
     if drivers.available:
-        months = None if window is None else 12 * window
         premium_method, method_table = select_premium_method(full_history, cohorts, model, months, bt, drivers)
         method_table.to_csv(FACTS_DIR / "fact_forecast_premium_method.csv", index=False, encoding="utf-8")
         if premium_method == "drivers":
@@ -1011,11 +1061,20 @@ def main() -> None:
     else:
         _log("premium drivers: no fact_vehicle.parquet; total-premium forecast")
     drivers = drivers if premium_method == "drivers" else None
+    # Plan C4: large-loss cap on the claims rate the model learns, if it beats the raw claims
+    _log(f"large-loss cap: SAR {large_loss_cap:,.0f} "
+         f"per claim ({LARGE_LOSS_QUANTILE:.1%} of claim size, last {LARGE_LOSS_YEARS} years)")
+    origins12 = backtest_origins(full_history)[-WINDOW_TEST_ORIGINS:]
+    large_loss, ll_table = select_large_loss(full_history, cohorts, model, months, origins12, drivers, bt)
+    ll_table.to_csv(FACTS_DIR / "fact_forecast_large_loss.csv", index=False, encoding="utf-8")
+    if large_loss:
+        bt = rolling_backtest(full_history, cohorts, models, months, origins12, drivers, True)
+        scores = score(bt)
     b = bt[bt["MODEL"] == model]
     monthly_wape = float((b["PRED_CLAIMS_COST"] - b["ACT_CLAIMS_COST"]).abs().sum() / b["ACT_CLAIMS_COST"].sum())
     _log(f"selected: {model}")
 
-    fc = forecast(model, history, cohorts, max(FORECAST_HORIZONS), drivers)
+    fc = forecast(model, history, cohorts, max(FORECAST_HORIZONS), drivers, large_loss)
     if drivers is not None:
         _log(f"next 12 months written premium: renewals {fc['RENEWALS'].sum() / 1e6:,.1f}M + new business "
              f"{fc['NEW_BUSINESS'].sum() / 1e6:,.1f}M")
