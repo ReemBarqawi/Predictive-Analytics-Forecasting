@@ -139,6 +139,15 @@ def load_monthly() -> tuple[pd.DataFrame, pd.Timestamp, pd.Timestamp]:
     return monthly, premium.index.min(), cl["ACC_DATE"].max()
 
 
+def car_years() -> pd.Series:
+    """Earned exposure in car-years per month (policy days in force / 365.25); empty without the column."""
+    path = FACTS_DIR / "fact_earned_premium.csv"
+    if "DAYS_IN_MONTH_EXPOSED" not in pd.read_csv(path, nrows=0).columns:
+        return pd.Series(dtype=float)
+    ep = pd.read_csv(path, usecols=["MONTH_DATE", "DAYS_IN_MONTH_EXPOSED"], parse_dates=["MONTH_DATE"])
+    return ep.groupby(ep["MONTH_DATE"].dt.to_period("M"))["DAYS_IN_MONTH_EXPOSED"].sum() / 365.25
+
+
 def history_window(first_premium: pd.Period, data_end: pd.Timestamp) -> tuple[pd.Period, pd.Period]:
     """First and last month of the modelling window: the source's forecast_window setting
     when it has one (config.toml), otherwise derived from the data."""
@@ -356,13 +365,16 @@ def seasonal_naive(history: pd.Series, horizon: int) -> np.ndarray:
 
 
 def forecast(model: str, history: pd.DataFrame, cohorts: pd.DataFrame, horizon: int,
-             drivers=None, large_loss: bool = False) -> pd.DataFrame:
+             drivers=None, large_loss: bool = False, claims: str = "rate") -> pd.DataFrame:
     """
     Written premium and claims per unit of earned premium are forecast; earned premium comes
     from the run-off plus new business, and claims = rate x earned premium, so the claims
     follow the book's known growth or shrinkage instead of extending the past trend.
     With `drivers` (premium_drivers.Drivers, plan B1) written premium = renewals of the policies
     expiring each month (known at the origin) + new business, and the model forecasts new business.
+    `claims` (plan C3, CLAIMS_METHODS): "rate" forecasts the cost per riyal of premium directly;
+    "split" forecasts claims per riyal and the cost per claim, each on its own; "per_car" forecasts
+    claims per car-year, the cost per claim and the premium per car-year.
     """
     cost = history["CLAIMS_COST"]
     if large_loss and "CLAIMS_EXCESS" in history:
@@ -372,6 +384,15 @@ def forecast(model: str, history: pd.DataFrame, cohorts: pd.DataFrame, horizon: 
     h = history.assign(CLAIM_RATE=history["CLAIM_COUNT"] / history["EARNED_PREMIUM"],
                        COST_RATE=cost / history["EARNED_PREMIUM"])
     series = [h[s] for s in MODELLED]
+    if claims != "rate":
+        # severity of months without claims: the median, so the series stays continuous
+        severity = (cost / h["CLAIM_COUNT"].where(h["CLAIM_COUNT"] > 0)).pipe(lambda s: s.fillna(s.median()))
+        series[MODELLED.index("COST_RATE")] = severity
+        if claims == "per_car":
+            car_years = h["CAR_YEARS"].where(h["CAR_YEARS"] > 0)
+            per_car = (h["EARNED_PREMIUM"] / car_years).pipe(lambda s: s.fillna(s.median()))
+            series[MODELLED.index("CLAIM_RATE")] = (h["CLAIM_COUNT"] / car_years).fillna(0.0)
+            series.append(per_car)
     channels = pd.DataFrame()
     if drivers is not None:
         series[MODELLED.index("WRITTEN_PREMIUM")] = drivers.new_business(h["WRITTEN_PREMIUM"])
@@ -384,6 +405,11 @@ def forecast(model: str, history: pd.DataFrame, cohorts: pd.DataFrame, horizon: 
         preds = [seasonal_naive(s, horizon) for s in batch]
     index = pd.period_range(history.index[-1] + 1, periods=horizon, freq="M")
     fc = pd.DataFrame({s: np.clip(p, 0, None) for s, p in zip(MODELLED, preds)}, index=index)
+    if claims != "rate":
+        severity = fc["COST_RATE"]
+        if claims == "per_car":         # claims per riyal = claims per car-year / premium per car-year
+            fc["CLAIM_RATE"] = fc["CLAIM_RATE"] / np.clip(preds[len(MODELLED)], 1e-9, None)
+        fc["COST_RATE"] = fc["CLAIM_RATE"] * severity
     if drivers is not None:
         fc["NEW_BUSINESS"] = fc["WRITTEN_PREMIUM"]
         if len(channels.columns):
@@ -412,7 +438,7 @@ def backtest_origins(history: pd.DataFrame) -> list[pd.Period]:
 
 def rolling_backtest(history: pd.DataFrame, cohorts: pd.DataFrame, models: list[str],
                      window_months: int | None = None, origins: list | None = None,
-                     drivers=None, large_loss: bool = False) -> pd.DataFrame:
+                     drivers=None, large_loss: bool = False, claims: str = "rate") -> pd.DataFrame:
     """
     Forecast from every quarter-end origin (or the given ones), exactly as the live forecast is
     made: the model sees the history up to the origin, or only its last `window_months`.
@@ -423,7 +449,8 @@ def rolling_backtest(history: pd.DataFrame, cohorts: pd.DataFrame, models: list[
         actual = history.loc[o + 1:o + max(FORECAST_HORIZONS)]
         context = history.loc[:o] if window_months is None else history.loc[o - window_months + 1:o]
         for m in models:
-            pred = forecast(m, context, cohorts, max(FORECAST_HORIZONS), drivers, large_loss).loc[actual.index]
+            pred = forecast(m, context, cohorts, max(FORECAST_HORIZONS), drivers, large_loss,
+                            claims).loc[actual.index]
             for step, month in enumerate(actual.index, start=1):
                 rows.append({"ORIGIN": o, "MODEL": m, "STEP": step, "MONTH": month,
                              **{f"PRED_{s}": pred.at[month, s] for s in SERIES + ["WRITTEN_PREMIUM", "COST_RATE"]},
@@ -619,6 +646,33 @@ def select_large_loss(full_history, cohorts, model, window_months, origins, driv
     _log(f"large-loss cap: raw {e_raw.mean():.1%} ±{se(e_raw):.1%}, capped + load {e_cap.mean():.1%} "
          f"±{se(e_cap):.1%} over {len(origins)} origins -> {'capped + load' if use else 'raw claims'}")
     return use, table
+
+
+CLAIMS_METHODS = {"rate": "cost per riyal", "split": "claims per riyal x cost per claim",
+                  "per_car": "claims per car-year x cost per claim / premium per car-year"}
+
+
+def select_claims_method(full_history, cohorts, model, window_months, origins, drivers, large_loss,
+                         bt) -> tuple[str, pd.DataFrame]:
+    """Plan C3: claims cost forecast as one rate, or split into how many claims and what each costs
+    (per riyal, then per car-year when the exposure is there). From the simplest, a step is taken only
+    when its error against the real claims is lower by more than its standard error."""
+    errors = {"rate": claims_errors(bt[(bt["MODEL"] == model) & bt["ORIGIN"].isin(origins)])}
+    candidates = ["split"] + (["per_car"] if full_history.get("CAR_YEARS", pd.Series(dtype=float)).gt(0).all() else [])
+    for name in candidates:
+        errors[name] = claims_errors(rolling_backtest(full_history, cohorts, [model], window_months, origins,
+                                                      drivers, large_loss, name))
+    se = {k: e.std(ddof=1) / np.sqrt(len(e)) for k, e in errors.items()}
+    method = "rate"
+    for nxt in candidates:
+        if errors[nxt].mean() < errors[method].mean() - se[nxt]:
+            method = nxt
+    table = pd.DataFrame({"METHOD": [CLAIMS_METHODS[k] for k in errors], "ERROR": [e.mean() for e in errors.values()],
+                          "STD_ERROR": list(se.values()), "N_ORIGINS": len(origins),
+                          "CHOSEN": [k == method for k in errors]})
+    _log("claims method: " + ", ".join(f"{CLAIMS_METHODS[k]} {e.mean():.1%} ±{se[k]:.1%}" for k, e in errors.items())
+         + f" over {len(origins)} origins -> {CLAIMS_METHODS[method]}")
+    return method, table
 
 
 def score(bt: pd.DataFrame) -> pd.DataFrame:
@@ -817,12 +871,17 @@ def trend_factor(history: pd.DataFrame, fc: pd.DataFrame, bt: pd.DataFrame, mode
     bias = (t["PRED"] - t["ACT"]).mean()
     last12 = history.iloc[-12:]
     before = last12["CLAIMS_COST"].sum() / last12["EARNED_PREMIUM"].sum()
-    raw = fc.head(12)["CLAIMS_COST"].sum() / fc.head(12)["EARNED_PREMIUM"].sum()
+    nxt = fc.head(12)
+    raw = nxt["CLAIMS_COST"].sum() / nxt["EARNED_PREMIUM"].sum()
+    # Plan C3: the raw change = claims per riyal change x cost per claim change (before the bias correction)
+    freq = (nxt["CLAIM_COUNT"].sum() / nxt["EARNED_PREMIUM"].sum()) / (last12["CLAIM_COUNT"].sum() / last12["EARNED_PREMIUM"].sum())
+    sev = (nxt["CLAIMS_COST"].sum() / nxt["CLAIM_COUNT"].sum()) / (last12["CLAIMS_COST"].sum() / last12["CLAIM_COUNT"].sum())
     return {"TREND_FACTOR": (raw - bias) / before, "TREND_FACTOR_RAW": raw / before, "BIAS_PTS": bias * 100,
             "N_ORIGINS": len(t), "ERROR_FORECAST_PTS": (t["PRED"] - t["ACT"]).abs().mean() * 100,
             "ERROR_CORRECTED_PTS": (t["PRED"] - bias - t["ACT"]).abs().mean() * 100,
             "ERROR_NO_CHANGE_PTS": (t["BEFORE"] - t["ACT"]).abs().mean() * 100,
-            "DIRECTION_RIGHT": int((np.sign(t["PRED"] - t["BEFORE"]) == np.sign(t["ACT"] - t["BEFORE"])).sum())}
+            "DIRECTION_RIGHT": int((np.sign(t["PRED"] - t["BEFORE"]) == np.sign(t["ACT"] - t["BEFORE"])).sum()),
+            "FREQUENCY_CHANGE": freq - 1, "SEVERITY_CHANGE": sev - 1}
 
 
 def build_rows(history: pd.DataFrame, fc: pd.DataFrame, model: str, model_wape: float,
@@ -1055,6 +1114,7 @@ def main() -> None:
     monthly, dev = develop(monthly, data_end)
     cohorts = premium_cohorts()
     monthly["WRITTEN_PREMIUM"] = cohorts.sum(axis=1).reindex(monthly.index, fill_value=0.0)
+    monthly["CAR_YEARS"] = car_years().reindex(monthly.index)       # plan C3's per-car candidate
     full_history = monthly.loc[start:end]
 
     models = (["timesfm"] if timesfm_model.available() else []) + ["seasonal_naive"]
@@ -1099,11 +1159,18 @@ def main() -> None:
     if large_loss:
         bt = rolling_backtest(full_history, cohorts, models, months, origins12, drivers, True)
         scores = score(bt)
+    # Plan C3: claims cost as one rate, or as how many claims x what each costs
+    claims_method, cm_table = select_claims_method(full_history, cohorts, model, months, origins12, drivers,
+                                                   large_loss, bt)
+    cm_table.to_csv(FACTS_DIR / "fact_forecast_claims_method.csv", index=False, encoding="utf-8")
+    if claims_method != "rate":
+        bt = rolling_backtest(full_history, cohorts, models, months, origins12, drivers, large_loss, claims_method)
+        scores = score(bt)
     b = bt[bt["MODEL"] == model]
     monthly_wape = float((b["PRED_CLAIMS_COST"] - b["ACT_CLAIMS_COST"]).abs().sum() / b["ACT_CLAIMS_COST"].sum())
     _log(f"selected: {model}")
 
-    fc = forecast(model, history, cohorts, max(FORECAST_HORIZONS), drivers, large_loss)
+    fc = forecast(model, history, cohorts, max(FORECAST_HORIZONS), drivers, large_loss, claims_method)
     if drivers is not None:
         parts = [c for c in fc.columns if c.startswith("NB_")]
         _log(f"next 12 months written premium: renewals {fc['RENEWALS'].sum() / 1e6:,.1f}M + new business "
@@ -1113,7 +1180,8 @@ def main() -> None:
     pd.DataFrame([trend]).to_csv(FACTS_DIR / "fact_trend_factor.csv", index=False, encoding="utf-8")
     _log(f"trend factor {trend['TREND_FACTOR']:.3f} (forecast {trend['TREND_FACTOR_RAW']:.3f}, past bias "
          f"{trend['BIAS_PTS']:+.1f} pts; error {trend['ERROR_CORRECTED_PTS']:.1f} vs no change "
-         f"{trend['ERROR_NO_CHANGE_PTS']:.1f} pts over {trend['N_ORIGINS']} origins)")
+         f"{trend['ERROR_NO_CHANGE_PTS']:.1f} pts over {trend['N_ORIGINS']} origins; claims per riyal "
+         f"{trend['FREQUENCY_CHANGE']:+.1%}, cost per claim {trend['SEVERITY_CHANGE']:+.1%})")
     shown_history, shown_fc = (written_month_view(full_history, fc) if year_basis() == "written_year"
                                else (full_history, fc))
     # Power BI shows only the last [report] years (as step 12), whatever the model learned from
