@@ -340,7 +340,10 @@ def portfolio_repair(opt, results, a, floor=None):
         best, best_cost, best_row = None, np.inf, None
         for i, r in opt.iterrows():
             idx = int(np.argmin(np.abs(grid - r["premium_change"])))
-            if idx == 0:
+            # The portfolio floor may hold an increase back, never create a discount: a segment at or
+            # under no change keeps its price (2026-11-12: it cut two small profitable segments to -10%,
+            # giving up 15.6K of profit for a dozen policies, to make up for increases elsewhere)
+            if idx == 0 or grid[idx - 1] < -1e-9:
                 continue
             cand = results[(results["segment_id"] == r["segment_id"]) &
                            (results["sensitivity_case"] == r["sensitivity_case"]) &
