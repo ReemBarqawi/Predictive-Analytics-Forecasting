@@ -43,6 +43,7 @@ MODEL_STEPS = [
     (10, "10_underwriting_pnl.py"),
     (12, "12_report_window.py"),
     (15, "15_official_alerts.py"),   # the alerts at the approved target: needs steps 5, 9, 11 and 12
+    (19, "19_data_breaks.py"),       # report only: changes in the data and the training windows chosen
 ]
 GATE = (13, "13_reconcile.py")      # always closes a run: a failure means do not refresh the report
 AFTER_GATE = (16, "16_email_alerts.py")   # only after the gate passed, on a full run or when asked for
