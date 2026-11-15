@@ -125,6 +125,37 @@ def load_policies() -> pd.DataFrame:
 # =========================================================================
 # Predict per-policy frequency, severity, and pure premium
 # =========================================================================
+def relativity_strength() -> float:
+    """Plan H4: strength chosen by step 04's policy-level test (fact_glm_strength.csv); 1 = the GLM as fitted."""
+    path = FACT_DIR / "fact_glm_strength.csv"
+    if not path.exists():
+        return 1.0
+    t = pd.read_csv(path)
+    return float(t.loc[t["CHOSEN"], "STRENGTH"].iloc[0]) if t["CHOSEN"].any() else 1.0
+
+
+def apply_strength(policies: pd.DataFrame, freq: pd.Series, sev: pd.Series) -> tuple[pd.Series, pd.Series]:
+    """Raise the GLM's frequency and severity to the chosen strength inside each segment (zone x class x policy
+    type), keeping each segment's expected claim count and cost: strength 0 gives every policy its segment's
+    average, 1 leaves the GLM as fitted."""
+    a = relativity_strength()
+    _log(f"  relativity strength {a:.2f} (step 04's policy-level test)")
+    if a == 1.0:
+        return freq, sev
+    seg = policies[SEGMENT_KEYS].astype(str).agg("|".join, axis=1).to_numpy()
+    cy = policies["CAR_YEARS"].to_numpy(dtype=float)
+    f, s = freq.to_numpy(dtype=float), sev.to_numpy(dtype=float)
+
+    def rescale(new: np.ndarray, old_total: np.ndarray, weight: np.ndarray) -> np.ndarray:
+        frame = pd.DataFrame({"SEG": seg, "NEW": new * weight, "OLD": old_total})
+        k = frame.groupby("SEG")[["NEW", "OLD"]].transform("sum")
+        return new * (k["OLD"] / k["NEW"].replace(0, np.nan)).fillna(1.0).to_numpy()
+
+    f2 = rescale(np.maximum(f, 1e-12) ** a, cy * f, cy)                 # same expected claim count
+    s2 = rescale(np.maximum(s, 1e-12) ** a, cy * f * s, cy * f2)        # same expected cost
+    return pd.Series(f2, index=freq.index), pd.Series(s2, index=sev.index)
+
+
 def score_policies(policies: pd.DataFrame, freq_bundle: dict, sev_bundle: dict) -> pd.DataFrame:
     """
     Returns a DataFrame with one row per input policy and these prediction columns:
@@ -151,11 +182,12 @@ def score_policies(policies: pd.DataFrame, freq_bundle: dict, sev_bundle: dict) 
     if "CARS" not in policies.columns:
         raise SystemExit("fact_policy has no CARS column (plan H1): rerun step 01")
     freq_per_car = freq_bundle["result"].predict(X_freq_c, offset=np.zeros(len(X_freq_c)))
-    freq_per_year = freq_per_car * policies["CARS"].to_numpy()
-    freq_period = freq_per_car * policies["CAR_YEARS"].to_numpy()
 
     _log("Predicting severity (per claim, ULTIMATE_CLAIM)")
     sev_pred = sev_bundle["result"].predict(X_sev_c)
+    freq_per_car, sev_pred = apply_strength(policies, freq_per_car, sev_pred)
+    freq_per_year = freq_per_car * policies["CARS"].to_numpy()
+    freq_period = freq_per_car * policies["CAR_YEARS"].to_numpy()
 
     # Build the output frame
     out = policies[[

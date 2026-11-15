@@ -340,6 +340,8 @@ def predict_glm_window(
 POLICY_TEST_HORIZON = "12m"
 TWEEDIE_POWER = 1.5
 LIFT_BANDS = 10
+# Plan H4: relativity strengths tested (prediction = segment level x GLM relativity ** strength)
+STRENGTHS = tuple(round(a, 2) for a in np.arange(0.0, 1.01, 0.1))
 
 
 def _poisson_dev(y: np.ndarray, mu: np.ndarray) -> float:
@@ -388,17 +390,46 @@ def policy_test(pred: pd.DataFrame, claims: pd.DataFrame, T: pd.Timestamp, T_end
         return weights * np.divide(tsum, wsum, out=np.zeros_like(tsum), where=wsum > 0)[seg]
 
     out = {"cutoff_date": T, "policies": len(m), "claims": int(m["N"].sum())}
+    strength = {a: 0.0 for a in STRENGTHS}
     for target, col, pred_col, dev in (("count", "N", "predicted_count", _poisson_dev),
                                        ("cost", "COST", "predicted_cost", _tweedie_dev)):
         y = m[col].to_numpy(dtype=float)
+        rate = m[pred_col].to_numpy(dtype=float) / np.maximum(e, 1e-12)
         glm, base = share(m[pred_col].to_numpy(dtype=float), y), share(e, y)
-        out[f"{target}_deviance_ratio"] = dev(y, glm) / max(dev(y, base), 1e-12)
+        base_dev = max(dev(y, base), 1e-12)
+        out[f"{target}_deviance_ratio"] = dev(y, glm) / base_dev
+        # Plan H4: the GLM's relativities raised to a strength a (0 = segment-only, 1 = as fitted)
+        for a in STRENGTHS:
+            strength[a] += dev(y, share(e * np.maximum(rate, 1e-12) ** a, y)) / base_dev / 2
         if target == "cost":
             rate_glm, rate_base = glm / np.maximum(e, 1e-12), base / np.maximum(e, 1e-12)
             out.update(gini_glm=_gini(rate_glm, e, y), gini_segment=_gini(rate_base, e, y),
                        lift_glm=_lift(rate_glm, e, y), lift_segment=_lift(rate_base, e, y))
     out["error"] = (out["count_deviance_ratio"] + out["cost_deviance_ratio"]) / 2
+    out.update({f"error_strength_{a:.2f}": v for a, v in strength.items()})
     return out
+
+
+def strength_columns(t: pd.DataFrame) -> dict[float, np.ndarray]:
+    return {a: t[f"error_strength_{a:.2f}"].to_numpy() for a in STRENGTHS if f"error_strength_{a:.2f}" in t}
+
+
+def select_strength(t: pd.DataFrame) -> tuple[float, pd.DataFrame]:
+    """Plan H4: how strongly the GLM's relativities apply. The fitted GLM (strength 1) is kept unless another
+    strength beats it, cut-off by cut-off, by more than the standard error of the difference."""
+    errs = strength_columns(t)
+    mean = {a: e.mean() for a, e in errs.items()}
+    best = min(mean, key=mean.get)
+    d = errs[1.0] - errs[best]
+    se = d.std(ddof=1) / np.sqrt(len(d)) if len(d) > 1 else np.inf
+    chosen = best if d.mean() > se else 1.0
+    table = pd.DataFrame({"STRENGTH": list(mean), "ERROR": list(mean.values()),
+                          "STD_ERROR": [e.std(ddof=1) / np.sqrt(len(e)) for e in errs.values()],
+                          "N_CUTOFFS": len(t), "CHOSEN": [a == chosen for a in mean]})
+    _log("relativity strength (policy-level deviance vs segment-only): "
+         + ", ".join(f"{a:.2f} {v:.4f}" for a, v in mean.items())
+         + f" -> {chosen:.2f} (best {best:.2f}; gain on 1.00 {d.mean():.4f} ±{se:.4f})")
+    return chosen, table
 
 
 # =========================================================================
@@ -811,6 +842,9 @@ def main():
     pd.concat(POLICY_TESTS, ignore_index=True).to_csv(FACT_DIR / "fact_glm_policy_test.csv", index=False)
     # The verdict uses the same latest cut-offs as the gate; all cut-offs are logged beside it
     latest = final.sort_values("cutoff_date").tail(WINDOW_TEST_CUTOFFS)
+    # Plan H4: relativity strength, chosen on the same latest cut-offs; steps 03 and 09 apply it
+    strength, strength_table = select_strength(latest)
+    strength_table.to_csv(FACT_DIR / "fact_glm_strength.csv", index=False)
     for label, part in (("latest", latest), ("all", final)):
         e = part["error"].to_numpy()
         se = e.std(ddof=1) / np.sqrt(len(e)) if len(e) > 1 else np.nan
