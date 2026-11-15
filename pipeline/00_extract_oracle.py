@@ -4,7 +4,8 @@
     python pipeline/00_extract_oracle.py --check   # connect and count rows only (no data saved)
     python pipeline/00_extract_oracle.py           # extract to <raw_dir>/<name>.parquet
 
-Runs every .sql file in [oracle] sql_dir (policies, claims, claims_dev_*). Connection details come
+Runs every .sql file in [oracle] sql_dir (policies, claims, claims_dev_*, vehicles, and lines_policies /
+lines_claims for the other lines of business). Connection details come
 from config.local.toml ([oracle] dsn, user). The password is read from the environment
 variable AMAN_ORACLE_PASSWORD, or asked for at the prompt; it is never written anywhere.
 

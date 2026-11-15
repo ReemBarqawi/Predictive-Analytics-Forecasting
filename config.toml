@@ -158,6 +158,14 @@ low = 3.0
 base = 5.0
 high = 8.0
 
+[lines]
+# Other lines of business (steps 20-21): credibility loss-ratio pricing; target and admin rate as [business].
+experience_years = 5          # policy years of experience, up to the current year (years left out by step 20 skipped)
+# A department's benchmark loss ratio from its market report, which thin classes lean on. Empty = none:
+# the department's own experience is the complement and the price is marked low-confidence.
+# benchmark_loss_ratio = { FGA = 0.55, Marine = 0.60 }
+benchmark_loss_ratio = {}
+
 [training]
 # How many years of history the models learn from (pipeline/training_window.py). "auto": each model
 # tests 3, 5, 7 years and all history on its own backtest and keeps the longest window within one

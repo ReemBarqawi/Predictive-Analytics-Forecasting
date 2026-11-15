@@ -182,6 +182,33 @@ earlier = earned[(earned["POLICY_YEAR"] != current) & (earned["MONTH_DATE"].dt.y
 check("bridge", "Written - earned outside the year + other policies' earned in it = calendar earned",
       own["EARNED_PREMIUM"].sum() - outside + earlier, calendar, f"{own['EARNED_PREMIUM'].sum():,.0f} - {outside:,.0f} + {earlier:,.0f}")
 
+# ---- other lines (steps 20-21), only when their extract exists: everything extracted is either used or left
+# out with a reason, pricing uses only what was kept, and a line without claims has no loss ratio or price
+if (F / "fact_line_quality.csv").exists():
+    lq = pd.read_csv(F / "fact_line_quality.csv")
+    lp = pd.read_parquet(F / "fact_line_policy.parquet", columns=["TOTAL_PREMIUM", "EXCLUDE_REASON"])
+    lc = pd.read_parquet(F / "fact_line_claim.parquet", columns=["INCURRED", "EXCLUDE_REASON"])
+    raw_p = pd.read_parquet(S.raw_dir / "lines_policies.parquet", columns=["TOTAL_PREMIUM"])
+    raw_c = pd.read_parquet(S.raw_dir / "lines_claims.parquet", columns=["CLM_NO"])
+    check("other lines", "Premium extracted = quality table", float(raw_p["TOTAL_PREMIUM"].sum()), lq["PREMIUM"].sum())
+    check("other lines", "Claims extracted = quality table", float(len(raw_c)), lq["CLAIMS"].sum())
+    check("other lines", "Premium kept = quality table's used premium",
+          lp.loc[lp["EXCLUDE_REASON"] == "", "TOTAL_PREMIUM"].sum(), lq["PREMIUM_USED"].sum())
+    check("other lines", "Incurred kept = quality table's used incurred",
+          lc.loc[lc["EXCLUDE_REASON"] == "", "INCURRED"].sum(), lq["INCURRED_USED"].sum())
+    if (F / "fact_line_pricing.csv").exists():
+        lpr = pd.read_csv(F / "fact_line_pricing.csv")
+        lex = pd.read_csv(F / "fact_line_experience.csv")
+        check("other lines", "Premium priced = used experience years' premium", lpr["PREMIUM"].sum(),
+              lex.loc[lex["USED"], "PREMIUM_USED"].sum())
+        check_true("other lines", "Every class extracted has a pricing row",
+                   set(map(tuple, lq[["DEPARTMENT", "CLASS_DESC"]].drop_duplicates().to_numpy()))
+                   == set(map(tuple, lpr[["DEPARTMENT", "CLASS_DESC"]].to_numpy())))
+        check_true("other lines", "Credibility between 0 and 1", lpr["CREDIBILITY_Z"].dropna().between(0, 1).all())
+        none = lpr[lpr["STATUS"] == "no claims data"]
+        check_true("other lines", "No claims data: no loss ratio or price",
+                   none[["LOSS_RATIO", "INDICATED_CHANGE"]].isna().all().all(), f"{len(none)} class(es)")
+
 table = pd.DataFrame(results)
 table.to_csv(F / "fact_reconciliation.csv", index=False, encoding="utf-8")
 failed = table[table["STATUS"] == "FAIL"]

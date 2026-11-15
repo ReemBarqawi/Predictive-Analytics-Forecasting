@@ -45,6 +45,8 @@ MODEL_STEPS = [
     (12, "12_report_window.py"),
     (15, "15_official_alerts.py"),   # the alerts at the approved target: needs steps 5, 9, 11 and 12
     (19, "19_data_breaks.py"),       # report only: changes in the data and the training windows chosen
+    (20, "20_lines_quality.py"),     # other lines: quality rules (skips itself without their extract)
+    (21, "21_lines_pricing.py"),     # other lines: credibility loss-ratio price indication
 ]
 GATE = (13, "13_reconcile.py")      # always closes a run: a failure means do not refresh the report
 # Only after the gate passed, on a full run or when asked for: load the results for the paginated
