@@ -55,7 +55,8 @@ EMAIL = (16, "16_email_alerts.py")
 AFTER_GATE = [(18, "18_load_results_db.py"), EMAIL]
 STEPS = {
     "synthetic": [(1, "01_build_synthetic_data.py")] + MODEL_STEPS,
-    "oracle": [(0, "00_extract_oracle.py"), (1, "01_prepare_real.py")] + MODEL_STEPS,
+    # 23 checks the extract against the data contract before anything is built from it (stops a bad extract)
+    "oracle": [(0, "00_extract_oracle.py"), (23, "23_validate_extract.py"), (1, "01_prepare_real.py")] + MODEL_STEPS,
 }
 KEY_TABLES = ["fact_policy", "fact_claim", "fact_earned_premium", "fact_segment_performance",
               "fact_optimal_scenarios", "fact_alerts", "fact_alerts_official"]
