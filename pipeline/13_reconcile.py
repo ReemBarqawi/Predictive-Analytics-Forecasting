@@ -205,6 +205,12 @@ if (F / "fact_line_quality.csv").exists():
                    set(map(tuple, lq[["DEPARTMENT", "CLASS_DESC"]].drop_duplicates().to_numpy()))
                    == set(map(tuple, lpr[["DEPARTMENT", "CLASS_DESC"]].to_numpy())))
         check_true("other lines", "Credibility between 0 and 1", lpr["CREDIBILITY_Z"].dropna().between(0, 1).all())
+        if (F / "fact_line_segment_performance_by_year.csv").exists():
+            lseg = pd.read_csv(F / "fact_line_segment_performance_by_year.csv")
+            check("other lines", "Segment results premium = quality table's used premium",
+                  lseg["EARNED_PREMIUM"].sum(), lq["PREMIUM_USED"].sum())
+            check("other lines", "Segment results claims = quality table's used incurred",
+                  lseg["ACTUAL_ULTIMATE_CLAIMS"].sum(), lq["INCURRED_USED"].sum())
         none = lpr[lpr["STATUS"] == "no claims data"]
         check_true("other lines", "No claims data: no loss ratio or price",
                    none[["LOSS_RATIO", "INDICATED_CHANGE"]].isna().all().all(), f"{len(none)} class(es)")

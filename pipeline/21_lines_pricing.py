@@ -52,6 +52,67 @@ def settings() -> dict:
             "admin": float(biz["admin_expense_rate"]), "full": float(cred["full_standard_claims"]), "target": target}
 
 
+SEGMENT_COLUMNS = ["ZONE", "CLASS_DESC", "POLICY_TYPE_DESC", "POLICY_YEAR",
+                   "EARNED_PREMIUM", "ULTIMATE_CLAIMS", "CLAIM_COUNT", "EXPOSURE_YEARS", "POLICY_COUNT",
+                   "COMMISSION_SUM", "LOSS_RATIO", "COMMISSION_RATIO", "ADMIN_EXPENSE", "EXPENSE_RATIO",
+                   "COMBINED_RATIO", "UW_PROFIT", "PURE_PREMIUM_PER_YEAR", "AVG_PREMIUM_PER_POLICY",
+                   "BREAK_EVEN_TOTAL", "BREAK_EVEN_PER_EXPOSURE", "MAX_SAFE_DISCOUNT",
+                   "SAFE_ZONE_STATUS", "CREDIBILITY_FLAG",
+                   "CLAIMS_BASIS", "ACTUAL_ULTIMATE_CLAIMS", "ACTUAL_CLAIM_COUNT",
+                   "MODEL_EXPECTED_CLAIMS", "MODEL_EXPECTED_CLAIM_COUNT"]
+
+
+def segment_results() -> pd.DataFrame:
+    """The other lines' results by zone x class x policy type x policy year, in the layout of motor's
+    fact_segment_performance_by_year.csv (step 05) and with its formulas, so the report's segment pages read
+    both. Written-year basis (EARNED_PREMIUM holds the year's written premium, as motor's on written_year);
+    only the policies and claims step 20 kept; claims incurred to date, not developed (CLAIMS_BASIS says so).
+    The zone comes from the policy's office (same mapping as motor); a kept claim that matched no policy has
+    no office, so it counts under "Unspecified" in its class and year."""
+    from zone_mapping import map_office_to_zone
+    biz, cred, bands = S.config["business"], S.config["credibility"], S.config["safe_zone"]
+    p = pd.read_parquet(S.facts_dir / "fact_line_policy.parquet")
+    c = pd.read_parquet(S.facts_dir / "fact_line_claim.parquet")
+    p = p[p["EXCLUDE_REASON"] == ""].copy()
+    c = c[c["EXCLUDE_REASON"] == ""].copy()
+    zones = {o: map_office_to_zone(o).get("ZONE") for o in p["OFFICE_NAME"].dropna().unique()}
+    p["ZONE"] = p["OFFICE_NAME"].map(zones).fillna("Unspecified")
+    p["EXPOSURE_YEARS"] = ((p["POLICY_EXPIRY_DATE"] - p["POLICY_EFFECTIVE_DATE"]).dt.days / 365.25).clip(lower=0)
+    pz = p.drop_duplicates(["POLICY_NO", "POLICY_YEAR"])[["POLICY_NO", "POLICY_YEAR", "ZONE"]]
+    c = c.merge(pz, on=["POLICY_NO", "POLICY_YEAR"], how="left")
+    c["ZONE"] = c["ZONE"].fillna("Unspecified")
+    k = ["ZONE", "CLASS_DESC", "POLICY_TYPE_DESC", "POLICY_YEAR"]
+    df = (p.groupby(k).agg(EARNED_PREMIUM=("TOTAL_PREMIUM", "sum"), EXPOSURE_YEARS=("EXPOSURE_YEARS", "sum"),
+                           POLICY_COUNT=("POLICY_NO", "size"), COMMISSION_SUM=("COMMISSION", "sum"))
+          .join(c.groupby(k).agg(ULTIMATE_CLAIMS=("INCURRED", "sum"), CLAIM_COUNT=("CLM_NO", "size")), how="outer")
+          .reset_index().fillna({"EARNED_PREMIUM": 0.0, "EXPOSURE_YEARS": 0.0, "POLICY_COUNT": 0, "COMMISSION_SUM": 0.0,
+                                 "ULTIMATE_CLAIMS": 0.0, "CLAIM_COUNT": 0}))
+    P = df["EARNED_PREMIUM"]
+    div = lambda a, b: np.where(b != 0, a / b.replace(0, np.nan), np.nan)
+    df["ADMIN_EXPENSE"] = P * biz["admin_expense_rate"]
+    df["LOSS_RATIO"] = div(df["ULTIMATE_CLAIMS"], P)
+    df["COMMISSION_RATIO"] = div(df["COMMISSION_SUM"], P)
+    df["EXPENSE_RATIO"] = div(df["COMMISSION_SUM"] + df["ADMIN_EXPENSE"], P)
+    df["COMBINED_RATIO"] = df["LOSS_RATIO"] + df["EXPENSE_RATIO"]
+    df["UW_PROFIT"] = P - df["ULTIMATE_CLAIMS"] - df["COMMISSION_SUM"] - df["ADMIN_EXPENSE"]
+    df["PURE_PREMIUM_PER_YEAR"] = div(df["ULTIMATE_CLAIMS"], df["EXPOSURE_YEARS"])
+    df["AVG_PREMIUM_PER_POLICY"] = div(P, df["POLICY_COUNT"])
+    df["BREAK_EVEN_TOTAL"] = ((df["ULTIMATE_CLAIMS"] * (1 + biz["risk_margin_rate"]) + df["COMMISSION_SUM"])
+                              / (1 - biz["admin_expense_rate"]))
+    df["BREAK_EVEN_PER_EXPOSURE"] = div(df["BREAK_EVEN_TOTAL"], df["EXPOSURE_YEARS"])
+    df["MAX_SAFE_DISCOUNT"] = 1 - div(df["BREAK_EVEN_TOTAL"], P)
+    cr = df["COMBINED_RATIO"]
+    df["SAFE_ZONE_STATUS"] = np.select([cr <= bands["green"], cr <= bands["yellow"], cr <= bands["red"], cr > bands["red"]],
+                                       ["Green", "Yellow", "Red", "Loss"], default="No premium")
+    df["CREDIBILITY_FLAG"] = np.select([df["CLAIM_COUNT"] >= cred["full_claims"], df["CLAIM_COUNT"] >= cred["partial_claims"]],
+                                       ["Full", "Partial"], default="Low")
+    df["CLAIMS_BASIS"] = "Incurred, not developed"
+    df["ACTUAL_ULTIMATE_CLAIMS"], df["ACTUAL_CLAIM_COUNT"] = df["ULTIMATE_CLAIMS"], df["CLAIM_COUNT"]
+    df["MODEL_EXPECTED_CLAIMS"] = df["MODEL_EXPECTED_CLAIM_COUNT"] = np.nan
+    df["POLICY_COUNT"], df["CLAIM_COUNT"] = df["POLICY_COUNT"].astype(int), df["CLAIM_COUNT"].astype(int)
+    return df[SEGMENT_COLUMNS].sort_values(k).reset_index(drop=True)
+
+
 def main() -> None:
     qpath = S.facts_dir / "fact_line_quality.csv"
     if not qpath.exists():
@@ -137,6 +198,11 @@ def main() -> None:
     out = out.merge(codes, on=CLASS, how="left")
     out = out[cols + ["CLASS_NO"]].rename(columns={"CAPPED": "INCURRED_CAPPED", "CAP": "LARGE_LOSS_CAP"}).sort_values(CLASS)
     out.to_csv(S.facts_dir / "fact_line_pricing.csv", index=False, encoding="utf-8")
+    seg = segment_results()
+    seg.to_csv(S.facts_dir / "fact_line_segment_performance_by_year.csv", index=False, encoding="utf-8")
+    now = seg[seg["POLICY_YEAR"] == cur]
+    _log(f"segment results: {len(seg):,} zone x class x type x year rows; {cur}: premium {now['EARNED_PREMIUM'].sum() / 1e6:,.1f}M, "
+         f"claims {now['ULTIMATE_CLAIMS'].sum() / 1e6:,.1f}M in {now['CLASS_DESC'].nunique()} classes")
 
     S.reports_dir.mkdir(parents=True, exist_ok=True)
     with open(S.reports_dir / "lines_pricing_report.md", "w", encoding="utf-8") as f:
