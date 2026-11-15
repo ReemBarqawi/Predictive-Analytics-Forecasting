@@ -326,8 +326,79 @@ def predict_glm_window(
     active["predicted_cost"] = active["predicted_count"] * active["predicted_severity"]
     return active[[
         "POLICY_NO", "POLICY_YEAR", "ZONE", "CLASS_DESC", "POLICY_TYPE_DESC",
-        "predicted_count", "predicted_cost",
+        "predicted_count", "predicted_cost", "CAR_YEARS_IN_WINDOW",
     ]]
+
+
+# =========================================================================
+# Plan H2: policy-level out-of-time test
+# =========================================================================
+# Pricing takes each segment's level from reserving (step 09) and the GLM only decides how it is shared
+# between the segment's policies. So the test gives every model the segment's actual total and scores how
+# it shares it out, policy by policy, against a segment-only model that shares it by car-years alone.
+# Method constants: the horizon tested, the Tweedie power for the cost deviance, the number of lift bands.
+POLICY_TEST_HORIZON = "12m"
+TWEEDIE_POWER = 1.5
+LIFT_BANDS = 10
+
+
+def _poisson_dev(y: np.ndarray, mu: np.ndarray) -> float:
+    mu = np.maximum(mu, 1e-12)
+    term = np.where(y > 0, y * np.log(np.where(y > 0, y, 1.0) / mu), 0.0)
+    return float(2.0 * np.sum(term - (y - mu)))
+
+
+def _tweedie_dev(y: np.ndarray, mu: np.ndarray, p: float = TWEEDIE_POWER) -> float:
+    mu = np.maximum(mu, 1e-12)
+    return float(2.0 * np.sum(y ** (2 - p) / ((1 - p) * (2 - p)) - y * mu ** (1 - p) / (1 - p)
+                              + mu ** (2 - p) / (2 - p)))
+
+
+def _gini(rate: np.ndarray, expo: np.ndarray, actual: np.ndarray) -> float:
+    """Exposure-weighted Gini: policies from lowest to highest predicted rate, share of actual cost
+    against share of car-years. 0 = no better than random; larger = better separation."""
+    order = np.argsort(rate, kind="stable")
+    x = np.concatenate([[0.0], np.cumsum(expo[order]) / expo.sum()])
+    y = np.concatenate([[0.0], np.cumsum(actual[order]) / max(actual.sum(), 1e-12)])
+    return float(1.0 - 2.0 * np.trapezoid(y, x))
+
+
+def _lift(rate: np.ndarray, expo: np.ndarray, actual: np.ndarray) -> float:
+    """Actual cost per car-year of the highest-rated band over the lowest (bands of equal car-years)."""
+    order = np.argsort(rate, kind="stable")
+    band = np.minimum((np.cumsum(expo[order]) / expo.sum() * LIFT_BANDS).astype(int), LIFT_BANDS - 1)
+    e, a = np.bincount(band, expo[order], LIFT_BANDS), np.bincount(band, actual[order], LIFT_BANDS)
+    lo, hi = a[0] / e[0] if e[0] > 0 else np.nan, a[-1] / e[-1] if e[-1] > 0 else np.nan
+    return float(hi / lo) if lo and lo > 0 else np.nan
+
+
+def policy_test(pred: pd.DataFrame, claims: pd.DataFrame, T: pd.Timestamp, T_end: pd.Timestamp) -> dict:
+    """One cut-off of the policy-level test (see above): deviance of claim counts (Poisson) and cost
+    (Tweedie), the GLM's over the segment-only model's (below 1 = the GLM ranks better), plus Gini and
+    top-to-bottom lift of cost per car-year for both."""
+    w = claims[(claims["ACC_DATE"] > T) & (claims["ACC_DATE"] <= T_end)]
+    act = w.groupby(["POLICY_NO", "POLICY_YEAR"]).agg(N=("CLM_NO", "size"), COST=("ULTIMATE_CLAIM", "sum"))
+    m = pred.merge(act.reset_index(), on=["POLICY_NO", "POLICY_YEAR"], how="left").fillna({"N": 0, "COST": 0})
+    seg = m.groupby(["ZONE", "CLASS_DESC", "POLICY_TYPE_DESC"], dropna=False).ngroup().to_numpy()
+    e = m["CAR_YEARS_IN_WINDOW"].to_numpy(dtype=float)
+
+    def share(weights: np.ndarray, total: np.ndarray) -> np.ndarray:
+        """Each segment's actual total, shared out in proportion to `weights`."""
+        wsum, tsum = np.bincount(seg, weights), np.bincount(seg, total)
+        return weights * np.divide(tsum, wsum, out=np.zeros_like(tsum), where=wsum > 0)[seg]
+
+    out = {"cutoff_date": T, "policies": len(m), "claims": int(m["N"].sum())}
+    for target, col, pred_col, dev in (("count", "N", "predicted_count", _poisson_dev),
+                                       ("cost", "COST", "predicted_cost", _tweedie_dev)):
+        y = m[col].to_numpy(dtype=float)
+        glm, base = share(m[pred_col].to_numpy(dtype=float), y), share(e, y)
+        out[f"{target}_deviance_ratio"] = dev(y, glm) / max(dev(y, base), 1e-12)
+        if target == "cost":
+            rate_glm, rate_base = glm / np.maximum(e, 1e-12), base / np.maximum(e, 1e-12)
+            out.update(gini_glm=_gini(rate_glm, e, y), gini_segment=_gini(rate_base, e, y),
+                       lift_glm=_lift(rate_glm, e, y), lift_segment=_lift(rate_base, e, y))
+    out["error"] = (out["count_deviance_ratio"] + out["cost_deviance_ratio"]) / 2
+    return out
 
 
 # =========================================================================
@@ -421,7 +492,7 @@ def run_backtest(policies: pd.DataFrame, claims: pd.DataFrame,
     glm_only: skip the benchmarks (the training-window test compares GLMs only)."""
     max_data_date = claims["ACC_DATE"].max()
     tfm = None if glm_only else timesfm_forecasts(claims, cutoffs)
-    rows = []
+    rows, policy_rows = [], []
 
     for T in cutoffs:
         _log(f"cutoff {T.date()} — training GLMs ({training_window.label(window_years)})")
@@ -439,7 +510,11 @@ def run_backtest(policies: pd.DataFrame, claims: pd.DataFrame,
             actual_df = sum_actuals(claims, T, T_end)
 
             # GLM prediction
-            glm_pred_df = sum_predictions(predict_glm_window(policies, freq, sev, T, T_end))
+            per_policy = predict_glm_window(policies, freq, sev, T, T_end)
+            if horizon_label == POLICY_TEST_HORIZON and len(per_policy):
+                policy_rows.append(policy_test(per_policy, claims, T, T_end))     # plan H2
+            glm_pred_df = sum_predictions(per_policy)
+            del per_policy
 
             # Seasonal naive: use the same window one year earlier as prediction
             T_naive_start = T - pd.Timedelta(days=365)
@@ -486,7 +561,9 @@ def run_backtest(policies: pd.DataFrame, claims: pd.DataFrame,
     if not rows:
         raise RuntimeError("Backtest produced no rows — check cutoffs and data span.")
 
-    return pd.concat(rows, ignore_index=True)
+    out = pd.concat(rows, ignore_index=True)
+    out.attrs["policy_test"] = pd.DataFrame(policy_rows)     # plan H2, one row per cut-off
+    return out
 
 
 # =========================================================================
@@ -644,21 +721,38 @@ def cutoff_errors(results: pd.DataFrame) -> np.ndarray:
     return per.groupby(level="cutoff_date").mean().to_numpy()
 
 
+POLICY_TESTS: list[pd.DataFrame] = []          # plan H2: every candidate's cut-offs, for fact_glm_policy_test.csv
+
+
+def policy_errors(results: pd.DataFrame, test: str, candidate: str) -> np.ndarray:
+    """Plan H2 gate score, one per cut-off: the GLM's deviance over the segment-only model's, claim counts
+    and cost averaged (policy_test). Below 1 = it shares each segment's claims out better than car-years
+    alone. Also logs Gini, lift and the old segment WAPE next to it."""
+    t = results.attrs["policy_test"].assign(TEST=test, CANDIDATE=candidate)
+    POLICY_TESTS.append(t)
+    wape = cutoff_errors(results).mean()
+    _log(f"  {candidate}: deviance vs segment-only {t['error'].mean():.3f} (count {t['count_deviance_ratio'].mean():.3f}, "
+         f"cost {t['cost_deviance_ratio'].mean():.3f}); Gini {t['gini_glm'].mean():.3f} vs {t['gini_segment'].mean():.3f}; "
+         f"lift {t['lift_glm'].mean():.1f}x vs {t['lift_segment'].mean():.1f}x; segment WAPE {wape:.1%}")
+    return t["error"].to_numpy()
+
+
 def select_window(policies: pd.DataFrame, claims: pd.DataFrame, cutoffs: list[pd.Timestamp]) -> int | None:
     """How many years the GLMs learn from (pipeline/training_window.py), tested on the latest
-    WINDOW_TEST_CUTOFFS cut-offs that have a full 12 months of actuals after them. Steps 02 and 03
-    then fit and score on the chosen window."""
+    WINDOW_TEST_CUTOFFS cut-offs that have a full 12 months of actuals after them, on the policy-level
+    test (plan H2). Steps 02 and 03 then fit and score on the chosen window."""
     end = claims["ACC_DATE"].max()
     test = [T for T in cutoffs if T + pd.Timedelta(days=365) <= end][-WINDOW_TEST_CUTOFFS:]
     span = (end - policies["POLICY_EFFECTIVE_DATE"].min()).days / 365.25
     errors = {}
     for w in training_window.candidates(span):
         _log(f"training window test: {training_window.label(w)}")
-        errors[w] = cutoff_errors(run_backtest(policies, claims, test, w, glm_only=True))
+        errors[w] = policy_errors(run_backtest(policies, claims, test, w, glm_only=True), "window",
+                                  training_window.label(w))
         gc.collect()
     return training_window.resolve(
-        "glm", errors, f"GLM segment WAPE after level correction (count, cost; 3m, 12m), {len(test)} cut-offs "
-        f"{test[0].date()} to {test[-1].date()}")
+        "glm", errors, f"GLM policy-level deviance over a segment-only model (count, cost; 12m), {len(test)} "
+        f"cut-offs {test[0].date()} to {test[-1].date()}")
 
 
 def select_factors(policies: pd.DataFrame, claims: pd.DataFrame, cutoffs: list[pd.Timestamp],
@@ -681,15 +775,15 @@ def select_factors(policies: pd.DataFrame, claims: pd.DataFrame, cutoffs: list[p
     for name, feats in (("general", general), ("general + vehicle", general + VEHICLE_FEATURES)):
         PRICING_FEATURES = feats
         _log(f"rating factors test: {name}")
-        errors[name] = cutoff_errors(run_backtest(policies, claims, test, window, glm_only=True))
+        errors[name] = policy_errors(run_backtest(policies, claims, test, window, glm_only=True), "factors", name)
         gc.collect()
     se = {k: e.std(ddof=1) / np.sqrt(len(e)) for k, e in errors.items()}
     use = errors["general + vehicle"].mean() < errors["general"].mean() - se["general + vehicle"]
     chosen = "general + vehicle" if use else "general"
     pd.DataFrame([{"FACTOR_SET": k, "ERROR": e.mean(), "STD_ERROR": se[k], "N_CUTOFFS": len(e), "CHOSEN": k == chosen}
                   for k, e in errors.items()]).to_csv(path, index=False)
-    _log("rating factors: " + ", ".join(f"{k} {e.mean():.1%} ±{se[k]:.1%}" for k, e in errors.items())
-         + f" -> {chosen}")
+    _log("rating factors (policy-level deviance vs segment-only): "
+         + ", ".join(f"{k} {e.mean():.3f} ±{se[k]:.3f}" for k, e in errors.items()) + f" -> {chosen}")
     PRICING_FEATURES = general + (VEHICLE_FEATURES if use else [])
 
 
@@ -710,6 +804,21 @@ def main():
     window = select_window(policies, claims, cutoffs)
     select_factors(policies, claims, cutoffs, window)
     results = run_backtest(policies, claims, cutoffs, window)
+
+    # Plan H2: does the chosen GLM share each segment's claims out better than car-years alone?
+    final = results.attrs["policy_test"].assign(TEST="chosen", CANDIDATE=training_window.label(window))
+    POLICY_TESTS.append(final)
+    pd.concat(POLICY_TESTS, ignore_index=True).to_csv(FACT_DIR / "fact_glm_policy_test.csv", index=False)
+    # The verdict uses the same latest cut-offs as the gate; all cut-offs are logged beside it
+    latest = final.sort_values("cutoff_date").tail(WINDOW_TEST_CUTOFFS)
+    for label, part in (("latest", latest), ("all", final)):
+        e = part["error"].to_numpy()
+        se = e.std(ddof=1) / np.sqrt(len(e)) if len(e) > 1 else np.nan
+        verdict = ("ranks policies better than the segment-only model" if e.mean() < 1 - se else
+                   "NOT better than the segment-only model: its relativities add nothing measurable")
+        _log(f"policy-level test, chosen GLM, {label} {len(e)} cut-offs: deviance vs segment-only {e.mean():.3f} "
+             f"±{se:.3f}, Gini {part['gini_glm'].mean():.3f} vs {part['gini_segment'].mean():.3f}"
+             + (f" -> {verdict}" if label == "latest" else ""))
 
     out_path = FACT_DIR / "fact_model_performance.csv"
     results.to_csv(out_path, index=False)
