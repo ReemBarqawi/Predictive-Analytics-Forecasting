@@ -132,6 +132,30 @@ the rolling backtest** (12 origins at 3M, 9 at 12M) before it replaces it, and t
 | G5 | Data-break report (step 19) ✅ *2026-11-12* | Each company's data has its own breaks, so the run lists them and the automatic choices they explain, instead of tuning by hand. Flags: a month under 25% of its trailing 12-month median; policies, premium or claims per 1,000 policies moving ±35% in a year; a channel's premium share moving 20 points; a class / policy type's 10 points; policy years after the claims' current year. Only years up to the current year are compared. On this data: 48 findings, e.g. 2009-08..2010-06 gaps (policies −91% in 2010), 2019 Commercial 24% → 8%, 2023 Brokers 5% → 89%, 2024 premium −41% and claims per policy −45%, 2025 (19,970) and 2026 (3) policies after the cut-off. The report sits beside the chosen windows (GLM 3 years, forecast all history). Report only: `fact_data_breaks.csv`, `data_breaks_report.md` |
 | G4 | Manager-review items stay parked in `docs/TASK_PLAN.md` and are reviewed together at the end of the prototype | Unchanged rule |
 
+### H. Model review findings (2026-11-15)
+
+An outside review rated the model about 6/10; each claim below was checked against the code and the Oracle outputs of the
+2026-11-12 full run. The pricing GLM is the weak point and items A–G did not cover it. **H1–H3 come first**: they are the base
+the other GLM items, and the re-tests of A4 and D2, stand on.
+
+| # | Item | Why (verified) | Size | Depends on |
+|---|---|---|---|---|
+| H1 | **GLM exposure in car-years, earned to the data cut-off**: one row per car (the vehicle extract) or per policy with its car count, exposure cut at the cut-off; recent claim counts developed (chain-ladder, as step 07 does) | Exposure today is the policy's full term per policy (`01_prepare_real.py:109`). Policy years 2022–2024: Commercial averages 23 cars a policy (median 9, up to 1,628), Rent a Car 179 (up to 3,598), Private 1.0, so Private's ×0.063 frequency relativity is mostly fleet size. Unrun cover: 48.8% of 2024 policies' exposure and 98.2% of 2025's had not happened by the cut-off; about 11–12% of the 3-year window's exposure, so recent business looks safer than it is | Medium | A2 (vehicles) |
+| H2 | **Policy-level out-of-time test as the GLM gate**: Gini, decile lift and Poisson / Gamma deviance on policies after each cut-off, against a segment-only model (zone × class × policy type). Replaces relativity WAPE in step 04 for every GLM choice (window, factors, form) | Step 04 scores zone × class × policy-type totals, the model's own factors, after level correction; step 09 then replaces each segment's level (`09_profit_optimizer.py:97`). The GLM only ranks policies inside a segment and nothing measures that. 12-month claim-count level bias by cut-off ran from −25% to +227% (+24% pooled) | Medium | — |
+| H3 | **Re-test A4 (window) and D2 (vehicle factors) under H1 + H2** | D2's gain (10.2% ±1.0% → 9.2% ±0.8%) clears its bar by 0.2 points on 6 overlapping cut-offs: weak evidence. The 3-year window "win" (10% vs 40–63%) may come from the unrun exposure and the 2023 channel swap rather than from the book; not separated yet | Small | H1, H2 |
+| H4 | **GLM form**: interactions tested by H2 (first policy type × sum insured), the largest level as the reference, a regularised GLM (glum), a gradient-boosting challenger | Main effects only. Sum-insured frequency relativities are not monotonic: <25k ×1.69, 25–50k ×1.48, 50–100k ×1.38, 100–200k ×1.00, 200–500k ×0.54, >500k ×1.79. Reference levels are alphabetical (Commercial, 100–200k), not the largest | Medium | H2 |
+| H5 | **Use the GLM for a price inside each segment**: a risk-based relativity per policy around the segment's experience level, not one percentage per segment | The optimizer sets one premium change per zone × class × policy type; the GLM only spreads claims inside a segment. Only worth it once H2 shows the GLM ranks better than the segment-only model | Medium | H2, manager |
+| H6 | **Hold out origins in the forecast gate**: choose on earlier origins, report on later ones; or count overlapping origins as fewer independent ones in the standard error | Window, premium method, claims method (C2, C3), large-loss cap, shape and model are all chosen on the same 12 quarterly origins with 12-month horizons, so the ± figures are too small and the reported errors are the winners' own | Small | — |
+| H7 | **Forecast bands by horizon, calibrated to 80%** | `band()` pools every month, so the P10–P90 band is as wide at month 1 as at month 12. Out-of-sample coverage: premium 73.0%, claims 77.0%, loss ratio 74.6%; the 70–90% pass rule is loose | Small | H6 |
+| H8 | **Forecast challengers**: TimesFM's quantiles (`return_quantiles=False` today) and a statistical baseline (ETS, Theta) through the same gate | The only benchmark is seasonal naive / repeating last year | Small | H6 |
+| H9 | **Renewal rates from more than one year of expiries** (credibility over years, or a trend) | Rates come from one 12-month window (2023-11-19 to 2024-11-19); six years of history are computed (9–23% a year) but not used | Small | — |
+| H10 | **Engineering: one shared encoder, tests, model metadata** | The encoder is in three files (`04_backtest.py:124/135`, `02_glm_refit.py:122`, `03_pure_premium.py:71–83`); there are no tests; the pickled GLMs carry no version, training window, cut-off or factor set | Small | — |
+| H11 | **Pin TimesFM**: package version in `requirements.txt` and the checkpoint revision | The `timesfm` line is commented out and the checkpoint is a name with no revision, so a rerun can get another model | Small | — |
+| H12 | **Reserving: the newest-quarter development check** | Actual / expected of the newest accident quarter's cost is 0.946 over 8 past valuations (limit ±5%): the only check flagged for review. Recent claims may be slightly over-estimated, which would make the 106.3% forecast loss ratio a little high | Small | — |
+
+The optimizer's dependence on the assumed price reaction (median change +14% / +22% / +37% in the high / base / low case)
+is confirmed and stays as E3: no quote data, so the low / base / high range is shown and the manager sets the case.
+
 ## 3. Tools and starting code
 
 Free, open-source code to start from and adapt. **Check each licence before it goes into the product.** Nothing here is a
@@ -162,6 +186,8 @@ pretrained pricing model: prices come from the company's own claims.
 3. **A2 vehicle extract**, then **D1–D2** (GLM factors) and **E1–E2** (retention from data, parked for the manager).
 4. **B1–B3 driver premium model**. This is the real fix behind the slider, and it uses E1's renewal rates.
 5. **F** other lines, once F2's checks come back.
+6. **H** review findings (2026-11-15): **H1 exposure → H2 policy-level gate → H3 re-tests** first, then H4–H5 (GLM form and
+   use), H6–H8 (forecast gate, bands, challengers), H9–H12 alongside.
 
 Manager decisions collected from this plan: E1, E2, E4, the targets and expense rates for other lines, and whether the
 Premium tab shows the premium-needed line.
