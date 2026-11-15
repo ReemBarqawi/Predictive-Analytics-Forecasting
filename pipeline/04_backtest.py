@@ -48,6 +48,7 @@ warnings.filterwarnings("ignore")
 # Config
 # =========================================================================
 from settings import S, is_motor, pricing_features  # folders + motor classes for the active data source
+import exposure       # plan H1: car-years
 import timesfm_model  # optional challenger: daily portfolio claims from their own history
 import training_window
 FACT_DIR = S.facts_dir
@@ -72,7 +73,10 @@ BACKTEST_YEARS = 5
 WINDOW_TEST_CUTOFFS = 6
 
 # Only these columns are read: the full fact tables are hundreds of MB on a real book.
-POLICY_COLS = ["POLICY_NO", "POLICY_YEAR", "POLICY_EFFECTIVE_DATE", "POLICY_EXPIRY_DATE"] + PRICING_FEATURES
+POLICY_COLS = ["POLICY_NO", "POLICY_YEAR", "POLICY_EFFECTIVE_DATE", "POLICY_EXPIRY_DATE", "CARS"] + PRICING_FEATURES
+# Plan H1: share of each accident quarter's claims reported by the data's end. The backtest counts the claims
+# known now, so training and forecast car-years are weighted by it (pipeline/exposure.py); set in main().
+SHARES = pd.Series(dtype=float)
 CLAIM_COLS = ["CLM_NO", "POLICY_NO", "POLICY_YEAR", "ACC_DATE", "ULTIMATE_CLAIM", "POLICY_MATCHED"]
 
 # Horizons for the backtest (in days)
@@ -207,6 +211,9 @@ def train_at_cutoff(policies: pd.DataFrame, claims: pd.DataFrame, T: pd.Timestam
     train_pol = train_pol[
         train_pol["EXPOSURE_AT_T_YEARS"] >= MIN_TRAIN_EXPOSURE_DAYS / 365.25
     ].copy()
+    # Plan H1: the offset is car-years run to T, weighted by the claims reported so far (as step 02)
+    train_pol["CAR_YEARS_AT_T"] = exposure.earned_car_years(train_pol, T + pd.Timedelta(days=1), SHARES)
+    train_pol = train_pol[train_pol["CAR_YEARS_AT_T"] > 0]
 
     if len(train_pol) < MIN_TRAIN_POLICIES:
         return None, None
@@ -233,7 +240,7 @@ def train_at_cutoff(policies: pd.DataFrame, claims: pd.DataFrame, T: pd.Timestam
             freq_df["TOTAL_CLAIMS"],
             X_freq_c,
             family=sm.families.Poisson(),   # balanced; see 02_glm_refit.fit_frequency_model
-            offset=np.log(freq_df["EXPOSURE_AT_T_YEARS"]),
+            offset=np.log(freq_df["CAR_YEARS_AT_T"]),
         ).fit()
     except Exception as e:
         _log(f"  cutoff {T.date()}: frequency fit failed ({e})")
@@ -295,7 +302,10 @@ def predict_glm_window(
     active["EXPOSURE_IN_WINDOW_YEARS"] = (
         (overlap_end - overlap_start).dt.days / 365.25
     ).clip(lower=0)
-    active = active[active["EXPOSURE_IN_WINDOW_YEARS"] > 0].copy()
+    # Plan H1: car-years in the window, weighted like the actual claims (those reported so far)
+    active["CAR_YEARS_IN_WINDOW"] = exposure.earned_car_years(active, T_end + pd.Timedelta(days=1), SHARES,
+                                                              start=T_start + pd.Timedelta(days=1))
+    active = active[(active["EXPOSURE_IN_WINDOW_YEARS"] > 0) & (active["CAR_YEARS_IN_WINDOW"] > 0)].copy()
 
     for col in PRICING_FEATURES:
         active[col] = active[col].astype(str).replace({"nan": "Unknown"})
@@ -303,7 +313,7 @@ def predict_glm_window(
     X_f = sm.add_constant(apply_encoder(active, freq_bundle["encoder_meta"]),
                           has_constant="add")
     active["predicted_count"] = freq_bundle["result"].predict(
-        X_f, offset=np.log(active["EXPOSURE_IN_WINDOW_YEARS"].values)
+        X_f, offset=np.log(active["CAR_YEARS_IN_WINDOW"].values)
     )
 
     if sev_bundle is not None:
@@ -689,6 +699,10 @@ def main():
     _log("=" * 60)
 
     policies, claims = load_data()
+    global SHARES
+    SHARES = exposure.reported_count_share()
+    _log(f"  reporting delay: {len(SHARES[SHARES < exposure.COMPLETE_SHARE])} accident quarters not yet fully "
+         f"reported (latest {SHARES.iloc[-1]:.1%})" if len(SHARES) else "  reporting delay: no triangle, claims as complete")
 
     cutoffs = build_cutoffs(claims)
     _log(f"Scheduled {len(cutoffs)} cutoffs: {cutoffs[0].date()} → {cutoffs[-1].date()}")

@@ -27,6 +27,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+import exposure
 from contract import CLAIMS, POLICIES
 from settings import ROOT, S, is_motor, valuation_date
 from zone_mapping import map_office_to_zone, with_office_location
@@ -62,7 +63,8 @@ def check_contract(df: pd.DataFrame, contract: dict, name: str) -> pd.DataFrame:
 
 
 # Columns the real data adds beyond the synthetic template, kept after the template's columns
-EXTRA_COLUMNS = {"fact_policy": ["VEHICLE_AGE_BAND", "DRIVER_AGE_BAND", "CLASS_OF_USE", "PRIOR_CLAIMS"]}
+EXTRA_COLUMNS = {"fact_policy": ["VEHICLE_AGE_BAND", "DRIVER_AGE_BAND", "CLASS_OF_USE", "PRIOR_CLAIMS",
+                                 "CARS", "CAR_YEARS", "CARS_SOURCE"]}   # plan H1 (pipeline/exposure.py)
 
 
 def conform(df: pd.DataFrame, table: str, folder: str = "02_facts") -> pd.DataFrame:
@@ -347,6 +349,7 @@ def main() -> None:
     policies, raw_claims = normalize_keys(policies, check_contract(pd.read_parquet(raw_clm), CLAIMS, "claims"))
     claims = prepare_claims(raw_claims, policies, as_of)
     raw_veh = S.raw_dir / "vehicles.parquet"
+    vehicles = None
     if raw_veh.exists():      # optional: renewal rates (step 17) and vehicle rating factors need it
         key_map = dict(zip(original_keys, policies["POLICY_NO"].to_numpy()))
         vehicles = prepare_vehicles(pd.read_parquet(raw_veh), policies, key_map)
@@ -363,6 +366,13 @@ def main() -> None:
             + ", ".join(f"{k} {v:.1%}" for k, v in policies["PRIOR_CLAIMS"].value_counts(normalize=True).items()))
     else:
         log("vehicles: no extract (sql/vehicles.sql) - renewal rates fall back to config.toml")
+    # Plan H1: cars per policy and car-years, the GLMs' exposure unit
+    policies["CARS"], policies["CARS_SOURCE"] = exposure.car_counts(policies, vehicles)
+    policies["CAR_YEARS"] = policies["CARS"] * policies["EXPOSURE_YEARS"]
+    by_source = policies.groupby("CARS_SOURCE")["CAR_YEARS"].sum() / policies["CAR_YEARS"].sum()
+    log("cars: " + ", ".join(f"{c} {policies.loc[policies['CLASS_DESC'] == c, 'CARS'].mean():.1f}"
+                             for c in sorted(policies["CLASS_DESC"].dropna().unique()))
+        + " average per policy; car-years from " + ", ".join(f"{k} {v:.1%}" for k, v in by_source.items()))
 
     ep = B.build_earned_premium(policies)
     triangles = B.build_triangles(claims)

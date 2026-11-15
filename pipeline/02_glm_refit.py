@@ -46,6 +46,7 @@ import statsmodels.api as sm
 # Config — everything you might want to tweak lives here
 # =========================================================================
 from settings import S, pricing_features, is_motor  # folders + motor classes for the active data source
+import exposure
 import training_window
 FACT_DIR = S.facts_dir
 MODELS_DIR = S.models_dir
@@ -57,6 +58,10 @@ PRICING_FEATURES = pricing_features()
 
 # Group any categorical level with fewer than this many rows into 'Other'
 RARE_THRESHOLD = 30
+
+# Plan H1: the GLMs learn from car-years already run, to the end of the data's valuation quarter, each
+# accident quarter weighted by the share of its claims already reported (pipeline/exposure.py)
+VALUATION_END = exposure.valuation_end()
 
 
 def _log(msg: str) -> None:
@@ -93,7 +98,11 @@ def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
         policies = policies[pd.to_datetime(policies["POLICY_EFFECTIVE_DATE"]) > since].copy()
         claims = claims[pd.to_datetime(claims["ACC_DATE"]) > since]
         claims = claims.merge(policies[["POLICY_NO", "POLICY_YEAR"]].drop_duplicates(), on=["POLICY_NO", "POLICY_YEAR"])
-    _log(f"  training window: {training_window.label(window)}")
+    if "CARS" not in policies.columns:
+        raise SystemExit("fact_policy has no CARS column (plan H1): rerun step 01")
+    # Plan H1: claims and exposure cover the same days, to the end of the data's valuation quarter
+    claims = claims[pd.to_datetime(claims["ACC_DATE"]) < VALUATION_END]
+    _log(f"  training window: {training_window.label(window)}; exposure and claims to {VALUATION_END.date()}")
     _log(f"  motor policies: {len(policies):,}")
     _log(f"  matched motor claims: {len(claims):,}")
     return policies, claims
@@ -189,8 +198,15 @@ def prepare_frequency_dataset(policies: pd.DataFrame, claims: pd.DataFrame) -> p
     freq = policies.merge(claim_counts, on=["POLICY_NO", "POLICY_YEAR"], how="left")
     freq["TOTAL_CLAIMS"] = freq["TOTAL_CLAIMS"].fillna(0).astype(int)
 
-    # Positive exposure only
-    freq = freq[freq["EXPOSURE_YEARS"] > 0].copy()
+    # Plan H1: car-years run to the valuation end, weighted by the claims reported so far; positive only
+    for c in ("POLICY_EFFECTIVE_DATE", "POLICY_EXPIRY_DATE"):
+        freq[c] = pd.to_datetime(freq[c])
+    shares = exposure.reported_count_share()
+    freq["FIT_CAR_YEARS"] = exposure.earned_car_years(freq, VALUATION_END, shares)
+    _log(f"  car-years: {freq['CAR_YEARS'].sum():,.0f} over the policies' terms, "
+         f"{exposure.earned_car_years(freq, VALUATION_END).sum():,.0f} run to {VALUATION_END.date()}, "
+         f"{freq['FIT_CAR_YEARS'].sum():,.0f} after reporting delay")
+    freq = freq[freq["FIT_CAR_YEARS"] > 0].copy()
 
     # Cast features to string (SUM_INSURED_BAND arrives as categorical)
     for col in PRICING_FEATURES:
@@ -198,7 +214,7 @@ def prepare_frequency_dataset(policies: pd.DataFrame, claims: pd.DataFrame) -> p
 
     _log(f"  frequency rows: {len(freq):,}")
     _log(f"  policies with claims: {(freq['TOTAL_CLAIMS'] > 0).sum():,}")
-    _log(f"  observed claim rate: {freq['TOTAL_CLAIMS'].sum() / freq['EXPOSURE_YEARS'].sum():.4f} claims/year")
+    _log(f"  observed claim rate: {freq['TOTAL_CLAIMS'].sum() / freq['FIT_CAR_YEARS'].sum():.4f} claims per car-year")
 
     return freq
 
@@ -217,7 +233,7 @@ def fit_frequency_model(freq: pd.DataFrame) -> dict:
     X, encoder_meta = encode_features(freq, PRICING_FEATURES)
     X_const = sm.add_constant(X)
     y = freq["TOTAL_CLAIMS"]
-    offset = np.log(freq["EXPOSURE_YEARS"])
+    offset = np.log(freq["FIT_CAR_YEARS"])          # plan H1: frequency per car-year
 
     model = sm.GLM(
         y,
@@ -241,7 +257,7 @@ def fit_frequency_model(freq: pd.DataFrame) -> dict:
         "feature_cols": PRICING_FEATURES,
         "family": "Poisson",
         "link": "log",
-        "offset": "log(EXPOSURE_YEARS)",
+        "offset": "log(car-years run, reporting-adjusted)",
         "target": "TOTAL_CLAIMS",
         "n_train": len(freq),
         "aic": float(result.aic),

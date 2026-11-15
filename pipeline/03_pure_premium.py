@@ -146,12 +146,13 @@ def score_policies(policies: pd.DataFrame, freq_bundle: dict, sev_bundle: dict) 
     X_sev_c  = sm.add_constant(X_sev,  has_constant="add")
 
     _log("Predicting frequency (per-year rate and period count)")
-    # offset = 0 → predict annualized rate (per 1 year of exposure)
-    # offset = log(exposure_years) → predict count over the actual policy period
-    freq_per_year = freq_bundle["result"].predict(X_freq_c, offset=np.zeros(len(X_freq_c)))
-    freq_period   = freq_bundle["result"].predict(
-        X_freq_c, offset=np.log(policies["EXPOSURE_YEARS"].values)
-    )
+    # Plan H1: the GLM's rate is per car-year. A policy's yearly frequency = that rate x its cars, so
+    # EXPOSURE_YEARS x expected_frequency_per_year (steps 05, 07, 09) = its car-years x the rate.
+    if "CARS" not in policies.columns:
+        raise SystemExit("fact_policy has no CARS column (plan H1): rerun step 01")
+    freq_per_car = freq_bundle["result"].predict(X_freq_c, offset=np.zeros(len(X_freq_c)))
+    freq_per_year = freq_per_car * policies["CARS"].to_numpy()
+    freq_period = freq_per_car * policies["CAR_YEARS"].to_numpy()
 
     _log("Predicting severity (per claim, ULTIMATE_CLAIM)")
     sev_pred = sev_bundle["result"].predict(X_sev_c)
@@ -178,6 +179,9 @@ def score_policies(policies: pd.DataFrame, freq_bundle: dict, sev_bundle: dict) 
         out["charged_premium"] / out["pure_premium_period"].replace(0, np.nan),
         np.nan,
     )
+
+    out["CARS"] = policies["CARS"].to_numpy()                      # plan H1: new columns go last
+    out["expected_frequency_per_car_year"] = np.asarray(freq_per_car)
 
     _log(f"  scored {len(out):,} policies")
     _log(f"  avg pure premium (annualized): SAR {out['pure_premium_per_year'].mean():,.0f}")
