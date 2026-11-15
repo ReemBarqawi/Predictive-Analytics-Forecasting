@@ -83,6 +83,8 @@ def main() -> None:
            .fillna({"CLAIMS": 0, "INCURRED": 0.0, "CAPPED": 0.0}))
     exp["USED"] = exp["YEAR_STATUS"] == "used"
     exp["LOSS_RATIO"] = np.where(exp["USED"] & (exp["PREMIUM_USED"] > 0), exp["INCURRED"] / exp["PREMIUM_USED"], np.nan)
+    codes = q.groupby(CLASS)["CLASS_NO"].first().reset_index()        # the warehouse's class code, last
+    exp = exp.merge(codes, on=CLASS, how="left")
     exp.to_csv(S.facts_dir / "fact_line_experience.csv", index=False, encoding="utf-8")
 
     e = exp[exp["USED"]]
@@ -132,7 +134,8 @@ def main() -> None:
                     "EXCESS_LOAD", "LOSS_RATIO", "CREDIBILITY_Z", "COMPLEMENT_LR", "COMPLEMENT_SOURCE", "CREDIBLE_LR",
                     "COMMISSION_RATIO", "ADMIN_RATIO", "COMBINED_RATIO", "TARGET_COMBINED_RATIO", "INDICATED_CHANGE",
                     "DEVELOPMENT", "BASIS"]
-    out = out[cols].rename(columns={"CAPPED": "INCURRED_CAPPED", "CAP": "LARGE_LOSS_CAP"}).sort_values(CLASS)
+    out = out.merge(codes, on=CLASS, how="left")
+    out = out[cols + ["CLASS_NO"]].rename(columns={"CAPPED": "INCURRED_CAPPED", "CAP": "LARGE_LOSS_CAP"}).sort_values(CLASS)
     out.to_csv(S.facts_dir / "fact_line_pricing.csv", index=False, encoding="utf-8")
 
     S.reports_dir.mkdir(parents=True, exist_ok=True)

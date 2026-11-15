@@ -64,7 +64,8 @@ def check_contract(df: pd.DataFrame, contract: dict, name: str) -> pd.DataFrame:
 
 # Columns the real data adds beyond the synthetic template, kept after the template's columns
 EXTRA_COLUMNS = {"fact_policy": ["VEHICLE_AGE_BAND", "DRIVER_AGE_BAND", "CLASS_OF_USE", "PRIOR_CLAIMS",
-                                 "CARS", "CAR_YEARS", "CARS_SOURCE"]}   # plan H1 (pipeline/exposure.py)
+                                 "CARS", "CAR_YEARS", "CARS_SOURCE"],   # plan H1 (pipeline/exposure.py)
+                 "dim_business_class": ["DEPARTMENT"]}           # line of business, for motor and the other lines
 
 
 def conform(df: pd.DataFrame, table: str, folder: str = "02_facts") -> pd.DataFrame:
@@ -309,6 +310,27 @@ def prepare_claims(raw: pd.DataFrame, policies: pd.DataFrame, as_of: pd.Timestam
 
 
 # ---------------------------------------------------------------------------- dims
+def business_classes(p: pd.DataFrame) -> pd.DataFrame:
+    """Every class of business with its department (line of business): motor's from the policies, the other
+    lines' from sql/lines_policies.sql when it was extracted, so one table filters motor and the other lines.
+    The warehouse's class numbers are unique across departments. A department the extract does not give
+    (an extract from before the column was added) shows as "Unknown"."""
+    dept = p["DEPARTMENT_NAME"] if "DEPARTMENT_NAME" in p else pd.Series(np.nan, index=p.index)
+    parts = [p[["CLASS_NO", "CLASS_DESC"]].assign(DEPARTMENT=dept)]
+    lines = S.raw_dir / "lines_policies.parquet"
+    if lines.exists():
+        parts.append(pd.read_parquet(lines, columns=["CLASS_NO", "CLASS_DESC", "DEPARTMENT"]))
+    d = pd.concat(parts, ignore_index=True).dropna(subset=["CLASS_NO"])
+    d["CLASS_NO"] = pd.to_numeric(d["CLASS_NO"], errors="coerce").astype("Int64")
+    d["DEPARTMENT"] = d["DEPARTMENT"].fillna("Unknown")
+    d = d.groupby(["CLASS_NO", "CLASS_DESC"], as_index=False)["DEPARTMENT"].agg(
+        lambda s: s.mode().iloc[0] if len(s.mode()) else "Unknown")
+    if d["CLASS_DESC"].duplicated().any():
+        log("WARNING dim_business_class: a class description is used by two class numbers: "
+            + ", ".join(d.loc[d["CLASS_DESC"].duplicated(keep=False), "CLASS_DESC"].unique()))
+    return d.sort_values("CLASS_NO").reset_index(drop=True)
+
+
 def build_dims(p: pd.DataFrame, as_of: pd.Timestamp) -> dict[str, pd.DataFrame]:
     if "OFFICE_NAME" not in p:
         p = p.assign(OFFICE_NAME=p["ZONE"])
@@ -317,7 +339,7 @@ def build_dims(p: pd.DataFrame, as_of: pd.Timestamp) -> dict[str, pd.DataFrame]:
     dates = pd.date_range(start, end, freq="D")
     return {
         "dim_zone": with_office_location(p[["OFFICE_NAME", "CITY", "REGION", "ZONE"]].drop_duplicates()),
-        "dim_business_class": p[["CLASS_NO", "CLASS_DESC"]].drop_duplicates(),
+        "dim_business_class": business_classes(p),
         "dim_product": p[["POLICY_TYPE_NO", "POLICY_TYPE_DESC"]].drop_duplicates(),
         "dim_date": pd.DataFrame({
             "DATE": dates, "YEAR": dates.year, "QUARTER": dates.quarter, "MONTH": dates.month,

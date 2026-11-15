@@ -203,7 +203,10 @@ def main() -> None:
                 "POLICIES_LEFT_OUT", "CLAIMS", "CLAIMS_USED", "INCURRED", "INCURRED_USED", "PAID", "MATCHED_KEY",
                 "MATCHED_NUMBER_YEAR_CLASS", "MATCHED_UNMATCHED", "PRIOR_MEDIAN_POLICIES", "INCOMPLETE_SIGN",
                 "CHECK_VERY_LARGE"]
-    q = q[cols].sort_values(k).reset_index(drop=True)
+    # The warehouse's class code, last (dim_business_class: one class table for motor and the other lines)
+    codes = p.groupby(CLASS)["CLASS_NO"].agg(lambda s: s.mode().iloc[0]).rename("CLASS_NO").reset_index()
+    q = q.merge(codes, on=CLASS, how="left")
+    q = q[cols + ["CLASS_NO"]].sort_values(k).reset_index(drop=True)
     q.to_csv(S.facts_dir / "fact_line_quality.csv", index=False, encoding="utf-8")
     p.to_parquet(S.facts_dir / "fact_line_policy.parquet", index=False)
     c.to_parquet(S.facts_dir / "fact_line_claim.parquet", index=False)

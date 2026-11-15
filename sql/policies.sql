@@ -21,7 +21,9 @@ SELECT
     MAX(u.VUW_AGENT_NO)                     AS AGENT_NO,
     MAX(u.AGENT_NAME)                       AS AGENT_NAME,
     SUM(u.VUW_GROSS_PREM)                   AS GROSS_PREMIUM,
-    SUM(u.VUW_NET_PREM)                     AS NET_PREMIUM
+    SUM(u.VUW_NET_PREM)                     AS NET_PREMIUM,
+    MAX(u.VUW_DEPT_NO)                      AS DEPARTMENT_NO,     -- the line of business, as lines_policies.sql
+    MAX(u.VUW_DEPT_DESC)                    AS DEPARTMENT_NAME
 FROM   DTWCDE.V_UW_DATA u
 WHERE  u.VUW_DEPT_DESC = 'Motor'
   AND  u.VUW_POL_YEAR >= {first_policy_year}   -- [oracle] first_policy_year in config.toml (0 = all history)
