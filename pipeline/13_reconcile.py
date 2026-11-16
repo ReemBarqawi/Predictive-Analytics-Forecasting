@@ -221,6 +221,30 @@ if (F / "fact_line_quality.csv").exists():
         none = lpr[lpr["STATUS"] == "no claims data"]
         check_true("other lines", "No claims data: no loss ratio or price",
                    none[["LOSS_RATIO", "INDICATED_CHANGE"]].isna().all().all(), f"{len(none)} class(es)")
+    if (F / "fact_line_forecast.csv").exists():                   # step 22, the Forecast page for these lines
+        lf = pd.read_csv(F / "fact_line_forecast.csv")
+        lm = pd.read_csv(F / "fact_line_forecast_method.csv")
+        fc = lf[lf["PERIOD_TYPE"] == "forecast"].sort_values("MONTH_DATE")
+        on = set(lm.loc[lm["STATUS"].str.startswith("forecast"), "CLASS_DESC"])
+        check_true("other lines forecast", "Every class with a forecast has 12 months at each horizon, none without",
+                   set(fc["CLASS_DESC"]) == on and all(
+                       (fc[fc["CLASS_DESC"] == c_].groupby("FORECAST_HORIZON").size().to_dict() == {"3M": 3, "6M": 6, "12M": 12})
+                       for c_ in on), f"{len(on)} classes")
+        for col in ("FORECAST_PREMIUM", "FORECAST_CLAIMS"):
+            first = {h: fc[fc["FORECAST_HORIZON"] == "12M"].groupby("CLASS_DESC").head(int(h[:-1]))[col].sum()
+                     for h in ("3M", "6M")}
+            for h, v in first.items():
+                check("other lines forecast", f"{h} card = first {h[:-1]} months of the 12-month line ({col})",
+                      fc.loc[fc["FORECAST_HORIZON"] == h, col].sum(), v)
+        check("other lines forecast", "12M forecast premium = method table", fc.loc[fc["FORECAST_HORIZON"] == "12M",
+              "FORECAST_PREMIUM"].sum(), lm["PREMIUM_12M"].sum())
+        b = fc.dropna(subset=["PREMIUM_P10", "PREMIUM_P90"])
+        check_true("other lines forecast", "Every forecast month inside its premium band",
+                   ((b["PREMIUM_P10"] <= b["FORECAST_PREMIUM"] + 1e-6) & (b["FORECAST_PREMIUM"] <= b["PREMIUM_P90"] + 1e-6)).all(),
+                   f"{len(b)} months")
+        cr = lm[lm["CLAIMS_METHOD"] == "credibility loss ratio"]
+        check("other lines forecast", "Credibility-method claims = premium x loss ratio",
+              cr["CLAIMS_12M"].sum(), (cr["PREMIUM_12M"] * cr["LOSS_RATIO"]).sum())
 
 table = pd.DataFrame(results)
 table.to_csv(F / "fact_reconciliation.csv", index=False, encoding="utf-8")

@@ -109,9 +109,11 @@ def _expected_share(p: pd.DataFrame, share: dict[str, pd.Series], last_q: pd.Per
     return total
 
 
-def develop(p: pd.DataFrame, c: pd.DataFrame) -> pd.DataFrame:
+def develop(p: pd.DataFrame, c: pd.DataFrame, policies: bool = False):
     """Ultimate claims and counts per KEY for the kept policies `p` (with ZONE) and kept claims `c` (with ZONE).
-    Columns: PREMIUM, RECORDED, RECORDED_TO_VAL, ULTIMATE, COUNT, ULTIMATE_COUNT, SHARE_COST, ELR, BASIS."""
+    Columns: PREMIUM, RECORDED, RECORDED_TO_VAL, ULTIMATE, COUNT, ULTIMATE_COUNT, SHARE_COST, ELR, BASIS.
+    policies=True also returns `p` with each policy's still-to-come claims and count (IBNR, IBNR_COUNT: premium x
+    its class's expected rate x the share of its cover not yet recorded), for monthly views (step 22)."""
     cutoff, cur = current_year()
     rec = c.groupby(KEY).agg(RECORDED=("INCURRED", "sum"), COUNT=("CLM_NO", "size"))
     out = p.groupby(KEY).agg(PREMIUM=("TOTAL_PREMIUM", "sum")).join(rec, how="outer").fillna(0.0)
@@ -122,7 +124,8 @@ def develop(p: pd.DataFrame, c: pd.DataFrame) -> pd.DataFrame:
             _log("no class's triangle reconciles with its claims: not developed")
         out["RECORDED_TO_VAL"], out["ULTIMATE"], out["ULTIMATE_COUNT"] = out["RECORDED"], out["RECORDED"], out["COUNT"]
         out["SHARE_COST"], out["ELR"], out["BASIS"] = 1.0, np.nan, "incurred to date, not developed (no triangles)"
-        return out.reset_index()
+        out = out.reset_index()
+        return (out, p.assign(IBNR=0.0, IBNR_COUNT=0.0)) if policies else out
     p = p.copy()
     for m in ("COST", "COUNT"):
         p[f"SHARE_{m}"] = _expected_share(p, shares[m], last_q) * p["TOTAL_PREMIUM"]
@@ -169,4 +172,13 @@ def develop(p: pd.DataFrame, c: pd.DataFrame) -> pd.DataFrame:
     y = out.groupby("POLICY_YEAR")[["PREMIUM", "RECORDED", "ULTIMATE"]].sum()
     _log(f"valuation {last_q}: " + ", ".join(f"{yr} {r.RECORDED / 1e6:,.1f}M -> {r.ULTIMATE / 1e6:,.1f}M"
                                              for yr, r in y.loc[cur - 3:cur].iterrows()))
-    return out.drop(columns=["USED_C", "USED_N"])
+    out = out.drop(columns=["USED_C", "USED_N"])
+    if not policies:
+        return out
+    rate = out.groupby(cls_key)[["ELR", "ECR"]].first()
+    p = p.join(rate, on=cls_key).fillna({"ELR": 0.0, "ECR": 0.0})
+    prem = p["TOTAL_PREMIUM"]
+    for m, r, col in (("COST", "ELR", "IBNR"), ("COUNT", "ECR", "IBNR_COUNT")):
+        share = (p[f"SHARE_{m}"] / prem.where(prem > 0)).fillna(1.0).clip(0, 1)
+        p[col] = np.where(prem > 0, prem * p[r] * (1 - share), 0.0)
+    return out, p.drop(columns=["SHARE_COST", "SHARE_COUNT", "ELR", "ECR"])

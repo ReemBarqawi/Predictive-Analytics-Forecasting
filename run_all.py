@@ -47,6 +47,7 @@ MODEL_STEPS = [
     (19, "19_data_breaks.py"),       # report only: changes in the data and the training windows chosen
     (20, "20_lines_quality.py"),     # other lines: quality rules (skips itself without their extract)
     (21, "21_lines_pricing.py"),     # other lines: credibility loss-ratio price indication
+    (22, "22_lines_forecast.py"),    # other lines: forecast per class for the Forecast page
 ]
 GATE = (13, "13_reconcile.py")      # always closes a run: a failure means do not refresh the report
 # Only after the gate passed, on a full run or when asked for: load the results for the paginated

@@ -77,6 +77,7 @@ def run(name: str, workdir: Path | None = None) -> tuple[str, Path, str]:
 
 
 DEVELOPMENT_TOLERANCE = 0.25    # developed current-year claims of the other lines within this of the expected
+FORECAST_TOLERANCE = 0.30       # their next-12-month forecast claims within this of the expected
 
 
 def lines_development_problem(work: Path) -> str | None:
@@ -104,6 +105,20 @@ def lines_development_problem(work: Path) -> str | None:
         return f"no expected claims ({msg})"
     if abs(dev - want) >= abs(rec - want) or abs(dev - want) / want > DEVELOPMENT_TOLERANCE:
         return f"other lines' development is off: {msg}"
+    # Forecast (step 22): next year's claims of the forecast classes against the same expected claims (the company
+    # is made with the same volume and claims every year)
+    fc_file = work / "out" / "02_facts" / "fact_line_forecast.csv"
+    if not fc_file.exists():
+        return f"no {fc_file.name}"
+    fc = pd.read_csv(fc_file)
+    fc = fc[fc["FORECAST_HORIZON"] == "12M"]
+    exp = pd.read_parquet(truth_file)
+    exp = exp[(exp["POLICY_YEAR"] == year) & exp["CLASS_DESC"].isin(set(fc["CLASS_DESC"]))]["EXPECTED_CLAIMS"].sum()
+    got = fc["FORECAST_CLAIMS"].sum()
+    msg = f"next 12 months: expected {exp:,.0f}, forecast {got:,.0f} in {fc['CLASS_DESC'].nunique()} classes"
+    print(f"other lines' forecast {msg}")
+    if exp <= 0 or abs(got - exp) / exp > FORECAST_TOLERANCE:
+        return f"other lines' forecast is off: {msg}"
     return None
 
 
