@@ -113,7 +113,7 @@ def make_company(raw_dir: Path, years: tuple[int, int] = (2017, 2024), classes: 
     if vehicles:
         files["vehicles"] = pd.DataFrame(veh_rows)
     if lines:
-        files.update(_lines(years, cutoff, rng))
+        files.update(_lines(years, cutoff, rng, triangles))
     for name, df in files.items():
         df.to_parquet(raw_dir / f"{name}.parquet", index=False)
     return files
@@ -157,7 +157,10 @@ def _triangles(claims: pd.DataFrame, cutoff: pd.Timestamp) -> dict[str, pd.DataF
     return {"claims_dev_incurred": pd.DataFrame(inc), "claims_dev_reported": pd.DataFrame(rep)}
 
 
-def _lines(years: tuple[int, int], cutoff: pd.Timestamp, rng) -> dict[str, pd.DataFrame]:
+def _lines(years: tuple[int, int], cutoff: pd.Timestamp, rng, triangles: bool) -> dict[str, pd.DataFrame]:
+    """Other lines' policies and claims. With triangles: their development triangles too, the claims as known at
+    the cut-off, and the truth for the test that development recovers it (_truth_lines: the expected claims the
+    company is made with, and the claims drawn for every cover, also after the cut-off)."""
     pol, clm = [], []
     n = 0
     dept_no = {"FGA": 3, "Marine": 2, "Medical Dept": 8}
@@ -177,8 +180,6 @@ def _lines(years: tuple[int, int], cutoff: pd.Timestamp, rng) -> dict[str, pd.Da
                                 "COMMISSION": round(prem * 0.12, 2), "SUM_INSURED": prem * 500, "ROWS_IN_SOURCE": 1})
                     for _ in range(rng.poisson(cpp)):
                         acc = eff + pd.Timedelta(days=int(rng.integers(0, 365)))
-                        if acc > cutoff:
-                            continue
                         amt = float(rng.gamma(1.2, sev / 1.2))
                         clm.append({"CLM_NO": f"{pno}-{len(clm) + 1}", "POLICY_NO": pno, "POLICY_YEAR": year,
                                     "POLICY_NUMBER": n, "DEPARTMENT": dept, "CLASS_NO": code, "CLASS_DESC": cls,
@@ -188,4 +189,20 @@ def _lines(years: tuple[int, int], cutoff: pd.Timestamp, rng) -> dict[str, pd.Da
     claims = pd.DataFrame(clm, columns=["CLM_NO", "POLICY_NO", "POLICY_YEAR", "POLICY_NUMBER", "DEPARTMENT", "CLASS_NO",
                                         "CLASS_DESC", "POLICY_TYPE_DESC", "ACC_DATE", "CLOSE_DATE", "CLM_YEAR",
                                         "ACC_TYPE_DESC", "TOTAL_EST", "TOTAL_PAID", "RECOVERY_AMT"])
-    return {"lines_policies": pd.DataFrame(pol), "lines_claims": claims}
+    out = {"lines_policies": pd.DataFrame(pol)}
+    if triangles:
+        drawn = claims.groupby(["DEPARTMENT", "CLASS_DESC", "POLICY_YEAR"]).agg(
+            TRUE_CLAIMS=("TOTAL_EST", "sum"), TRUE_COUNT=("CLM_NO", "size"))
+        expected = pd.DataFrame([{"DEPARTMENT": d, "CLASS_DESC": c, "POLICY_YEAR": y, "EXPECTED_CLAIMS": n * cpp * sev}
+                                 for d, cl in LINES.items() for c, (_, n, _, cpp, sev) in cl.items()
+                                 for y in range(years[0], years[1] + 1)])
+        out["_truth_lines"] = expected.join(drawn, on=["DEPARTMENT", "CLASS_DESC", "POLICY_YEAR"]).fillna(0.0)
+    claims = claims[claims["ACC_DATE"] <= cutoff]
+    if triangles:
+        tri = _triangles(claims.assign(_COB=claims["CLASS_NO"], _TYPE=claims["DEPARTMENT"]), cutoff)
+        for name, t in tri.items():
+            t = t.rename(columns={"COB": "CLASS_NO", "POLICY_TYPE": "DEPARTMENT"}).drop(columns=["PARTY"], errors="ignore")
+            out[f"lines_{name}"] = t[["DEPARTMENT", "CLASS_NO"] + [c for c in t.columns if c not in ("DEPARTMENT", "CLASS_NO")]]
+        claims = _as_known_at(claims, cutoff, rng)
+    out["lines_claims"] = claims.reset_index(drop=True)
+    return out

@@ -490,24 +490,85 @@ def origin_errors(bt: pd.DataFrame) -> np.ndarray:
     return np.array(out)
 
 
-def select_window(history: pd.DataFrame, cohorts: pd.DataFrame, models: list[str]) -> int | None:
+def select_window(history: pd.DataFrame, cohorts: pd.DataFrame, models: list[str], origins: list | None = None,
+                  record: bool = True) -> int | None:
     """
     How many years of history the forecast learns from (pipeline/training_window.py): every
-    candidate forecasts from the same latest WINDOW_TEST_ORIGINS origins, seeing only its own
-    window before each, and is scored per origin by origin_errors. Seasonal naive uses one year
-    whatever the window, so the test uses the model.
+    candidate forecasts from the same latest WINDOW_TEST_ORIGINS origins (or the given ones), seeing only
+    its own window before each, and is scored per origin by origin_errors. Seasonal naive uses one year
+    whatever the window, so the test uses the model. record=False (the holdout check) applies the same
+    rule without writing the decision.
     """
     model = models[0]
-    origins = backtest_origins(history)[-WINDOW_TEST_ORIGINS:]
+    origins = backtest_origins(history)[-WINDOW_TEST_ORIGINS:] if origins is None else origins
     errors = {}
     for w in training_window.candidates(len(history) / 12):
         months = None if w is None else 12 * w
         if months is not None and months < MIN_CONTEXT_MONTHS:
             continue
         errors[w] = origin_errors(rolling_backtest(history, cohorts, [model], months, origins))
+    if not record:
+        setting = training_window.configured()
+        return training_window.choose(errors)[0] if setting == "auto" else setting
     return training_window.resolve(
         "forecast", errors, f"{LABEL[model]}: error of 3/6/12-month totals and 12-month loss ratio, "
         f"latest {len(origins)} origins")
+
+
+# Plan H6: the latest HOLDOUT_ORIGINS origins with 12 months of actuals are kept out of every choice; the whole
+# choice is made again on the WINDOW_TEST_ORIGINS origins whose 12 months end before the first of them, and the
+# result is scored on the held-out ones. Method constant.
+HOLDOUT_ORIGINS = 4
+
+
+def holdout_check(full_history: pd.DataFrame, cohorts: pd.DataFrame, models: list[str], split, live: dict) -> dict:
+    """
+    Plan H6: honest accuracy. Every choice the live run makes (training window, model, premium method, large-loss
+    cap, claims method) is made again on earlier origins only, and the configuration it picks is scored on the
+    latest origins, which no choice saw; repeating last year is scored on the same origins. The live run's own
+    error on the origins it chose on is reported beside it: the gap shows how flattering the in-sample figure is.
+    """
+    import copy
+    last = full_history.index[-1]
+    full12 = [o for o in backtest_origins(full_history) if o + max(FORECAST_HORIZONS) <= last]
+    hold = full12[-HOLDOUT_ORIGINS:]
+    if len(hold) < 2:
+        return {"STATUS": "not enough history for a holdout"}
+    chooser = [o for o in backtest_origins(full_history) if o + max(FORECAST_HORIZONS) <= hold[0]][-WINDOW_TEST_ORIGINS:]
+    if len(chooser) < 4:
+        return {"STATUS": f"only {len(chooser)} origins before the holdout: not enough to choose on"}
+    _log(f"holdout: choosing again on {chooser[0]}..{chooser[-1]}, scoring on {hold[0]}..{hold[-1]}")
+    window = select_window(full_history, cohorts, models, chooser, record=False)
+    months = None if window is None else 12 * window
+    bt = rolling_backtest(full_history, cohorts, models, months, chooser)
+    model = score(bt).groupby("MODEL")["WAPE"].mean().idxmin()
+    drivers, premium_method = None, "total"
+    if split is not None and split.available:
+        d = copy.copy(split)
+        premium_method, _ = select_premium_method(full_history, cohorts, model, months, bt, d)
+        d.by_channel = premium_method == "channels"
+        drivers = d if premium_method != "total" else None
+        if drivers is not None:
+            bt = rolling_backtest(full_history, cohorts, models, months, chooser, drivers)
+    large_loss, _ = select_large_loss(full_history, cohorts, model, months, chooser, drivers, bt)
+    if large_loss:
+        bt = rolling_backtest(full_history, cohorts, models, months, chooser, drivers, True)
+    claims, _ = select_claims_method(full_history, cohorts, model, months, chooser, drivers, large_loss, bt)
+    test = rolling_backtest(full_history, cohorts, sorted({model, "seasonal_naive"}), months, hold, drivers,
+                            large_loss, claims)
+    err = {m: origin_errors(test[test["MODEL"] == m]) for m in test["MODEL"].unique()}
+    out = {"STATUS": "ok", "CHOSEN_ON": f"{chooser[0]}..{chooser[-1]}", "HOLDOUT": f"{hold[0]}..{hold[-1]}",
+           "N_HOLDOUT": len(hold), "WINDOW": training_window.label(window), "MODEL": LABEL[model],
+           "PREMIUM_METHOD": premium_method, "LARGE_LOSS": "capped + load" if large_loss else "raw claims",
+           "CLAIMS_METHOD": CLAIMS_METHODS[claims],
+           "HOLDOUT_ERROR": float(np.mean(err[model])), "NAIVE_HOLDOUT_ERROR": float(np.mean(err["seasonal_naive"])),
+           "LIVE_IN_SAMPLE_ERROR": live["IN_SAMPLE_ERROR"], "LIVE_CONFIG": live["CONFIG"],
+           "SAME_CONFIG": live["CONFIG"] == f"{training_window.label(window)} / {LABEL[model]} / {premium_method} / "
+                                             f"{'capped + load' if large_loss else 'raw claims'} / {CLAIMS_METHODS[claims]}"}
+    _log(f"holdout: chosen on earlier origins: {out['WINDOW']} / {out['MODEL']} / {premium_method} / {out['LARGE_LOSS']} / "
+         f"{out['CLAIMS_METHOD']}; error on the {len(hold)} held-out origins {out['HOLDOUT_ERROR']:.1%} vs repeating "
+         f"last year {out['NAIVE_HOLDOUT_ERROR']:.1%} (the live run's in-sample error {out['LIVE_IN_SAMPLE_ERROR']:.1%})")
+    return out
 
 
 def month_shares(series: pd.Series, origin: pd.Period) -> pd.Series | None:
@@ -1190,6 +1251,14 @@ def main() -> None:
     b = bt[bt["MODEL"] == model]
     monthly_wape = float((b["PRED_CLAIMS_COST"] - b["ACT_CLAIMS_COST"]).abs().sum() / b["ACT_CLAIMS_COST"].sum())
     _log(f"selected: {model}")
+    # Plan H6: the same choices made on earlier origins only, scored on the latest ones (honest accuracy)
+    live = {"IN_SAMPLE_ERROR": float(np.mean(origin_errors(b))),
+            "CONFIG": f"{training_window.label(window)} / {LABEL[model]} / {premium_method} / "
+                      f"{'capped + load' if large_loss else 'raw claims'} / {CLAIMS_METHODS[claims_method]}"}
+    holdout = holdout_check(full_history, cohorts, models, split, live)
+    pd.DataFrame([holdout]).to_csv(FACTS_DIR / "fact_forecast_holdout.csv", index=False, encoding="utf-8")
+    if holdout.get("STATUS") != "ok":
+        _log(f"holdout: {holdout['STATUS']}")
 
     fc = forecast(model, history, cohorts, max(FORECAST_HORIZONS), drivers, large_loss, claims_method)
     if drivers is not None:

@@ -125,6 +125,22 @@ EXTRACTS = {
                      "TOTAL_PAID"],
         "recommended": ["POLICY_NUMBER", "POLICY_TYPE_DESC", "ACC_DATE", "CLOSE_DATE", "RECOVERY_AMT"],
     },
+    "lines_claims_dev_incurred": {
+        "needed": False, "what": "other lines' incurred triangle (department x class x accident x development quarter)",
+        "without": "other lines' recent claims are not developed: their latest years' loss ratios are understated",
+        "key": ["DEPARTMENT", "CLASS_NO", "ACC_QUARTER", "DEV_QUARTER"],
+        "types": {"DEPARTMENT": "text", "CLASS_NO": "int", "ACC_QUARTER": "date", "DEV_QUARTER": "int",
+                  "INCURRED_CHANGE": "number"},
+        "required": ["DEPARTMENT", "ACC_QUARTER", "DEV_QUARTER", "INCURRED_CHANGE"], "recommended": ["CLASS_NO"],
+    },
+    "lines_claims_dev_reported": {
+        "needed": False, "what": "other lines' reported claim count triangle",
+        "without": "other lines' recent claim counts are not developed",
+        "key": ["DEPARTMENT", "CLASS_NO", "ACC_QUARTER", "DEV_QUARTER"],
+        "types": {"DEPARTMENT": "text", "CLASS_NO": "int", "ACC_QUARTER": "date", "DEV_QUARTER": "int",
+                  "CLAIMS_REPORTED": "number"},
+        "required": ["DEPARTMENT", "ACC_QUARTER", "DEV_QUARTER", "CLAIMS_REPORTED"], "recommended": ["CLASS_NO"],
+    },
 }
 
 # Method constants: when a problem stops the run (STOP) or is only reported (WARN). Shares are of the rows.

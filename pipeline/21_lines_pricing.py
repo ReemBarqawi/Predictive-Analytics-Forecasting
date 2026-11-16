@@ -7,8 +7,10 @@ claims for GLMs, so each class's loss ratio is blended with its department's by 
   Experience   the last [lines] experience_years policy years up to the current year, skipping the class-years
                step 20 left out; written-year basis like motor (premium and claims of the policies written in
                the year)
-  Claims       incurred (paid + case reserve). There are no development triangles for these lines, so recent
-               years are not grossed up: their loss ratio is likely understated (shown as DEVELOPMENT)
+  Claims       developed to ultimate (pipeline/lines_development.py: Bornhuetter-Ferguson with a Cape Cod loss
+               ratio, from each department's own triangle). The still-to-come part is added to the capped claims
+               scaled by the class's capped share, so the large-claim load is not counted twice. Without the
+               triangles: incurred to date, not developed (DEVELOPMENT says which)
   Large claims each department's claims above its LARGE_LOSS_QUANTILE are capped there; each class's own excess,
                over all its usable years, comes back as a load on its loss ratio
   Basis        gross of reinsurance (premium and claims, plan F2); the reinsurance cost is not an expense here,
@@ -30,6 +32,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from lines_development import develop
 from settings import S, current_year
 
 LARGE_LOSS_QUANTILE = 0.95     # method constant: few claims, so a lower quantile than motor's 99.5%
@@ -62,31 +65,43 @@ SEGMENT_COLUMNS = ["ZONE", "CLASS_DESC", "POLICY_TYPE_DESC", "POLICY_YEAR",
                    "MODEL_EXPECTED_CLAIMS", "MODEL_EXPECTED_CLAIM_COUNT"]
 
 
-def segment_results() -> pd.DataFrame:
-    """The other lines' results by zone x class x policy type x policy year, in the layout of motor's
-    fact_segment_performance_by_year.csv (step 05) and with its formulas, so the report's segment pages read
-    both. Written-year basis (EARNED_PREMIUM holds the year's written premium, as motor's on written_year);
-    only the policies and claims step 20 kept; claims incurred to date, not developed (CLAIMS_BASIS says so).
-    The zone comes from the policy's office (same mapping as motor); a kept claim that matched no policy has
-    no office, so it counts under "Unspecified" in its class and year."""
+def kept() -> tuple[pd.DataFrame, pd.DataFrame]:
+    """The policies and claims step 20 kept, with the zone of the policy's office (same mapping as motor); a kept
+    claim that matched no policy has no office, so it counts under "Unspecified" in its class and year."""
     from zone_mapping import map_office_to_zone
-    biz, cred, bands = S.config["business"], S.config["credibility"], S.config["safe_zone"]
     p = pd.read_parquet(S.facts_dir / "fact_line_policy.parquet")
     c = pd.read_parquet(S.facts_dir / "fact_line_claim.parquet")
     p = p[p["EXCLUDE_REASON"] == ""].copy()
     c = c[c["EXCLUDE_REASON"] == ""].copy()
     zones = {o: map_office_to_zone(o).get("ZONE") for o in p["OFFICE_NAME"].dropna().unique()}
     p["ZONE"] = p["OFFICE_NAME"].map(zones).fillna("Unspecified")
-    p["EXPOSURE_YEARS"] = ((p["POLICY_EXPIRY_DATE"] - p["POLICY_EFFECTIVE_DATE"]).dt.days / 365.25).clip(lower=0)
     pz = p.drop_duplicates(["POLICY_NO", "POLICY_YEAR"])[["POLICY_NO", "POLICY_YEAR", "ZONE"]]
     c = c.merge(pz, on=["POLICY_NO", "POLICY_YEAR"], how="left")
     c["ZONE"] = c["ZONE"].fillna("Unspecified")
+    return p, c
+
+
+def segment_results(p: pd.DataFrame, c: pd.DataFrame, dev: pd.DataFrame) -> pd.DataFrame:
+    """The other lines' results by zone x class x policy type x policy year, in the layout of motor's
+    fact_segment_performance_by_year.csv (step 05) and with its formulas, so the report's segment pages read
+    both. Written-year basis (EARNED_PREMIUM holds the year's written premium, as motor's on written_year);
+    only the policies and claims step 20 kept (see kept()). ULTIMATE_CLAIMS and CLAIM_COUNT are developed to
+    ultimate (`dev`, lines_development.develop); the recorded ones stay in ACTUAL_*. CLAIMS_BASIS as motor's
+    (step 05): "Actual developed" up to the year before the current one, "Developed estimate" after; without
+    triangles "Incurred, not developed"."""
+    biz, cred, bands = S.config["business"], S.config["credibility"], S.config["safe_zone"]
+    p = p.copy()
+    p["EXPOSURE_YEARS"] = ((p["POLICY_EXPIRY_DATE"] - p["POLICY_EFFECTIVE_DATE"]).dt.days / 365.25).clip(lower=0)
     k = ["ZONE", "CLASS_DESC", "POLICY_TYPE_DESC", "POLICY_YEAR"]
     df = (p.groupby(k).agg(EARNED_PREMIUM=("TOTAL_PREMIUM", "sum"), EXPOSURE_YEARS=("EXPOSURE_YEARS", "sum"),
                            POLICY_COUNT=("POLICY_NO", "size"), COMMISSION_SUM=("COMMISSION", "sum"))
-          .join(c.groupby(k).agg(ULTIMATE_CLAIMS=("INCURRED", "sum"), CLAIM_COUNT=("CLM_NO", "size")), how="outer")
+          .join(c.groupby(k).agg(ACTUAL_ULTIMATE_CLAIMS=("INCURRED", "sum"), ACTUAL_CLAIM_COUNT=("CLM_NO", "size")),
+                how="outer")
+          .join(dev.groupby(k)[["ULTIMATE", "ULTIMATE_COUNT"]].sum(), how="outer")
           .reset_index().fillna({"EARNED_PREMIUM": 0.0, "EXPOSURE_YEARS": 0.0, "POLICY_COUNT": 0, "COMMISSION_SUM": 0.0,
-                                 "ULTIMATE_CLAIMS": 0.0, "CLAIM_COUNT": 0}))
+                                 "ACTUAL_ULTIMATE_CLAIMS": 0.0, "ACTUAL_CLAIM_COUNT": 0}))
+    df["ULTIMATE_CLAIMS"] = np.maximum(df["ULTIMATE"].fillna(df["ACTUAL_ULTIMATE_CLAIMS"]), df["ACTUAL_ULTIMATE_CLAIMS"])
+    df["CLAIM_COUNT"] = np.maximum(df["ULTIMATE_COUNT"].fillna(df["ACTUAL_CLAIM_COUNT"]), df["ACTUAL_CLAIM_COUNT"]).round()
     P = df["EARNED_PREMIUM"]
     div = lambda a, b: np.where(b != 0, a / b.replace(0, np.nan), np.nan)
     df["ADMIN_EXPENSE"] = P * biz["admin_expense_rate"]
@@ -106,10 +121,12 @@ def segment_results() -> pd.DataFrame:
                                        ["Green", "Yellow", "Red", "Loss"], default="No premium")
     df["CREDIBILITY_FLAG"] = np.select([df["CLAIM_COUNT"] >= cred["full_claims"], df["CLAIM_COUNT"] >= cred["partial_claims"]],
                                        ["Full", "Partial"], default="Low")
-    df["CLAIMS_BASIS"] = "Incurred, not developed"
-    df["ACTUAL_ULTIMATE_CLAIMS"], df["ACTUAL_CLAIM_COUNT"] = df["ULTIMATE_CLAIMS"], df["CLAIM_COUNT"]
+    developed = dev["BASIS"].str.startswith("developed").any()
+    df["CLAIMS_BASIS"] = (np.where(df["POLICY_YEAR"] < current_year()[1], "Actual developed", "Developed estimate")
+                          if developed else "Incurred, not developed")
     df["MODEL_EXPECTED_CLAIMS"] = df["MODEL_EXPECTED_CLAIM_COUNT"] = np.nan
-    df["POLICY_COUNT"], df["CLAIM_COUNT"] = df["POLICY_COUNT"].astype(int), df["CLAIM_COUNT"].astype(int)
+    for col in ("POLICY_COUNT", "CLAIM_COUNT", "ACTUAL_CLAIM_COUNT"):
+        df[col] = df[col].astype(int)
     return df[SEGMENT_COLUMNS].sort_values(k).reset_index(drop=True)
 
 
@@ -124,6 +141,11 @@ def main() -> None:
     claims = pd.read_parquet(S.facts_dir / "fact_line_claim.parquet")
     first = cur - cfg["years"] + 1
     used = claims[(claims["EXCLUDE_REASON"] == "")].copy()
+    kp, kc = kept()
+    dev = develop(kp, kc)
+    k = CLASS + ["POLICY_YEAR"]
+    still = dev.groupby(k)[["RECORDED", "ULTIMATE"]].sum()
+    still["IBNR"] = (still["ULTIMATE"] - still["RECORDED"]).clip(lower=0)
 
     # Large claims: cap per department on its usable claims; excess load over all its usable years
     cap = used.groupby("DEPARTMENT")["INCURRED"].quantile(LARGE_LOSS_QUANTILE).rename("CAP")
@@ -136,23 +158,31 @@ def main() -> None:
     load = (used.groupby(CLASS)["EXCESS"].sum()
             / yr.groupby(CLASS)["PREMIUM_USED"].sum()).rename("EXCESS_LOAD")
 
-    # Experience by class and year
-    k = CLASS + ["POLICY_YEAR"]
+    # Experience by class and year; the still-to-come part goes on the capped claims at the class's capped share
+    # (over its usable years), so the large-claim load is not counted twice
+    capped_share = (used.groupby(CLASS)["CAPPED"].sum() / used.groupby(CLASS)["INCURRED"].sum().replace(0, np.nan)
+                    ).fillna(1.0).rename("CAPPED_SHARE")
     exp = (q[q["POLICY_YEAR"].between(first, cur)][k + ["YEAR_STATUS", "PREMIUM_USED", "COMMISSION_USED"]]
            .merge(used.groupby(k).agg(CLAIMS=("CLM_NO", "size"), INCURRED=("INCURRED", "sum"),
                                       CAPPED=("CAPPED", "sum")).reset_index(), on=k, how="left")
            .fillna({"CLAIMS": 0, "INCURRED": 0.0, "CAPPED": 0.0}))
+    exp = exp.join(still["IBNR"], on=k).join(capped_share, on=CLASS).fillna({"IBNR": 0.0, "CAPPED_SHARE": 1.0})
     exp["USED"] = exp["YEAR_STATUS"] == "used"
-    exp["LOSS_RATIO"] = np.where(exp["USED"] & (exp["PREMIUM_USED"] > 0), exp["INCURRED"] / exp["PREMIUM_USED"], np.nan)
-    codes = q.groupby(CLASS)["CLASS_NO"].first().reset_index()        # the warehouse's class code, last
+    exp.loc[~exp["USED"], "IBNR"] = 0.0
+    exp["ULTIMATE"] = exp["INCURRED"] + exp["IBNR"]
+    exp["CAPPED"] = exp["CAPPED"] + exp["IBNR"] * exp["CAPPED_SHARE"]          # capped and developed
+    exp["LOSS_RATIO"] = np.where(exp["USED"] & (exp["PREMIUM_USED"] > 0), exp["ULTIMATE"] / exp["PREMIUM_USED"], np.nan)
+    codes = q.groupby(CLASS)["CLASS_NO"].first().reset_index()        # the warehouse's class code
     exp = exp.merge(codes, on=CLASS, how="left")
-    exp.to_csv(S.facts_dir / "fact_line_experience.csv", index=False, encoding="utf-8")
+    exp[[c for c in exp.columns if c not in ("IBNR", "ULTIMATE", "CAPPED_SHARE")] + ["IBNR", "ULTIMATE"]].to_csv(
+        S.facts_dir / "fact_line_experience.csv", index=False, encoding="utf-8")
 
     e = exp[exp["USED"]]
     cls = e.groupby(CLASS).agg(FIRST_YEAR=("POLICY_YEAR", "min"), LAST_YEAR=("POLICY_YEAR", "max"),
                                N_YEARS=("POLICY_YEAR", "nunique"), PREMIUM=("PREMIUM_USED", "sum"),
                                COMMISSION=("COMMISSION_USED", "sum"), CLAIMS=("CLAIMS", "sum"),
-                               INCURRED=("INCURRED", "sum"), CAPPED=("CAPPED", "sum")).reset_index()
+                               INCURRED=("INCURRED", "sum"), IBNR=("IBNR", "sum"),
+                               CAPPED=("CAPPED", "sum")).reset_index()
     cls = cls.join(cap, on="DEPARTMENT").join(load, on=CLASS).fillna({"EXCESS_LOAD": 0.0})
     cls["LOSS_RATIO"] = np.where(cls["PREMIUM"] > 0, cls["CAPPED"] / cls["PREMIUM"] + cls["EXCESS_LOAD"], np.nan)
     cls["CREDIBILITY_Z"] = np.minimum(1.0, np.sqrt(cls["CLAIMS"] / cfg["full"]))
@@ -179,7 +209,7 @@ def main() -> None:
     cls["STATUS"] = np.where(cls["CREDIBILITY_Z"] >= 1, "full credibility",
                              np.where(cls["COMPLEMENT_SOURCE"].str.startswith("department experience"),
                                       "low confidence: no benchmark", "partly credible"))
-    cls["DEVELOPMENT"] = "incurred to date, not developed (no triangles for these lines)"
+    cls["DEVELOPMENT"] = cls["DEPARTMENT"].map(dev.groupby("DEPARTMENT")["BASIS"].first())
     cls["BASIS"] = BASIS
 
     # Every class in the extract gets a row; those with nothing usable say why, with empty figures
@@ -191,14 +221,15 @@ def main() -> None:
     out["YEARS_USED"] = np.where(out["N_YEARS"].notna(),
                                  out["FIRST_YEAR"].astype("Int64").astype(str) + "-" + out["LAST_YEAR"].astype("Int64").astype(str)
                                  + " (" + out["N_YEARS"].astype("Int64").astype(str) + " years)", "")
-    cols = CLASS + ["STATUS", "YEARS_USED", "N_YEARS", "PREMIUM_ALL", "PREMIUM", "CLAIMS", "INCURRED", "CAPPED", "CAP",
+    cols = CLASS + ["STATUS", "YEARS_USED", "N_YEARS", "PREMIUM_ALL", "PREMIUM", "CLAIMS", "INCURRED", "IBNR", "CAPPED",
+                    "CAP",
                     "EXCESS_LOAD", "LOSS_RATIO", "CREDIBILITY_Z", "COMPLEMENT_LR", "COMPLEMENT_SOURCE", "CREDIBLE_LR",
                     "COMMISSION_RATIO", "ADMIN_RATIO", "COMBINED_RATIO", "TARGET_COMBINED_RATIO", "INDICATED_CHANGE",
                     "DEVELOPMENT", "BASIS"]
     out = out.merge(codes, on=CLASS, how="left")
     out = out[cols + ["CLASS_NO"]].rename(columns={"CAPPED": "INCURRED_CAPPED", "CAP": "LARGE_LOSS_CAP"}).sort_values(CLASS)
     out.to_csv(S.facts_dir / "fact_line_pricing.csv", index=False, encoding="utf-8")
-    seg = segment_results()
+    seg = segment_results(kp, kc, dev)
     seg.to_csv(S.facts_dir / "fact_line_segment_performance_by_year.csv", index=False, encoding="utf-8")
     now = seg[seg["POLICY_YEAR"] == cur]
     _log(f"segment results: {len(seg):,} zone x class x type x year rows; {cur}: premium {now['EARNED_PREMIUM'].sum() / 1e6:,.1f}M, "
@@ -207,8 +238,8 @@ def main() -> None:
     S.reports_dir.mkdir(parents=True, exist_ok=True)
     with open(S.reports_dir / "lines_pricing_report.md", "w", encoding="utf-8") as f:
         f.write(f"# Other lines: indicated price change\n\nExperience {first}-{cur} (written year), target combined ratio "
-                f"{cfg['target']:.0%}, admin {cfg['admin']:.0%}, full credibility at {cfg['full']:,.0f} claims. Claims are "
-                f"incurred to date, not developed. **Basis: {BASIS}**: the change is an indication, not a "
+                f"{cfg['target']:.0%}, admin {cfg['admin']:.0%}, full credibility at {cfg['full']:,.0f} claims. Claims: "
+                f"{'; '.join(f'{d} {b}' for d, b in dev.groupby('DEPARTMENT')['BASIS'].first().items())}. **Basis: {BASIS}**: the change is an indication, not a "
                 "recommendation, until gross or net pricing is decided.\n\n| Department | Class | Status | Years | Premium | Claims | Loss ratio | "
                 "Z | Credible LR | Combined | Change |\n|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|\n")
         for r in out.itertuples():

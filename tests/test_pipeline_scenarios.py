@@ -25,6 +25,8 @@ class PipelineScenarios(unittest.TestCase):
     def check(self, name: str) -> None:
         outcome, work, tail = run_scenario.run(name)
         self.assertEqual(outcome, run_scenario.SCENARIOS[name][1], f"{name} in {work}:\n{tail}")
+        if outcome == "ok":
+            self.assertIsNone(run_scenario.lines_development_problem(work), f"{name} in {work}")
 
 
 for _name in run_scenario.SCENARIOS:

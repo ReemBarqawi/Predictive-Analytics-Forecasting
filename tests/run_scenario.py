@@ -76,6 +76,37 @@ def run(name: str, workdir: Path | None = None) -> tuple[str, Path, str]:
     return outcome, work, tail
 
 
+DEVELOPMENT_TOLERANCE = 0.25    # developed current-year claims of the other lines within this of the expected
+
+
+def lines_development_problem(work: Path) -> str | None:
+    """The other lines' developed claims of the current year against the made-up company's expected claims (what
+    it is made with; the claims not yet reported or not yet happened can only be estimated at their expected
+    value): nearer to it than the recorded claims, and within DEVELOPMENT_TOLERANCE. The claims actually drawn
+    are shown for information. None when fine, or when the scenario has no truth file."""
+    import pandas as pd
+    truth_file = work / "raw" / "_truth_lines.parquet"
+    seg_file = work / "out" / "02_facts" / "fact_line_segment_performance_by_year.csv"
+    if not truth_file.exists():
+        return None
+    if not seg_file.exists():
+        return f"no {seg_file.name}"
+    seg = pd.read_csv(seg_file)
+    year = int(seg["POLICY_YEAR"].max())
+    seg = seg[seg["POLICY_YEAR"] == year]
+    truth = pd.read_parquet(truth_file)
+    truth = truth[(truth["POLICY_YEAR"] == year) & truth["CLASS_DESC"].isin(set(seg["CLASS_DESC"]))]
+    want, drawn = truth["EXPECTED_CLAIMS"].sum(), truth["TRUE_CLAIMS"].sum()
+    dev, rec = seg["ULTIMATE_CLAIMS"].sum(), seg["ACTUAL_ULTIMATE_CLAIMS"].sum()
+    msg = f"{year}: expected {want:,.0f} (drawn {drawn:,.0f}), developed {dev:,.0f}, recorded {rec:,.0f}"
+    print(f"other lines' development {msg}")
+    if want <= 0:
+        return f"no expected claims ({msg})"
+    if abs(dev - want) >= abs(rec - want) or abs(dev - want) / want > DEVELOPMENT_TOLERANCE:
+        return f"other lines' development is off: {msg}"
+    return None
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("names", nargs="*")
@@ -90,9 +121,12 @@ def main() -> int:
         t0 = time.time()
         outcome, work, tail = run(n)
         want = SCENARIOS[n][1]
-        ok = outcome == want
+        problem = lines_development_problem(work) if outcome == "ok" else None
+        ok = outcome == want and problem is None
         bad += not ok
         print(f"{'PASS' if ok else 'FAIL'} {n}: {outcome} (expected {want}) in {time.time() - t0:.0f}s  [{work}]")
+        if problem:
+            print(problem)
         if not ok:
             print(tail)
     return 1 if bad else 0
