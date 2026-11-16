@@ -1,0 +1,7 @@
+# Optional: Google's TimesFM for 07_forecast_seasonal (falls back to seasonal naive without it) and the
+# 04_backtest challenger. Exact versions (plan H11), so a rerun gives the same forecast; the checkpoint
+# revision is pinned in pipeline/timesfm_model.py. Install after requirements.txt:
+#   .venv/Scripts/python.exe -m pip install -r requirements-timesfm.txt
+timesfm[torch]==3.0.2
+torch==2.14.1
+huggingface_hub==2.3.0

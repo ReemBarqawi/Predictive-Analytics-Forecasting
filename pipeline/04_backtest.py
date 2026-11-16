@@ -508,7 +508,7 @@ def timesfm_forecasts(claims: pd.DataFrame, cutoffs: list[pd.Timestamp]) -> dict
     keys = [(T, s) for T in cutoffs for s in series]
     contexts = [series[s][series[s].index <= T].to_numpy() for T, s in keys]
 
-    _log(f"TimesFM: forecasting {len(keys)} series with {timesfm_model.CHECKPOINT}")
+    _log(f"TimesFM: forecasting {len(keys)} series with {timesfm_model.describe()}")
     forecasts = timesfm_model.predict(contexts, horizon=max(d for _, d in HORIZONS))
     return dict(zip(keys, forecasts))
 

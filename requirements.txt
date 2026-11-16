@@ -12,5 +12,5 @@ requests-negotiate-sspi>=0.5   # 16_email_alerts body = paginated: Windows sign-
 pyodbc>=5            # 18_load_results_db: results into SQL Server for the paginated report
 # Optional: pywin32 for 16_email_alerts method = "outlook" (testing from a laptop's Outlook)
 # Optional: Google's TimesFM. 07_forecast_seasonal forecasts with it (falls back to seasonal
-# naive if missing); 04_backtest scores it as a challenger (skipped if missing)
-# timesfm[torch]>=3.0.2
+# naive if missing); 04_backtest scores it as a challenger (skipped if missing). Pinned versions:
+# requirements-timesfm.txt (pip install -r requirements-timesfm.txt)

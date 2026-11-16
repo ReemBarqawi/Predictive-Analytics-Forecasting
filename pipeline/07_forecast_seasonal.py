@@ -1235,6 +1235,8 @@ def main() -> None:
     full_history = monthly.loc[start:end]
 
     models = (["timesfm"] if timesfm_model.available() else []) + ["seasonal_naive"]
+    if "timesfm" in models:
+        _log(timesfm_model.describe())            # plan H11: the version and checkpoint revision used
     if "timesfm" not in models:
         _log("TimesFM not installed — seasonal naive only")
     # The models learn from the window the backtest chooses; the page still shows the report years.
