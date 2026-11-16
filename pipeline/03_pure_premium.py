@@ -41,6 +41,7 @@ import statsmodels.api as sm
 # Config
 # =========================================================================
 from settings import S, is_motor, PROTECTED_RATING_FACTORS  # folders + motor classes for the active data source
+import glm_encoder    # plan H10: the one encoder, shared with steps 02 and 04
 FACT_DIR = S.facts_dir
 MODELS_DIR = S.models_dir
 OUTPUTS_DIR = S.reports_dir
@@ -59,39 +60,6 @@ def _log(msg: str) -> None:
 
 
 # =========================================================================
-# Encoder — the TRANSFORM half of Phase 1's encode_features
-# (Duplicated here so the file is self-contained. When you add Phase 3,
-# consider extracting this + Phase 1's version into pipeline/_utils.py.)
-# =========================================================================
-def transform_features(df: pd.DataFrame, encoder_meta: dict) -> pd.DataFrame:
-    """
-    Apply saved rare-category rules and one-hot encoding, aligned to the
-    training column set exactly.
-    """
-    feature_cols = list(encoder_meta["category_maps"].keys())
-    df2 = df.copy()
-
-    for col in feature_cols:
-        mapping = encoder_meta["category_maps"][col]
-        kept = set(mapping["kept"])
-        def _apply(x, kept=kept):
-            if pd.isna(x):
-                return "Unknown"
-            return x if x in kept else "Other"
-        df2[col] = df2[col].astype(str).replace({"nan": "Unknown"}).apply(_apply)
-
-    X = pd.get_dummies(df2[feature_cols], drop_first=True, dtype=int)
-
-    # Align: add any missing training columns as zero; drop any extras; keep order
-    for c in encoder_meta["columns"]:
-        if c not in X.columns:
-            X[c] = 0
-    X = X[encoder_meta["columns"]]
-
-    return X
-
-
-# =========================================================================
 # Load models
 # =========================================================================
 def load_models() -> tuple[dict, dict]:
@@ -102,7 +70,25 @@ def load_models() -> tuple[dict, dict]:
         sev = pickle.load(f)
     _log(f"  frequency: {freq['family']} with {freq['link']} link, offset={freq.get('offset','none')}")
     _log(f"  severity:  {sev['family']} with {sev['link']} link, target={sev['target']}")
+    check_models(freq, sev)
     return freq, sev
+
+
+def check_models(freq: dict, sev: dict) -> None:
+    """Plan H10: say what the models were made from, and stop when they do not use the rating factors chosen now
+    (step 04's choice or a config switch changed since step 02 ran): their prices would rest on other factors."""
+    from settings import pricing_features
+    want = pricing_features()
+    for name, b in (("frequency", freq), ("severity", sev)):
+        m = b.get("meta")
+        if m is None:
+            _log(f"  {name}: no metadata (saved before plan H10); rerun step 02 to record it")
+        else:
+            _log(f"  {name}: trained {m['trained_at']} at commit {m['code_commit']} on {m['data_source']} data to "
+                 f"{m['valuation_end']}, window {m['training_window_years'] or 'all'} years, {m['training_rows']:,} rows")
+        if list(b["feature_cols"]) != list(want):
+            raise SystemExit(f"The {name} GLM uses {b['feature_cols']} but the rating factors now are {want}: "
+                             "rerun step 02 (02_glm_refit.py) before scoring.")
 
 
 # =========================================================================
@@ -170,8 +156,8 @@ def score_policies(policies: pd.DataFrame, freq_bundle: dict, sev_bundle: dict) 
                                       NaN → charged_premium ≤ 0 (cancellation)
     """
     _log("Encoding features for prediction")
-    X_freq = transform_features(policies, freq_bundle["encoder_meta"])
-    X_sev  = transform_features(policies, sev_bundle["encoder_meta"])
+    X_freq = glm_encoder.transform(policies, freq_bundle["encoder_meta"])
+    X_sev  = glm_encoder.transform(policies, sev_bundle["encoder_meta"])
 
     X_freq_c = sm.add_constant(X_freq, has_constant="add")
     X_sev_c  = sm.add_constant(X_sev,  has_constant="add")

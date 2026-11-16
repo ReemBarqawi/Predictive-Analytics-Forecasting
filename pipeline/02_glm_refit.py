@@ -47,6 +47,7 @@ import statsmodels.api as sm
 # =========================================================================
 from settings import S, pricing_features, is_motor  # folders + motor classes for the active data source
 import exposure
+import glm_encoder
 import training_window
 FACT_DIR = S.facts_dir
 MODELS_DIR = S.models_dir
@@ -56,8 +57,7 @@ OUTPUTS_DIR = S.reports_dir
 # Features known at quote time (no target leakage); protected ones only when config allows
 PRICING_FEATURES = pricing_features()
 
-# Group any categorical level with fewer than this many rows into 'Other'
-RARE_THRESHOLD = 30
+# Rare levels (fewer than glm_encoder.RARE_THRESHOLD rows) are grouped into 'Other' by the shared encoder
 
 # Plan H1: the GLMs learn from car-years already run, to the end of the data's valuation quarter, each
 # accident quarter weighted by the share of its claims already reported (pipeline/exposure.py)
@@ -111,71 +111,13 @@ def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
 # =========================================================================
 # Feature engineering
 # =========================================================================
-def _group_rare(series: pd.Series, threshold: int = RARE_THRESHOLD) -> tuple[pd.Series, dict]:
-    """
-    Group rare categorical levels into 'Other'. Missing → 'Unknown'.
-    Returns (regrouped_series, mapping_dict).
-    The mapping_dict is saved so Phase 2 can apply the same grouping to new data.
-    """
-    counts = series.fillna("Unknown").value_counts()
-    kept = counts[counts >= threshold].index.tolist()
-
-    def _map(x):
-        if pd.isna(x):
-            return "Unknown"
-        return x if x in kept else "Other"
-
-    return series.apply(_map), {"kept": kept, "threshold": threshold}
-
-
-def encode_features(
-    df: pd.DataFrame,
-    feature_cols: list[str],
-    encoder_meta: dict | None = None,
-) -> tuple[pd.DataFrame, dict]:
-    """
-    Rare-group + one-hot encode categorical features.
-
-    If encoder_meta is None → FIT mode: learn rare-category rules and column set.
-    If encoder_meta is provided → TRANSFORM mode: apply saved rules, align columns.
-    """
-    df2 = df.copy()
-
+def encode_features(df: pd.DataFrame, feature_cols: list[str],
+                    encoder_meta: dict | None = None) -> tuple[pd.DataFrame, dict]:
+    """Rare-group + one-hot encode the rating factors with the shared encoder (pipeline/glm_encoder.py,
+    plan H10): FIT when encoder_meta is None, else TRANSFORM with the saved levels and columns."""
     if encoder_meta is None:
-        # FIT
-        encoder_meta = {"category_maps": {}, "columns": []}
-        for col in feature_cols:
-            df2[col], mapping = _group_rare(df2[col])
-            encoder_meta["category_maps"][col] = mapping
-        X = pd.get_dummies(df2[feature_cols], drop_first=True, dtype=int)
-        # Drop dummy columns identical to an earlier one (factors 'Unknown' on the same policies):
-        # a GLM cannot separate them and its coefficients run to infinity (see 04_backtest)
-        seen, keep = set(), []
-        for c in X.columns:
-            key = (int(X[c].sum()), int(pd.util.hash_array(X[c].to_numpy()).sum()))
-            if key not in seen:
-                seen.add(key)
-                keep.append(c)
-        X = X[keep]
-        encoder_meta["columns"] = X.columns.tolist()
-        return X, encoder_meta
-
-    # TRANSFORM
-    for col in feature_cols:
-        mapping = encoder_meta["category_maps"][col]
-        kept = set(mapping["kept"])
-        def _apply(x, kept=kept):
-            if pd.isna(x): return "Unknown"
-            return x if x in kept else "Other"
-        df2[col] = df2[col].apply(_apply)
-
-    X = pd.get_dummies(df2[feature_cols], drop_first=True, dtype=int)
-    # Align to training columns exactly (add missing as zeros, drop extras)
-    for c in encoder_meta["columns"]:
-        if c not in X.columns:
-            X[c] = 0
-    X = X[encoder_meta["columns"]]
-    return X, encoder_meta
+        return glm_encoder.fit(df, feature_cols)
+    return glm_encoder.transform(df, encoder_meta), encoder_meta
 
 
 # =========================================================================
@@ -378,10 +320,40 @@ def save_model(bundle: dict, path: Path) -> None:
     # NB frequency model also needs to know it uses an offset
     if "offset" in bundle:
         to_save["offset"] = bundle["offset"]
+    to_save["meta"] = model_metadata(bundle)
 
     with open(path, "wb") as f:
         pickle.dump(to_save, f)
     _log(f"  saved {path}")
+    # the same facts, readable without Python, beside the model files
+    meta_path = MODELS_DIR / "model_metadata.json"
+    allm = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
+    allm[path.name] = to_save["meta"]
+    meta_path.write_text(json.dumps(allm, indent=2, default=str), encoding="utf-8")
+
+
+MODEL_FORMAT = 2        # plan H10: version of what a saved model holds (2 = encoder from glm_encoder + "meta")
+
+
+def model_metadata(bundle: dict) -> dict:
+    """Plan H10: what a saved GLM was made from, so a price can be traced to its model."""
+    import datetime
+    import platform
+    import subprocess
+    import statsmodels
+    try:
+        commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=Path(__file__).resolve().parent,
+                                capture_output=True, text=True, timeout=10).stdout.strip() or None
+    except Exception:
+        commit = None
+    return {"model_format": MODEL_FORMAT, "trained_at": datetime.datetime.now().isoformat(timespec="seconds"),
+            "code_commit": commit, "data_source": S.source,
+            "valuation_end": str((VALUATION_END - pd.Timedelta(days=1)).date()),     # last day covered
+            "training_window_years": training_window.chosen("glm"), "feature_cols": bundle["feature_cols"],
+            "rare_threshold": glm_encoder.RARE_THRESHOLD, "n_columns": len(bundle["encoder_meta"]["columns"]),
+            "training_rows": int(bundle.get("n_train", 0)), "family": bundle["family"],
+            "packages": {"python": platform.python_version(), "pandas": pd.__version__, "numpy": np.__version__,
+                         "statsmodels": statsmodels.__version__}}
 
 
 # =========================================================================

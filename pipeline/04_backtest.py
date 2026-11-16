@@ -49,6 +49,7 @@ warnings.filterwarnings("ignore")
 # =========================================================================
 from settings import S, is_motor, pricing_features  # folders + motor classes for the active data source
 import exposure       # plan H1: car-years
+import glm_encoder    # plan H10: the one encoder, shared with steps 02 and 03
 import timesfm_model  # optional challenger: daily portfolio claims from their own history
 import training_window
 FACT_DIR = S.facts_dir
@@ -58,7 +59,6 @@ OUTPUTS_DIR = S.reports_dir
 PRICING_FEATURES = pricing_features(vehicle=False)   # general factors; main() tests the vehicle factors
 VEHICLE_FEATURES = [c for c in pricing_features(vehicle=True) if c not in PRICING_FEATURES]
 
-RARE_THRESHOLD = 30
 MIN_TRAIN_EXPOSURE_DAYS = 30       # skip policies with less than 30 days observed
 MIN_TRAIN_POLICIES = 500           # minimum policies to attempt a cutoff fit
 MIN_TRAIN_CLAIMS = 100             # minimum claims to attempt severity fit
@@ -100,55 +100,10 @@ def _log(msg: str) -> None:
 
 
 # =========================================================================
-# Feature encoder (duplicated from Phase 1/2 — extract to _utils.py if you
-# find yourself copying it again in Phase 4+)
+# Feature encoder: the shared one (pipeline/glm_encoder.py, plan H10)
 # =========================================================================
-def _group_rare(series: pd.Series, threshold: int = RARE_THRESHOLD):
-    counts = series.fillna("Unknown").value_counts()
-    kept = counts[counts >= threshold].index.tolist()
-    def _map(x):
-        if pd.isna(x): return "Unknown"
-        return x if x in kept else "Other"
-    return series.apply(_map), {"kept": kept, "threshold": threshold}
-
-
-def drop_duplicate_columns(X: pd.DataFrame) -> pd.DataFrame:
-    """Drop dummy columns identical to an earlier one. Factors that are all 'Unknown' on the same
-    policies (e.g. the vehicle factors where there is no vehicle data) give identical columns, and a
-    GLM cannot separate them: the coefficients run to +-1e11 and predictions to infinity."""
-    seen, keep = set(), []
-    for c in X.columns:
-        key = (int(X[c].sum()), int(pd.util.hash_array(X[c].to_numpy()).sum()))
-        if key not in seen:
-            seen.add(key)
-            keep.append(c)
-    return X[keep]
-
-
-def fit_encoder(df: pd.DataFrame, feature_cols: list[str]) -> tuple[pd.DataFrame, dict]:
-    df2 = df.copy()
-    encoder_meta = {"category_maps": {}, "columns": []}
-    for col in feature_cols:
-        df2[col], mapping = _group_rare(df2[col])
-        encoder_meta["category_maps"][col] = mapping
-    X = drop_duplicate_columns(pd.get_dummies(df2[feature_cols], drop_first=True, dtype=int))
-    encoder_meta["columns"] = X.columns.tolist()
-    return X, encoder_meta
-
-
-def apply_encoder(df: pd.DataFrame, encoder_meta: dict) -> pd.DataFrame:
-    df2 = df.copy()
-    for col, mapping in encoder_meta["category_maps"].items():
-        kept = set(mapping["kept"])
-        def _apply(x, kept=kept):
-            if pd.isna(x): return "Unknown"
-            return x if x in kept else "Other"
-        df2[col] = df2[col].astype(str).replace({"nan": "Unknown"}).apply(_apply)
-    X = pd.get_dummies(df2[list(encoder_meta["category_maps"].keys())], drop_first=True, dtype=int)
-    for c in encoder_meta["columns"]:
-        if c not in X.columns:
-            X[c] = 0
-    return X[encoder_meta["columns"]]
+fit_encoder = glm_encoder.fit
+apply_encoder = glm_encoder.transform
 
 
 # =========================================================================
