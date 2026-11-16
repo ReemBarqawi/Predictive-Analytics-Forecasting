@@ -27,8 +27,9 @@ so they follow the book's known run-off instead of extending the past trend.
   3. Rolling validation: both models forecast from every quarter-end with two years of
      history, exactly as the live forecast is made; the lower mean WAPE over premium, count
      and cost at 3 / 6 / 12 months picks the model. The P10-P90 bands on premium and claims
-     come from its monthly actual / forecast ratios, on the basis the page shows, and their
-     coverage is tested out of sample (each origin against the others' ratios).
+     come from its monthly actual / forecast ratios, on the basis the page shows, per group of
+     months ahead (1-3, 4-6, 7-12), each calibrated so its out-of-sample coverage (each origin
+     against the others' ratios) is nearest 80% (plan H7).
   4. Checks with pass rules: accuracy vs seasonal naive, bias, band coverage, development
      look-back (factors from a year ago vs what then happened), and input reconciliations
      (premium rebuilt from policies, triangle vs claims extract)
@@ -105,7 +106,12 @@ BOOK_RAMP_MONTHS = 12
 # was better (7.2% vs 8.4%+), so counts keep it.
 BF_SERIES = {"CLAIMS_COST"}
 CAPE_COD_QUARTERS = 12
-BAND_QUANTILES = (0.10, 0.90)           # written to CLAIMS_P10 / P90 and PREMIUM_P10 / P90
+# Plan H7: bands by months ahead, calibrated. Each group of months ahead (the page's horizons) gets its own band,
+# and its tail share is the one whose out-of-sample coverage (each origin tested on a band from the others) is
+# nearest CALIBRATION_TARGET, so "P10-P90" holds 80% of months in fact, not only in name. Method constants.
+STEP_GROUPS = ((1, 3), (4, 6), (7, 12))
+CALIBRATION_TARGET = 0.80
+TAIL_GRID = tuple(round(t, 2) for t in np.arange(0.02, 0.255, 0.01))   # tail share below P10 (and above P90)
 
 SERIES = ["EARNED_PREMIUM", "CLAIM_COUNT", "CLAIMS_COST"]    # shown on the page and scored
 MODELLED = ["WRITTEN_PREMIUM", "CLAIM_RATE", "COST_RATE"]     # what the models forecast
@@ -779,26 +785,51 @@ def band_ratios(bt: pd.DataFrame, model: str, shown: pd.DataFrame, written: bool
     prem = b["PRED_WRITTEN_PREMIUM"] if written else b["PRED_EARNED_PREMIUM"]
     actual = shown.reindex(b["MONTH"])
     out = pd.DataFrame({
-        "ORIGIN": b["ORIGIN"].to_numpy(),
+        "ORIGIN": b["ORIGIN"].to_numpy(), "STEP": b["STEP"].to_numpy(),
         "PREMIUM": actual["EARNED_PREMIUM"].to_numpy() / prem.to_numpy(),
         "CLAIMS": actual["CLAIMS_COST"].to_numpy() / (b["PRED_COST_RATE"] * prem * claims_scale).to_numpy()})
     out["LOSS_RATIO"] = out["CLAIMS"] / out["PREMIUM"]      # actual / forecast loss ratio, same months
     return out
 
 
-def band(ratios: pd.DataFrame, series: str) -> tuple[float, float, float]:
-    """
-    P10 and P90 of one series' actual / forecast ratios, and their out-of-sample coverage: each
-    origin's months are checked against a band built from the other origins only.
-    """
-    r = ratios[series].replace([np.inf, -np.inf], np.nan)
+def _coverage(r: pd.Series, origins: np.ndarray, tail: float) -> float:
+    """Share of months inside the band, each origin's months checked against a band from the other origins."""
     inside = []
-    for o in ratios["ORIGIN"].unique():
-        own = (ratios["ORIGIN"] == o).to_numpy()
-        low, high = r[~own].quantile(BAND_QUANTILES)
+    for o in pd.unique(origins):
+        own = origins == o
+        if (~own).sum() < 2:
+            continue
+        low, high = r[~own].quantile((tail, 1 - tail))
         inside.extend(r[own].dropna().between(low, high).tolist())
-    low, high = r.quantile(BAND_QUANTILES)
-    return float(low), float(high), float(np.mean(inside))
+    return float(np.mean(inside)) if inside else np.nan
+
+
+def band(ratios: pd.DataFrame, series: str) -> dict:
+    """
+    Plan H7: one series' band per group of months ahead (STEP_GROUPS), calibrated: the tail share whose
+    out-of-sample coverage is nearest CALIBRATION_TARGET (on a tie the narrower band), then that share's
+    quantiles of all origins' actual / forecast ratios. Returns {(first, last): (low, high, coverage, tail)}.
+    """
+    out = {}
+    for first, last in STEP_GROUPS:
+        g = ratios[ratios["STEP"].between(first, last)]
+        r = g[series].replace([np.inf, -np.inf], np.nan).reset_index(drop=True)
+        origins = g["ORIGIN"].to_numpy()
+        if r.notna().sum() < 4:
+            continue
+        cov = {t: _coverage(r, origins, t) for t in TAIL_GRID}
+        tail = min((t for t in cov if not np.isnan(cov[t])), key=lambda t: (abs(cov[t] - CALIBRATION_TARGET), -t))
+        low, high = r.quantile((tail, 1 - tail))
+        out[(first, last)] = (float(low), float(high), cov[tail], tail)
+    return out
+
+
+def band_at(bands: dict, step: int) -> tuple[float, float]:
+    """The (low, high) ratio for a month `step` months ahead; (nan, nan) when its group had too few months."""
+    for (first, last), b in bands.items():
+        if first <= step <= last:
+            return b[0], b[1]
+    return np.nan, np.nan
 
 
 def total_misses(bt: pd.DataFrame, model: str, shown: pd.DataFrame, written: bool,
@@ -978,15 +1009,16 @@ def build_rows(history: pd.DataFrame, fc: pd.DataFrame, model: str, model_wape: 
             "SEASONAL_INDEX": 1.0, "MODEL_TYPE": "actual", "MODEL_WAPE": np.nan, "BIAS_CORRECTION": np.nan,
         })
     for h in FORECAST_HORIZONS:
-        for m, r in fc.head(h).iterrows():
+        for step, (m, r) in enumerate(fc.head(h).iterrows(), start=1):
             prem = r["EARNED_PREMIUM"]
+            bc, bp, bl = (band_at(bands[s], step) for s in ("CLAIMS", "PREMIUM", "LOSS_RATIO"))   # H7: by months ahead
             rows.append({
                 "MONTH_DATE": m.to_timestamp(), "FORECAST_HORIZON": f"{h}M", "PERIOD_TYPE": "forecast",
                 "FORECAST_CLAIMS": r["CLAIMS_COST"], "FORECAST_PREMIUM": prem,
-                "CLAIMS_P10": r["CLAIMS_COST"] * bands["CLAIMS"][0], "CLAIMS_P90": r["CLAIMS_COST"] * bands["CLAIMS"][1],
-                "PREMIUM_P10": prem * bands["PREMIUM"][0], "PREMIUM_P90": prem * bands["PREMIUM"][1],
-                "LOSS_RATIO_P10": r["CLAIMS_COST"] / prem * bands["LOSS_RATIO"][0] if prem > 0 else np.nan,
-                "LOSS_RATIO_P90": r["CLAIMS_COST"] / prem * bands["LOSS_RATIO"][1] if prem > 0 else np.nan,
+                "CLAIMS_P10": r["CLAIMS_COST"] * bc[0], "CLAIMS_P90": r["CLAIMS_COST"] * bc[1],
+                "PREMIUM_P10": prem * bp[0], "PREMIUM_P90": prem * bp[1],
+                "LOSS_RATIO_P10": r["CLAIMS_COST"] / prem * bl[0] if prem > 0 else np.nan,
+                "LOSS_RATIO_P90": r["CLAIMS_COST"] / prem * bl[1] if prem > 0 else np.nan,
                 # B3: the month's premium split into renewals and new business (driver model), for the
                 # Forecast page's plan inputs; empty when the total forecast is used
                 "FORECAST_RENEWALS": prem * r["RENEWALS"] / r["WRITTEN_PREMIUM"]
@@ -1035,10 +1067,12 @@ def validation_table(scores: pd.DataFrame, model: str, bands: dict, dev: dict,
             NAMES[r.SERIES], r.WAPE, "at or below seasonal naive", vs_naive, f"{r.HORIZON}M", naive)
         add("accuracy", f"Bias over {r.N_ORIGINS} forecast origins", NAMES[r.SERIES], r.BIAS,
             f"within ±{BIAS_TOLERANCE:.0%}", abs(r.BIAS) <= BIAS_TOLERANCE, f"{r.HORIZON}M")
-    for series, (_, _, coverage) in bands.items():
-        add("band", "Months inside the P10-P90 band (each origin tested on a band from the others)",
-            series.replace("_", " ").capitalize(), coverage, f"{COVERAGE_RANGE[0]:.0%} to {COVERAGE_RANGE[1]:.0%}",
-            COVERAGE_RANGE[0] <= coverage <= COVERAGE_RANGE[1])
+    for series, groups in bands.items():
+        for (first, last), (_, _, coverage, tail) in groups.items():
+            add("band", f"Months inside the band, {first}-{last} months ahead (each origin tested on a band from the "
+                f"others; tail {tail:.0%} each side, chosen for {CALIBRATION_TARGET:.0%})",
+                series.replace("_", " ").capitalize(), coverage, f"{COVERAGE_RANGE[0]:.0%} to {COVERAGE_RANGE[1]:.0%}",
+                COVERAGE_RANGE[0] <= coverage <= COVERAGE_RANGE[1], f"{first}-{last}")
     add("inputs", "Earned premium rebuilt from policy dates / fact_earned_premium", "Earned premium",
         premium_check, f"within ±{INPUT_TOLERANCE:.0%}", abs(premium_check - 1) <= INPUT_TOLERANCE)
     if dev["developed"]:
@@ -1060,15 +1094,16 @@ def validation_table(scores: pd.DataFrame, model: str, bands: dict, dev: dict,
     return out
 
 
-def write_chart(history: pd.DataFrame, fc: pd.DataFrame, claims_band: tuple) -> None:
+def write_chart(history: pd.DataFrame, fc: pd.DataFrame, claims_band: dict) -> None:
     x_h, x_f = history.index.to_timestamp(), fc.index.to_timestamp()
     fig, ax = plt.subplots(figsize=(11, 4.5))
     ax.plot(x_h, history["REPORTED_COST"] / 1e6, color="grey", lw=1, label="Reported so far")
     ax.plot(x_h, history["CLAIMS_COST"] / 1e6, color="black", lw=1.5, label="Developed to ultimate")
     ax.plot(x_f, fc["CLAIMS_COST"] / 1e6, color="tab:red", lw=1.5, label="Forecast")
-    ax.fill_between(x_f, fc["CLAIMS_COST"] * claims_band[0] / 1e6,
-                    fc["CLAIMS_COST"] * claims_band[1] / 1e6, color="tab:red", alpha=0.15,
-                    label="P10-P90 band")
+    b = np.array([band_at(claims_band, k) for k in range(1, len(fc) + 1)])
+    ax.fill_between(x_f, fc["CLAIMS_COST"] * b[:, 0] / 1e6,
+                    fc["CLAIMS_COST"] * b[:, 1] / 1e6, color="tab:red", alpha=0.15,
+                    label="P10-P90 band (by months ahead)")
     ax.set_ylabel("Claims cost per month (millions)")
     ax.grid(alpha=0.2)
     ax.legend(loc="upper left")
@@ -1302,8 +1337,10 @@ def main() -> None:
         shown_fc = shown_fc.assign(CLAIMS_COST=shown_fc["CLAIMS_COST"] * scale, CLAIM_COUNT=shown_fc["CLAIM_COUNT"] * scale)
     ratios = band_ratios(bt_page, model, shown_history, year_basis() == "written_year", scale)
     bands = {s: band(ratios, s) for s in ("PREMIUM", "CLAIMS", "LOSS_RATIO")}
-    for s, (low, high, coverage) in bands.items():
-        _log(f"{s.lower()} band: x{low:.2f} to x{high:.2f} of the forecast; {coverage:.0%} of months inside, out of sample")
+    for s, groups in bands.items():
+        _log(f"{s.lower()} band by months ahead: " + "; ".join(
+            f"{a}-{b} x{low:.2f} to x{high:.2f} ({cov:.0%} inside out of sample, tail {tail:.0%})"
+            for (a, b), (low, high, cov, tail) in groups.items()))
     misses = total_misses(bt_page, model, shown_history, year_basis() == "written_year", scale)
     misses.to_csv(FACTS_DIR / "fact_forecast_total_miss.csv", index=False, encoding="utf-8")
     _log(f"card ranges: {misses.groupby('HORIZON')['ORIGIN'].nunique().to_dict()} origins by horizon")
