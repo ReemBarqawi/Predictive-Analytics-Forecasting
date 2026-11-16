@@ -369,6 +369,50 @@ def seasonal_naive(history: pd.Series, horizon: int) -> np.ndarray:
     return history.iloc[-12:].to_numpy()[np.arange(horizon) % 12]
 
 
+# Plan H8: statistical challengers through the same backtest and gate as TimesFM. Each falls back to seasonal
+# naive for a series shorter than two seasons or a fit that fails, so it never stops a run.
+MIN_SEASONS = 2
+
+
+def ets(history: pd.Series, horizon: int) -> np.ndarray:
+    """Holt-Winters exponential smoothing: additive damped trend, additive 12-month season."""
+    y = history.astype(float)
+    if len(y) < 12 * MIN_SEASONS or y.nunique() < 3:
+        return seasonal_naive(history, horizon)
+    try:
+        import warnings
+        from statsmodels.tsa.holtwinters import ExponentialSmoothing
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            fit = ExponentialSmoothing(y.to_numpy(), trend="add", damped_trend=True, seasonal="add",
+                                       seasonal_periods=12, initialization_method="estimated").fit()
+        out = np.asarray(fit.forecast(horizon), dtype=float)
+        return out if np.isfinite(out).all() else seasonal_naive(history, horizon)
+    except Exception:
+        return seasonal_naive(history, horizon)
+
+
+def theta(history: pd.Series, horizon: int) -> np.ndarray:
+    """Theta method (statsmodels ThetaModel), deseasonalised with a 12-month period."""
+    y = history.astype(float)
+    if len(y) < 12 * MIN_SEASONS or y.nunique() < 3:
+        return seasonal_naive(history, horizon)
+    try:
+        import warnings
+        from statsmodels.tsa.forecasting.theta import ThetaModel
+        method = "multiplicative" if (y > 0).all() else "additive"
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            fit = ThetaModel(y.to_numpy(), period=12, deseasonalize=True, method=method).fit()
+        out = np.asarray(fit.forecast(horizon), dtype=float)
+        return out if np.isfinite(out).all() else seasonal_naive(history, horizon)
+    except Exception:
+        return seasonal_naive(history, horizon)
+
+
+STAT_MODELS = {"seasonal_naive": seasonal_naive, "ets": ets, "theta": theta}
+
+
 def forecast(model: str, history: pd.DataFrame, cohorts: pd.DataFrame, horizon: int,
              drivers=None, large_loss: bool = False, claims: str = "rate") -> pd.DataFrame:
     """
@@ -408,7 +452,7 @@ def forecast(model: str, history: pd.DataFrame, cohorts: pd.DataFrame, horizon: 
     if model == "timesfm":
         preds = timesfm_model.predict([s.to_numpy() for s in batch], horizon)
     else:
-        preds = [seasonal_naive(s, horizon) for s in batch]
+        preds = [STAT_MODELS[model](s, horizon) for s in batch]
     index = pd.period_range(history.index[-1] + 1, periods=horizon, freq="M")
     fc = pd.DataFrame({s: np.clip(p, 0, None) for s, p in zip(MODELLED, preds)}, index=index)
     if claims in ("split", "per_car"):        # book_cars waits for the earned car-years below
@@ -1045,7 +1089,7 @@ def build_rows(history: pd.DataFrame, fc: pd.DataFrame, model: str, model_wape: 
     return out[cols]
 
 
-LABEL = {"timesfm": "TimesFM", "seasonal_naive": "Seasonal naive"}
+LABEL = {"timesfm": "TimesFM", "seasonal_naive": "Seasonal naive", "ets": "ETS (Holt-Winters)", "theta": "Theta"}
 NAMES = {"EARNED_PREMIUM": "Earned premium", "CLAIM_COUNT": "Claim count", "CLAIMS_COST": "Claims cost"}
 
 
@@ -1234,11 +1278,11 @@ def main() -> None:
     monthly["CAR_YEARS"] = CAR_COHORTS["cars"].sum().reindex(monthly.index)
     full_history = monthly.loc[start:end]
 
-    models = (["timesfm"] if timesfm_model.available() else []) + ["seasonal_naive"]
+    models = (["timesfm"] if timesfm_model.available() else []) + ["ets", "theta", "seasonal_naive"]   # H8 challengers
     if "timesfm" in models:
         _log(timesfm_model.describe())            # plan H11: the version and checkpoint revision used
     if "timesfm" not in models:
-        _log("TimesFM not installed — seasonal naive only")
+        _log("TimesFM not installed — ETS, Theta and seasonal naive only")
     # The models learn from the window the backtest chooses; the page still shows the report years.
     window = select_window(full_history, cohorts, models)
     history = full_history if window is None else full_history.iloc[-12 * window:]
