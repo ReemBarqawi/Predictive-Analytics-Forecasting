@@ -40,14 +40,16 @@ MODEL_STEPS = [
     (6, "06_lever_allocation.py"),
     (7, "07_forecast_seasonal.py"),
     (8, "08_forecast_kpi_cards.py"),
-    (9, "09_profit_optimizer.py"),
+    # other lines, before the optimizer: step 9 prices their pricing book (step 24) with motor's
+    (20, "20_lines_quality.py"),     # other lines: quality rules (skips itself without their extract)
+    (21, "21_lines_pricing.py"),     # other lines: credibility loss-ratio price indication
+    (22, "22_lines_forecast.py"),    # other lines: forecast per class for the Forecast page
+    (24, "24_lines_pricing_book.py"),  # other lines: pricing book (motor's contract) for step 9
+    (9, "09_profit_optimizer.py"),   # every book: motor and each other-lines department, each on its own
     (10, "10_underwriting_pnl.py"),
     (12, "12_report_window.py"),
     (15, "15_official_alerts.py"),   # the alerts at the approved target: needs steps 5, 9, 11 and 12
     (19, "19_data_breaks.py"),       # report only: changes in the data and the training windows chosen
-    (20, "20_lines_quality.py"),     # other lines: quality rules (skips itself without their extract)
-    (21, "21_lines_pricing.py"),     # other lines: credibility loss-ratio price indication
-    (22, "22_lines_forecast.py"),    # other lines: forecast per class for the Forecast page
 ]
 GATE = (13, "13_reconcile.py")      # always closes a run: a failure means do not refresh the report
 # Only after the gate passed, on a full run or when asked for: load the results for the paginated

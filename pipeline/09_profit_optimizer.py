@@ -19,6 +19,13 @@ Changes in v0.2
   +  fact_optimal_scenarios now carries commission, admin, loss/expense ratio and the
      no-change baseline, so Power BI can read it alone
 
+Books (2026-11-16): every line of business goes through this optimizer. The pricing-book contract is
+fact_policy_pricing.csv's columns (step 03, motor) and fact_line_policy_pricing.csv (step 24, the other lines,
+one book per department). Each book is priced on its own, with its own policy year, portfolio retention floor,
+renewal rates (motor: fact_renewal_rates.csv; other lines: fact_line_renewal_rates.csv, else baseline_renewal)
+and new business (fact_new_business.csv / fact_line_new_business.csv), so adding a line never moves another's
+prices. Outputs carry BOOK; fact_optimizer_books.csv has one row per book.
+
 Changes in v0.3
   E. Credibility fallback: segments under min_segment_policies are no longer skipped. They
      take the price chosen for ZONE x CLASS, else CLASS, and keep their own premium, claims
@@ -113,8 +120,13 @@ def complete_years(df):
     return sorted(int(y) for y, m in months.iterrows() if m["min"] == 1 and m["max"] == 12)
 
 
-def load_policies(a):
-    df = pd.read_csv(os.path.join(BASE, "fact_policy_pricing.csv"), low_memory=False)
+def load_policies(a, path=None, book=None, experience=True):
+    """One book's policies of its priced year. `path` = the pricing-book file (motor's by default); `book`
+    selects one book of a file holding several; experience=False skips the motor-only rescaling to its
+    reserving (the other lines' book is already on their developed experience)."""
+    df = pd.read_csv(path or os.path.join(BASE, "fact_policy_pricing.csv"), low_memory=False)
+    if book is not None and "BOOK" in df:
+        df = df[df["BOOK"] == book].copy()
     years = sorted(df["POLICY_YEAR"].dropna().unique().astype(int))
     complete = complete_years(df) if "POLICY_EFFECTIVE_DATE" in df else []
     if a["policy_year"]:
@@ -136,7 +148,8 @@ def load_policies(a):
     df["base_premium"] = df["charged_premium"]
     df["commission_rate"] = (df["COMMISSION"] / df["TOTAL_PREMIUM"]).clip(0, 0.5).fillna(0)
     df["admin_per_policy"] = a["admin_rate_of_baseline_premium"] * df["base_premium"]  # fixed per policy
-    df = apply_expected_claims(df)
+    if experience:
+        df = apply_expected_claims(df)
     # model claims: exposure x frequency x severity (+ external shocks)
     df["claims_if_retained"] = (df["EXPOSURE_YEARS"] * df["expected_frequency_per_year"]
                                 * (1 + a["ext_freq_trend"])
@@ -148,31 +161,39 @@ def load_policies(a):
     # risk percentile inside segment (0 = lowest risk, 1 = highest) from pure premium
     df["risk_pct"] = (df.groupby(SEG)["pure_premium_per_year"]
                         .rank(pct=True, method="average"))
-    df["p0"] = renewal_rates(df, a)
+    df["p0"] = renewal_rates(df, a, a.get("renewal_path"), book)
     return df, yr
 
 
-def load_new_business():
-    """E4: next year's new business per segment from the forecast (step 07, fact_new_business.csv). Empty
-    when there is none: the no-change book is then the renewals only, as before."""
-    path = os.path.join(BASE, "fact_new_business.csv")
+def load_new_business(path=None, book=None):
+    """E4: next year's new business per segment from the forecast (step 07, fact_new_business.csv; other
+    lines: step 24, fact_line_new_business.csv). Empty when there is none: the no-change book is then the
+    renewals only, as before."""
+    path = path or os.path.join(BASE, "fact_new_business.csv")
     if not os.path.exists(path):
-        print("New business: no fact_new_business.csv - the no-change book is renewals only")
+        print(f"New business: no {os.path.basename(path)} - the no-change book is renewals only")
         return {}
     nb = pd.read_csv(path)
+    if book is not None and "BOOK" in nb:
+        nb = nb[nb["BOOK"] == book]
     print(f"New business: {nb['NB_PREMIUM'].sum():,.0f} next 12 months over {len(nb)} segments (step 07), "
           "in the no-change book with the renewals")
     return {tuple(r[c] for c in SEG): float(r["NB_PREMIUM"]) for _, r in nb.iterrows()}
 
 
-def renewal_rates(df, a):
+def renewal_rates(df, a, path=None, book=None):
     """E1: chance each policy renews at an unchanged price = its segment's measured renewal rate
-    (step 17); config.toml baseline_renewal when the rates are missing."""
-    path = os.path.join(BASE, "fact_renewal_rates.csv")
-    if not os.path.exists(path):
-        print(f"Renewal: no fact_renewal_rates.csv - using baseline_renewal {a['baseline_renewal']:.0%} for every segment")
+    (step 17; other lines step 24); config.toml baseline_renewal when the rates are missing."""
+    path = path or os.path.join(BASE, "fact_renewal_rates.csv")
+    rates = pd.read_csv(path) if os.path.exists(path) else pd.DataFrame()
+    if book is not None and "BOOK" in rates:
+        rates = rates[rates["BOOK"] == book]
+    if rates.empty:
+        print(f"Renewal: no {os.path.basename(path)} rates - using baseline_renewal {a['baseline_renewal']:.0%} "
+              "for every segment (ASSUMED, not measured)")
+        a["renewal_source"] = "baseline_renewal (assumed)"
         return pd.Series(a["baseline_renewal"], index=df.index)
-    rates = pd.read_csv(path)
+    a["renewal_source"] = f"measured ({os.path.basename(path)})"
     p0 = df[SEG].merge(rates[SEG + ["RENEWAL_RATE"]], on=SEG, how="left")["RENEWAL_RATE"]
     p0 = p0.fillna(float(rates["PORTFOLIO_RATE"].iloc[0])).to_numpy()
     w = df["EXPOSURE_YEARS"].to_numpy()
@@ -478,11 +499,27 @@ def floor_sensitivity(picks, results, case, a):
 
 
 # ------------------------------------------------------------------ MAIN
-def main():
-    a = ASSUMPTIONS
-    a["new_business"] = load_new_business()
-    df, yr = load_policies(a)
-    print(f"Policy year {yr}: {len(df):,} policies, "
+BOOKS_FILE = "fact_line_policy_pricing.csv"
+
+
+def books():
+    """(book, pricing file, renewal file, new-business file, motor rescaling) for every book there is."""
+    out = [("Motor", os.path.join(BASE, "fact_policy_pricing.csv"), os.path.join(BASE, "fact_renewal_rates.csv"),
+            os.path.join(BASE, "fact_new_business.csv"), True)]
+    lines = os.path.join(BASE, BOOKS_FILE)
+    if os.path.exists(lines):
+        for b in sorted(pd.read_csv(lines, usecols=["BOOK"])["BOOK"].dropna().unique()):
+            out.append((b, lines, os.path.join(BASE, "fact_line_renewal_rates.csv"),
+                        os.path.join(BASE, "fact_line_new_business.csv"), False))
+    return out
+
+
+def run_book(a, book, path, renewal_path, nb_path, experience):
+    """One book through the optimizer: (results, optimal picks, floor rows, policy year, priced policies)."""
+    a["renewal_path"] = renewal_path
+    a["new_business"] = load_new_business(nb_path, None if experience else book)
+    df, yr = load_policies(a, path, None if experience else book, experience)
+    print(f"[{book}] Policy year {yr}: {len(df):,} policies, "
           f"{df['base_premium'].sum():,.0f} baseline premium")
     p0_avg = float(np.average(df["p0"], weights=df["EXPOSURE_YEARS"]))
     print(f"Floors: {a['retention_floor']:.0%} segment / {a['portfolio_retention_floor']:.0%} portfolio, "
@@ -509,9 +546,32 @@ def main():
         opt = portfolio_repair(picks, case_res, a)
         all_res.append(case_res)
         all_opt.append(opt)
+    return (pd.concat(all_res, ignore_index=True).assign(BOOK=book), pd.concat(all_opt, ignore_index=True).assign(BOOK=book),
+            [dict(r, BOOK=book) for r in all_floor], yr, df)
 
-    results = pd.concat(all_res, ignore_index=True)
-    opt = pd.concat(all_opt, ignore_index=True)
+
+def main():
+    a = ASSUMPTIONS
+    res_parts, opt_parts, floor_rows, book_rows = [], [], [], []
+    motor_df, yr = None, None
+    for book, path, renewal_path, nb_path, experience in books():
+        r, o, fl, y, df = run_book(a, book, path, renewal_path, nb_path, experience)
+        res_parts.append(r)
+        opt_parts.append(o)
+        floor_rows += fl
+        book_rows.append({"BOOK": book, "POLICY_YEAR": y, "POLICIES": len(df),
+                          "BASELINE_PREMIUM": float(df["base_premium"].sum()),
+                          "MEASURED_RENEWAL": float(np.average(df["p0"], weights=df["EXPOSURE_YEARS"])),
+                          "RENEWAL_SOURCE": a.get("renewal_source", ""),
+                          "CLAIMS_BASIS": "motor GLM rescaled to its reserving" if experience
+                          else "credible developed loss ratio (step 21), flat inside each segment"})
+        if book == "Motor":
+            motor_df, yr = df, y
+    all_floor = floor_rows
+    df = motor_df
+
+    results = pd.concat(res_parts, ignore_index=True)
+    opt = pd.concat(opt_parts, ignore_index=True)
     results["model_version"] = a["model_version"]
     results["scenario_date"] = pd.Timestamp.today().date()
     results["scenario_id"] = (results["segment_id"] + "|" + results["sensitivity_case"]
@@ -540,18 +600,20 @@ def main():
                   # E4 parts (2026-11-12), last: Power BI reads this file by position
                   "renewal_premium", "renewal_claims", "renewal_expenses", "nb_premium", "nb_claims", "nb_expenses",
                   "nochange_renewal_premium", "nochange_renewal_claims", "nochange_renewal_expenses",
-                  "nochange_nb_premium", "nochange_nb_claims", "nochange_nb_expenses"]
+                  "nochange_nb_premium", "nochange_nb_claims", "nochange_nb_expenses",
+                  "BOOK"]                       # 2026-11-16: the book (motor, each other-lines department)
     opt = opt[keep]
+    pd.DataFrame(book_rows).to_csv(os.path.join(BASE, "fact_optimizer_books.csv"), index=False, encoding="utf-8")
 
     added = ("price_reaction_reference_renewal", "floor_basis")     # 2026-11-11: after the original columns
     run = pd.DataFrame([{**{k: str(v) for k, v in a.items()
-                            if k not in ("selection_rule", "new_business") and k not in added},
+                            if k not in ("selection_rule", "new_business", "renewal_path", "renewal_source") and k not in added},
                          "policy_year": yr, "run_ts": pd.Timestamp.now(),
                          **{k: str(a[k]) for k in added},
                          "measured_renewal": float(np.average(df["p0"], weights=df["EXPOSURE_YEARS"]))}])
     # Power BI reads this file by column position: columns added after 2026-11-10 go last
     parts = ["renewal_premium", "renewal_claims", "renewal_expenses", "nb_premium", "nb_claims", "nb_expenses"]
-    late = ["retention_vs_nochange"] + parts + [f"nochange_{c}" for c in parts]
+    late = ["retention_vs_nochange"] + parts + [f"nochange_{c}" for c in parts] + ["BOOK"]
     results = results[[c for c in results.columns if c not in late] + late]
     results.to_csv(os.path.join(BASE, "fact_scenario_results.csv"), index=False, encoding="utf-8")
     opt.to_csv(os.path.join(BASE, "fact_optimal_scenarios.csv"), index=False, encoding="utf-8")
@@ -562,12 +624,12 @@ def main():
 
     # A. portfolio summary by case
     print()
-    for case in a["sensitivity_cases"]:
-        s = opt[opt["sensitivity_case"] == case]
+    for book, case in [(b, c) for b in opt["BOOK"].unique() for c in a["sensitivity_cases"]]:
+        s = opt[(opt["sensitivity_case"] == case) & (opt["BOOK"] == book)]
         p0, p1 = s["nochange_premium"].sum(), s["optimal_premium"].sum()
         cr0 = (s["nochange_claims"].sum() + s["nochange_expenses"].sum()) / p0
         cr1 = (s["expected_claims"].sum() + s["expected_expenses"].sum()) / p1
-        print(f"[{case}] no-change profit={s['nochange_profit'].sum():,.0f} (CR {cr0:.1%})  "
+        print(f"[{book} {case}] no-change profit={s['nochange_profit'].sum():,.0f} (CR {cr0:.1%})  "
               f"recommended profit={s['expected_profit'].sum():,.0f} (CR {cr1:.1%})  "
               f"change={s['profit_change'].sum():+,.0f}")
         print(f"       median change={s['optimal_premium_change'].median():+.0%}  "
@@ -581,10 +643,10 @@ def main():
               + ", ".join(f"{k}={v:.0%}" for k, v in prem.items()))
 
     print("\nPortfolio retention floor sensitivity")
-    print(f"{'case':6s}{'floor':>7s}{'retention':>11s}{'profit':>13s}{'CR':>8s}{'median':>8s}{'stepped':>9s}")
+    print(f"{'book':8s}{'case':6s}{'floor':>7s}{'retention':>11s}{'profit':>13s}{'CR':>8s}{'median':>8s}{'stepped':>9s}")
     for _, r in floor_tbl.iterrows():
         mark = "  <- selected" if r["is_selected_floor"] else ""
-        print(f"{r['sensitivity_case']:6s}{r['portfolio_retention_floor']:>7.0%}"
+        print(f"{r['BOOK']:8s}{r['sensitivity_case']:6s}{r['portfolio_retention_floor']:>7.0%}"
               f"{r['portfolio_retention']:>11.1%}{r['expected_profit']:>13,.0f}"
               f"{r['combined_ratio']:>8.1%}{r['median_premium_change']:>+8.0%}"
               f"{r['segments_stepped_down']:>9d}{mark}")

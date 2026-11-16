@@ -97,7 +97,9 @@ if rates_path.exists():       # E1: each segment's measured renewal rate (step 1
     renewal = rates.set_index(SEG)["RENEWAL_RATE"].reindex(now.index).fillna(float(rates["PORTFOLIO_RATE"].iloc[0]))
 trend = float(pd.read_csv(F / "fact_trend_factor.csv")["TREND_FACTOR"].iloc[0]) if experience and (F / "fact_trend_factor.csv").exists() else 1.0
 optimal = pd.read_csv(F / "fact_optimal_scenarios.csv")
-base = optimal[optimal["sensitivity_case"] == "base"].set_index(SEG)
+books_opt = optimal[optimal["BOOK"] != "Motor"] if "BOOK" in optimal else optimal.iloc[0:0]
+base = optimal[(optimal["sensitivity_case"] == "base")
+               & ((optimal["BOOK"] == "Motor") if "BOOK" in optimal else True)].set_index(SEG)
 # E4: the no-change book = renewals + new business. The renewal part is today's book x renewal (x trend for
 # claims); the new-business part is the forecast's, split by segment (step 07)
 ren = "nochange_renewal_" if "nochange_renewal_premium" in base else "nochange_"
@@ -118,6 +120,26 @@ scenarios["PRICE"] = scenarios["premium_change"].round(4)
 picked = optimal.assign(PRICE=optimal["optimal_premium_change"].round(4)).merge(scenarios, on=["segment_id", "sensitivity_case", "PRICE"], how="left")
 check_true("optimizer", "Every recommended price is a calculated scenario", picked["scenario_premium"].notna().all())
 check("optimizer", "Recommended premium = its scenario", picked["optimal_premium"].sum(), picked["scenario_premium"].sum())
+
+# ---- optimizer, other lines' books (step 24's pricing book, each department priced on its own)
+if len(books_opt):
+    lb = pd.read_csv(F / "fact_line_policy_pricing.csv")
+    yrs = pd.read_csv(F / "fact_optimizer_books.csv").set_index("BOOK")
+    lr_path = F / "fact_line_renewal_rates.csv"
+    lrates = pd.read_csv(lr_path) if lr_path.exists() else pd.DataFrame(columns=["BOOK"] + SEG + ["RENEWAL_RATE"])
+    lnb = pd.read_csv(F / "fact_line_new_business.csv")
+    for book, ob in books_opt[books_opt["sensitivity_case"] == "base"].groupby("BOOK"):
+        yr = int(yrs.loc[book, "POLICY_YEAR"])
+        pb = lb[(lb["BOOK"] == book) & (lb["POLICY_YEAR"] == yr) & (lb["charged_premium"] > 0) & (lb["EXPOSURE_YEARS"] > 0)]
+        ob = ob.set_index(SEG)
+        p0 = (lrates[lrates["BOOK"] == book].set_index(SEG)["RENEWAL_RATE"].reindex(ob.index).astype(float)
+              .fillna(float(S.config["optimizer"]["baseline_renewal"])))
+        check_segments("optimizer " + book, f"Today premium ({yr}) = its pricing book", ob["nochange_renewal_premium"] / p0,
+                       pb.groupby(SEG)["charged_premium"].sum())
+        check_segments("optimizer " + book, f"Today claims ({yr}) = its pricing book", ob["nochange_renewal_claims"] / p0,
+                       (pb["pure_premium_per_year"] * pb["EXPOSURE_YEARS"]).groupby([pb[c] for c in SEG]).sum())
+        nbb = lnb[lnb["BOOK"] == book].set_index(SEG)["NB_PREMIUM"].reindex(ob.index).fillna(0.0)
+        check("optimizer " + book, "New business at no change = step 24's", ob["nochange_nb_premium"].sum(), nbb.sum())
 
 # ---- forecast page
 forecast = pd.read_csv(F / "fact_forecast_seasonal.csv", parse_dates=["MONTH_DATE"])

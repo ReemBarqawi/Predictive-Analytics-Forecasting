@@ -19,6 +19,10 @@ SELECT
     SUM(u.VUW_NET_PREM)                     AS NET_PREMIUM,
     SUM(u.VUW_AGENT_COMM_LAMT)              AS COMMISSION,
     MAX(u.VUW_SI)                           AS SUM_INSURED,
+    -- the client, to measure renewal (the same client insured again in the class when the cover ends):
+    -- policy numbers change at renewal, as for motor
+    MAX(u.VUW_CLIENT_NO)                    AS CLIENT_NO,
+    MAX(u.VUW_CUST_NO)                      AS CUST_NO,
     COUNT(*)                                AS ROWS_IN_SOURCE
 FROM   DTWCDE.V_UW_DATA u
 WHERE  u.VUW_DEPT_DESC <> 'Motor'
