@@ -35,6 +35,9 @@ def check_true(group, name, ok, note=""):
 def check_segments(group, name, a, b):
     """Two per-segment series must cover the same segments and agree on each; reports the worst."""
     both = pd.concat([a.rename("A"), b.rename("B")], axis=1).fillna(0.0)
+    if both.empty:                       # no segment on either side (e.g. a year with no business): they agree
+        check_true(group, f"{name}: no segments on either side", True, "nothing to compare")
+        return
     both["DIFF"] = (both["A"] - both["B"]).abs()
     worst = both["DIFF"].idxmax()
     check(group, f"{name}: worst segment", both.at[worst, "A"], both.at[worst, "B"], " | ".join(map(str, worst)))
@@ -154,9 +157,13 @@ if written_year:
         check("forecast", "Next-year loss ratio x 1M = current x trend", have * 1e6, wanted * 1e6)
 
 # ---- alerts: results so far on the same policies, and the estimate built from them
-if written_year:
-    inside = earned[(earned["POLICY_YEAR"] == current) & (earned["MONTH_DATE"].dt.year == current)]
-    check("alerts", "In-year premium = earned table", alerts["EP_L12"].sum(), inside["EARNED_PREMIUM"].sum())
+if written_year and len(alerts):
+    # Over the alerts' own 12 months (step 11 drops a last month whose claims are not yet fully reported), each
+    # policy year's premium earned inside that year, as the alerts count it
+    w0, w1 = pd.Timestamp(alerts["WINDOW_START"].iloc[0]), pd.Timestamp(alerts["WINDOW_END"].iloc[0])
+    inside = earned[earned["MONTH_DATE"].between(w0, w1) & (earned["MONTH_DATE"].dt.year == earned["POLICY_YEAR"])]
+    check("alerts", "In-year premium = earned table (alerts' window)", alerts["EP_L12"].sum(),
+          inside["EARNED_PREMIUM"].sum(), str(alerts["WINDOW_LABEL"].iloc[0]))
 
 # ---- reserving: the one source of ultimate claims (step 14)
 reserve = pd.read_csv(F / "fact_claims_ultimate.csv")

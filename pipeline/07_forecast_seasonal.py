@@ -568,6 +568,13 @@ def select_shape(bt: pd.DataFrame, model: str, shown: pd.DataFrame) -> tuple[flo
     lowest mean error wins, and of the weights within one standard error of it the smallest is
     kept (less shape when the test cannot tell them apart)."""
     errs = {w: shape_errors(shaped_backtest(bt, model, shown, w), shown) for w in SHAPE_WEIGHTS}
+    # Only the origins every weight can be scored on (a year without data gives no error), the same for all
+    usable = np.logical_and.reduce([np.isfinite(e) for e in errs.values()])
+    errs = {w: e[usable] for w, e in errs.items()}
+    if usable.sum() < 2:
+        _log(f"seasonal shape: only {int(usable.sum())} origin(s) can be scored; no shape (0%)")
+        return 0.0, pd.DataFrame({"WEIGHT": list(SHAPE_WEIGHTS), "ERROR": np.nan, "STD_ERROR": np.nan,
+                                  "N_ORIGINS": int(usable.sum()), "CHOSEN": [w == 0.0 for w in SHAPE_WEIGHTS]})
     mean = {w: e.mean() for w, e in errs.items()}
     best = min(mean, key=mean.get)
     limit = mean[best] + errs[best].std(ddof=1) / np.sqrt(len(errs[best]))
@@ -820,7 +827,9 @@ def written_month_view(history: pd.DataFrame, fc: pd.DataFrame) -> tuple[pd.Data
                 year_total = year_totals.at[year, total]
                 known = recorded[col].reindex(g.index, fill_value=0).astype(float)
                 rest = (g[col] * year_total / g[col].sum() - known).clip(lower=0.0)
-                h.loc[g.index, col] = known + rest * (year_total - known.sum()) / rest.sum()
+                # nothing still to come (ultimate = recorded): the months are what is recorded, not 0 / 0
+                share = rest / rest.sum() if rest.sum() > 0 else 0.0
+                h.loc[g.index, col] = known + share * max(year_total - known.sum(), 0.0)
 
     f = fc.copy()
     f["EARNED_PREMIUM"] = fc["WRITTEN_PREMIUM"]

@@ -58,9 +58,11 @@ CONFIG = {
 # SEGMENT ALERT BASIS
 # ---------------------------------------------------------------------
 
-def last_reported_month(claims: pd.DataFrame, ep_month: pd.Series) -> pd.Period:
-    """Last month of claims data that is complete and fully reported (method §3)."""
-    cutoff = claims["ACC_DATE"].max()
+def last_reported_month(claims: pd.DataFrame, ep_month: pd.Series, cutoff: pd.Timestamp | None = None) -> pd.Period:
+    """Last month of claims data that is complete and fully reported (method §3). `cutoff` is the data's cut-off
+    (the latest accident date in the whole extract); the latest date in a filtered set of claims would make a
+    month look incomplete just because its last claim fell before the month's end."""
+    cutoff = claims["ACC_DATE"].max() if cutoff is None else cutoff
     last = cutoff.to_period("M")
     if cutoff < last.to_timestamp(how="end").normalize():
         last -= 1  # the cut-off month is only partly in the data
@@ -178,6 +180,7 @@ def build_alert_basis(facts: Path) -> pd.DataFrame:
     keys = pp[["POLICY_NO", "POLICY_YEAR"] + SEG].drop_duplicates(["POLICY_NO", "POLICY_YEAR"])
     claims = matched.merge(keys, on=["POLICY_NO", "POLICY_YEAR"], how="inner").dropna(subset=["ACC_DATE"])
     claims["ACC_MONTH"] = claims["ACC_DATE"].dt.to_period("M")
+    data_cutoff = pd.to_datetime(fc["ACC_DATE"]).max()          # before any filter: the extract's own end
 
     term_ep = ep
     if year_basis() == "written_year":
@@ -187,7 +190,7 @@ def build_alert_basis(facts: Path) -> pd.DataFrame:
         ep = ep[ep["MONTH"].dt.year == ep["POLICY_YEAR"]]
         claims = claims[claims["ACC_MONTH"].dt.year == claims["POLICY_YEAR"]]
 
-    last = last_reported_month(claims, ep.groupby("MONTH").EARNED_PREMIUM.sum())
+    last = last_reported_month(claims, ep.groupby("MONTH").EARNED_PREMIUM.sum(), data_cutoff)
     l_first, p_last = last - (WINDOW_MONTHS - 1), last - WINDOW_MONTHS
     p_first = p_last - (WINDOW_MONTHS - 1)
     print(f"  claims to {claims['ACC_DATE'].max().date()}; latest {WINDOW_MONTHS} months {l_first}..{last}, "
