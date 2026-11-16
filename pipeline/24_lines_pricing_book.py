@@ -78,10 +78,12 @@ def book(p: pd.DataFrame, pricing: pd.DataFrame, dev: pd.DataFrame) -> pd.DataFr
     return b[cols]
 
 
-def renewal_rates(p: pd.DataFrame, cutoff: pd.Timestamp) -> pd.DataFrame | None:
-    """Per segment, like step 17 but with the client as the link. None without CLIENT_NO in the extract."""
+def renewal_rates(p: pd.DataFrame, cutoff: pd.Timestamp, books: set) -> pd.DataFrame | None:
+    """Per segment, like step 17 but with the client as the link, for the books priced (`books`). None without
+    CLIENT_NO in the extract."""
     if "CLIENT_NO" not in p or p["CLIENT_NO"].isna().all():
         return None
+    p = p[p["DEPARTMENT"].isin(books)]
     v = p.dropna(subset=["CLIENT_NO"]).assign(
         VEHICLE_ID=lambda d: d["CLIENT_NO"].astype(str) + "|" + d["CLASS_DESC"].astype(str),   # client within class
         COVER_START=p["POLICY_EFFECTIVE_DATE"], COVER_END=p["POLICY_EXPIRY_DATE"], GROSS_PREMIUM=p["TOTAL_PREMIUM"])
@@ -143,7 +145,7 @@ def main() -> None:
     dev = develop(kp, kc)
     b = book(kp, pd.read_csv(pricing_path), dev)
     b.to_csv(out, index=False, encoding="utf-8")
-    rates = renewal_rates(kp, cutoff)
+    rates = renewal_rates(kp, cutoff, set(b["BOOK"]))
     if rates is None:
         files[1].unlink(missing_ok=True)
         _log("no CLIENT_NO in the other-lines extract (sql/lines_policies.sql): their renewal is not measured; "

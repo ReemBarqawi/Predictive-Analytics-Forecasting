@@ -197,7 +197,7 @@ def renewal_rates(df, a, path=None, book=None):
     p0 = df[SEG].merge(rates[SEG + ["RENEWAL_RATE"]], on=SEG, how="left")["RENEWAL_RATE"]
     p0 = p0.fillna(float(rates["PORTFOLIO_RATE"].iloc[0])).to_numpy()
     w = df["EXPOSURE_YEARS"].to_numpy()
-    print(f"Renewal: measured per segment (step 17), exposure-weighted {np.average(p0, weights=w):.1%}, "
+    print(f"Renewal: measured per segment ({os.path.basename(path)}), exposure-weighted {np.average(p0, weights=w):.1%}, "
           f"range {p0.min():.1%} to {p0.max():.1%}")
     return pd.Series(p0, index=df.index)
 

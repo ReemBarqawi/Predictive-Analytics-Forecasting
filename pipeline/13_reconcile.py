@@ -132,8 +132,9 @@ if len(books_opt):
         yr = int(yrs.loc[book, "POLICY_YEAR"])
         pb = lb[(lb["BOOK"] == book) & (lb["POLICY_YEAR"] == yr) & (lb["charged_premium"] > 0) & (lb["EXPOSURE_YEARS"] > 0)]
         ob = ob.set_index(SEG)
-        p0 = (lrates[lrates["BOOK"] == book].set_index(SEG)["RENEWAL_RATE"].reindex(ob.index).astype(float)
-              .fillna(float(S.config["optimizer"]["baseline_renewal"])))
+        own = lrates[lrates["BOOK"] == book]        # as the optimizer: a segment without a rate takes its book's
+        fill = (float(own["PORTFOLIO_RATE"].iloc[0]) if len(own) else float(S.config["optimizer"]["baseline_renewal"]))
+        p0 = own.set_index(SEG)["RENEWAL_RATE"].reindex(ob.index).astype(float).fillna(fill)
         check_segments("optimizer " + book, f"Today premium ({yr}) = its pricing book", ob["nochange_renewal_premium"] / p0,
                        pb.groupby(SEG)["charged_premium"].sum())
         check_segments("optimizer " + book, f"Today claims ({yr}) = its pricing book", ob["nochange_renewal_claims"] / p0,
