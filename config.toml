@@ -165,6 +165,12 @@ experience_years = 5          # policy years of experience, up to the current ye
 # the department's own experience is the complement and the price is marked low-confidence.
 # benchmark_loss_ratio = { FGA = 0.55, Marine = 0.60 }
 benchmark_loss_ratio = {}
+# Path to Profitability lever sizes per department (plan F6). Empty = [levers] (set for motor: garage routing,
+# bonus-malus surcharges), flagged as such on the levers file. e.g. levers = { FGA = { uw_severity_reduction = 0.0 } }
+levers = {}
+# A "high-cost" claim (SAR) per department for UW Controls. Empty = the size above which the same share of the
+# department's claims lies as motor's claims above [report_tiers] high_severity_claim
+high_severity_claim = {}
 
 [training]
 # How many years of history the models learn from (pipeline/training_window.py). "auto": each model

@@ -65,10 +65,10 @@ def make_company(raw_dir: Path, years: tuple[int, int] = (2017, 2024), classes: 
         for c in book:
             code, freq, sev, base, _ = MOTOR[c["cls"]]
             tcode, pf, cf = TYPES[c["type"]]
-            eff = pd.Timestamp(year, 1, 1) + pd.Timedelta(days=c["start"])
-            if eff > cutoff + pd.Timedelta(days=90):
+            eff = pd.Timestamp(year, 1, 1) + pd.Timedelta(c["start"], unit="D")
+            if eff > cutoff + pd.Timedelta(90, unit="D"):
                 continue
-            exp = eff + pd.Timedelta(days=365)
+            exp = eff + pd.Timedelta(365, unit="D")
             next_pol += 1
             office_no = OFFICES.index(c["office"]) + 1
             pno = f"{office_no}-1-{code}-{tcode}-{1 if c['source'] == 'Direct' else 2}-{next_pol}"
@@ -90,14 +90,14 @@ def make_company(raw_dir: Path, years: tuple[int, int] = (2017, 2024), classes: 
                                      "VEHICLE_MAKE": 1.0, "BODY_TYPE": 1.0, "SUM_INSURED": si / ncar,
                                      "DRIVER_AGE": float(rng.integers(20, 70))})
                 for _ in range(rng.poisson(freq * cf)):
-                    acc = eff + pd.Timedelta(days=int(rng.integers(0, 365)))
+                    acc = eff + pd.Timedelta(int(rng.integers(0, 365)), unit="D")
                     if acc > cutoff:
                         continue
                     amt = float(rng.gamma(2.0, sev * cf / 2))
                     open_ = (cutoff - acc).days < 200 and rng.random() < 0.6
                     clm_rows.append({"CLM_NO": f"{pno}-{year}-{len(clm_rows) + 1}", "POLICY_NO": pno, "POLICY_YEAR": year,
                                      "ACC_DATE": acc, "TOTAL_PAID": round(amt * (0.3 if open_ else 1.0), 2),
-                                     "TOTAL_EST": round(amt, 2), "CLOSE_DATE": pd.NaT if open_ else acc + pd.Timedelta(days=60),
+                                     "TOTAL_EST": round(amt, 2), "CLOSE_DATE": pd.NaT if open_ else acc + pd.Timedelta(60, unit="D"),
                                      "CLM_YEAR": acc.year, "ACC_TYPE_DESC": "Collision", "RECOVERY_AMT": 0.0,
                                      "_COB": code, "_TYPE": tcode})
             if rng.random() < 0.6:
@@ -169,17 +169,17 @@ def _lines(years: tuple[int, int], cutoff: pd.Timestamp, rng, triangles: bool) -
             for year in range(years[0], years[1] + 1):
                 for _ in range(per_year):
                     n += 1
-                    eff = pd.Timestamp(year, 1, 1) + pd.Timedelta(days=int(rng.integers(0, 365)))
+                    eff = pd.Timestamp(year, 1, 1) + pd.Timedelta(int(rng.integers(0, 365)), unit="D")
                     prem = float(base * rng.lognormal(0, 0.6))
                     pno = f"1-{dept_no[dept]}-{code}-{code}-1-{n}"
                     pol.append({"POLICY_NO": pno, "POLICY_YEAR": year, "POLICY_NUMBER": n, "DEPARTMENT": dept,
                                 "CLASS_NO": code, "CLASS_DESC": cls, "POLICY_TYPE_DESC": cls, "SOURCE_DESC": "Brokers",
                                 "OFFICE_NAME": OFFICES[rng.integers(len(OFFICES))], "POLICY_EFFECTIVE_DATE": eff,
-                                "POLICY_EXPIRY_DATE": eff + pd.Timedelta(days=365), "TOTAL_PREMIUM": round(prem, 2),
+                                "POLICY_EXPIRY_DATE": eff + pd.Timedelta(365, unit="D"), "TOTAL_PREMIUM": round(prem, 2),
                                 "GROSS_PREMIUM": round(prem, 2), "NET_PREMIUM": round(prem, 2),
                                 "COMMISSION": round(prem * 0.12, 2), "SUM_INSURED": prem * 500, "ROWS_IN_SOURCE": 1})
                     for _ in range(rng.poisson(cpp)):
-                        acc = eff + pd.Timedelta(days=int(rng.integers(0, 365)))
+                        acc = eff + pd.Timedelta(int(rng.integers(0, 365)), unit="D")
                         amt = float(rng.gamma(1.2, sev / 1.2))
                         clm.append({"CLM_NO": f"{pno}-{len(clm) + 1}", "POLICY_NO": pno, "POLICY_YEAR": year,
                                     "POLICY_NUMBER": n, "DEPARTMENT": dept, "CLASS_NO": code, "CLASS_DESC": cls,

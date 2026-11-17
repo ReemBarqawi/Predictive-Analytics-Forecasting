@@ -85,7 +85,8 @@ check_true("zones", "Every segment's zone is in dim_zone", set(by_year["ZONE"]) 
 check_true("zones", "No office without a location", zones["LATITUDE"].notna().all() and zones["ZONE"].notna().all())
 
 # ---- levers: same book as segment results
-levers = pd.read_csv(F / "fact_lever_allocation.csv").set_index(SEG)
+levers_all = pd.read_csv(F / "fact_lever_allocation.csv")
+levers = (levers_all[levers_all["BOOK"] == "Motor"] if "BOOK" in levers_all else levers_all).set_index(SEG)
 check_segments("levers", "Premium", levers["baseline_earned_premium"], now["EARNED_PREMIUM"])
 check_segments("levers", "Claims", levers["baseline_ultimate_claims"], now["ULTIMATE_CLAIMS"])
 
@@ -268,6 +269,46 @@ if (F / "fact_line_quality.csv").exists():
         cr = lm[lm["CLAIMS_METHOD"] == "credibility loss ratio"]
         check("other lines forecast", "Credibility-method claims = premium x loss ratio",
               cr["CLAIMS_12M"].sum(), (cr["PREMIUM_12M"] * cr["LOSS_RATIO"]).sum())
+
+# ---- other lines on the alert and lever pages (plan F6): each class at its own year (the report's Today Year)
+lseg_path = F / "fact_line_segment_performance_by_year.csv"
+if lseg_path.exists() and "BOOK" in levers_all:
+    ls = pd.read_csv(lseg_path)
+    ls = ls[ls["POLICY_YEAR"].between(current - 1, current) & (ls["EARNED_PREMIUM"] > 0)]
+    ls = ls[ls["POLICY_YEAR"] == ls.groupby("CLASS_DESC")["POLICY_YEAR"].transform("max")]
+    lv = levers_all[levers_all["BOOK"] != "Motor"].set_index(SEG)
+    check_segments("other lines levers", "Premium = their segment results at each class's year",
+                   lv["baseline_earned_premium"], ls.groupby(SEG)["EARNED_PREMIUM"].sum())
+    check_segments("other lines levers", "Claims = their segment results at each class's year",
+                   lv["baseline_ultimate_claims"], ls.groupby(SEG)["ULTIMATE_CLAIMS"].sum())
+    lcr, lpr = F / "fact_line_claim_report.csv", F / "fact_line_policy_report.csv"
+    if lcr.exists() and lpr.exists():
+        lc = pd.read_csv(lcr)
+        lp = pd.read_csv(lpr)
+        # the same year's recorded claims and policies; a kept claim with no policy counts under "Unspecified"
+        ls_all = pd.read_csv(lseg_path)
+        ls_all = ls_all[ls_all.set_index(["CLASS_DESC", "POLICY_YEAR"]).index.isin(
+            lp[["CLASS_DESC", "POLICY_YEAR"]].drop_duplicates().apply(tuple, axis=1))]
+        check("other lines claim detail", "Claim detail = recorded claims of each class's year", lc["ULTIMATE_CLAIM"].sum(),
+              ls_all["ACTUAL_ULTIMATE_CLAIMS"].sum())
+        check("other lines claim detail", "Policy detail = policies of each class's year", float(len(lp)),
+              float(ls_all["POLICY_COUNT"].sum()))
+        check_true("other lines claim detail", "Their policy keys never collide with motor's",
+                   pd.read_csv(F / "fact_claim_report.csv", usecols=["POLICY_NO"])["POLICY_NO"].astype("int64").max()
+                   < lc["POLICY_NO"].min() if len(lc) else True)
+        check_true("other lines claim detail", "Every claim carries its line's high-cost limit",
+                   lc["HIGH_SEVERITY_LIMIT"].notna().all())
+    lab = F / "fact_line_alert_basis.csv"
+    if lab.exists():
+        ab = pd.read_csv(lab, parse_dates=["WINDOW_START", "WINDOW_END"])
+        written = pd.read_csv(lseg_path)
+        for book, g in ab.groupby("BOOK"):
+            yrs = range(g["WINDOW_START"].dt.year.min(), g["WINDOW_END"].dt.year.max() + 1)
+            w = written[written["CLASS_DESC"].isin(g["CLASS_DESC"]) & written["POLICY_YEAR"].isin(yrs)]
+            check_true("other lines alerts", f"{book}: in-year premium not above the written premium of its window's "
+                       f"policy years ({yrs.start}-{yrs.stop - 1})", g["EP_L12"].sum() <= w["EARNED_PREMIUM"].sum() + 1,
+                       f"{g['EP_L12'].sum():,.0f} vs {w['EARNED_PREMIUM'].sum():,.0f}")
+        check_true("other lines alerts", "Credibility between 0 and 1", ab["CRED_Z"].between(0, 1).all())
 
 table = pd.DataFrame(results)
 table.to_csv(F / "fact_reconciliation.csv", index=False, encoding="utf-8")

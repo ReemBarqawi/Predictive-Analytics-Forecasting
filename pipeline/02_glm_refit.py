@@ -348,7 +348,7 @@ def model_metadata(bundle: dict) -> dict:
         commit = None
     return {"model_format": MODEL_FORMAT, "trained_at": datetime.datetime.now().isoformat(timespec="seconds"),
             "code_commit": commit, "data_source": S.source,
-            "valuation_end": str((VALUATION_END - pd.Timedelta(days=1)).date()),     # last day covered
+            "valuation_end": str((VALUATION_END - pd.Timedelta(1, unit="D")).date()),     # last day covered
             "training_window_years": training_window.chosen("glm"), "feature_cols": bundle["feature_cols"],
             "rare_threshold": glm_encoder.RARE_THRESHOLD, "n_columns": len(bundle["encoder_meta"]["columns"]),
             "training_rows": int(bundle.get("n_train", 0)), "family": bundle["family"],

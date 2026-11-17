@@ -37,7 +37,6 @@ MODEL_STEPS = [
     (17, "17_renewal.py"),           # renewal rate per segment (vehicle link): step 9 reads it
     (11, "11_build_alerts.py"),
     (5, "05_segment_performance_by_year.py"),
-    (6, "06_lever_allocation.py"),
     (7, "07_forecast_seasonal.py"),
     (8, "08_forecast_kpi_cards.py"),
     # other lines, before the optimizer: step 9 prices their pricing book (step 24) with motor's
@@ -45,6 +44,8 @@ MODEL_STEPS = [
     (21, "21_lines_pricing.py"),     # other lines: credibility loss-ratio price indication
     (22, "22_lines_forecast.py"),    # other lines: forecast per class for the Forecast page
     (24, "24_lines_pricing_book.py"),  # other lines: pricing book (motor's contract) for step 9
+    (25, "25_lines_alerts.py"),      # other lines: alert inputs in motor's layout (step 15, Management Alerts)
+    (6, "06_lever_allocation.py"),   # levers for every line (reads step 21's segment results)
     (9, "09_profit_optimizer.py"),   # every book: motor and each other-lines department, each on its own
     (10, "10_underwriting_pnl.py"),
     (12, "12_report_window.py"),

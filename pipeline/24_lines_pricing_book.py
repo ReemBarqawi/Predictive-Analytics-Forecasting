@@ -88,7 +88,7 @@ def renewal_rates(p: pd.DataFrame, cutoff: pd.Timestamp, books: set) -> pd.DataF
         VEHICLE_ID=lambda d: d["CLIENT_NO"].astype(str) + "|" + d["CLASS_DESC"].astype(str),   # client within class
         COVER_START=p["POLICY_EFFECTIVE_DATE"], COVER_END=p["POLICY_EXPIRY_DATE"], GROSS_PREMIUM=p["TOTAL_PREMIUM"])
     r = renewal.renewals(v)
-    observable_end = cutoff - pd.Timedelta(days=RENEW_AFTER_DAYS)
+    observable_end = cutoff - pd.Timedelta(RENEW_AFTER_DAYS, unit="D")
     hist = r[r["COVER_END"] <= observable_end]
     if hist.empty:
         return None

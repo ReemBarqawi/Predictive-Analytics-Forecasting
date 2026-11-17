@@ -167,7 +167,7 @@ def train_at_cutoff(policies: pd.DataFrame, claims: pd.DataFrame, T: pd.Timestam
         train_pol["EXPOSURE_AT_T_YEARS"] >= MIN_TRAIN_EXPOSURE_DAYS / 365.25
     ].copy()
     # Plan H1: the offset is car-years run to T, weighted by the claims reported so far (as step 02)
-    train_pol["CAR_YEARS_AT_T"] = exposure.earned_car_years(train_pol, T + pd.Timedelta(days=1), SHARES)
+    train_pol["CAR_YEARS_AT_T"] = exposure.earned_car_years(train_pol, T + pd.Timedelta(1, unit="D"), SHARES)
     train_pol = train_pol[train_pol["CAR_YEARS_AT_T"] > 0]
 
     if len(train_pol) < MIN_TRAIN_POLICIES:
@@ -258,8 +258,8 @@ def predict_glm_window(
         (overlap_end - overlap_start).dt.days / 365.25
     ).clip(lower=0)
     # Plan H1: car-years in the window, weighted like the actual claims (those reported so far)
-    active["CAR_YEARS_IN_WINDOW"] = exposure.earned_car_years(active, T_end + pd.Timedelta(days=1), SHARES,
-                                                              start=T_start + pd.Timedelta(days=1))
+    active["CAR_YEARS_IN_WINDOW"] = exposure.earned_car_years(active, T_end + pd.Timedelta(1, unit="D"), SHARES,
+                                                              start=T_start + pd.Timedelta(1, unit="D"))
     active = active[(active["EXPOSURE_IN_WINDOW_YEARS"] > 0) & (active["CAR_YEARS_IN_WINDOW"] > 0)].copy()
 
     for col in PRICING_FEATURES:
@@ -488,7 +488,7 @@ def run_backtest(policies: pd.DataFrame, claims: pd.DataFrame,
             continue
 
         for horizon_label, horizon_days in HORIZONS:
-            T_end = T + pd.Timedelta(days=horizon_days)
+            T_end = T + pd.Timedelta(horizon_days, unit="D")
             if T_end > max_data_date:
                 continue
 
@@ -503,8 +503,8 @@ def run_backtest(policies: pd.DataFrame, claims: pd.DataFrame,
             del per_policy
 
             # Seasonal naive: use the same window one year earlier as prediction
-            T_naive_start = T - pd.Timedelta(days=365)
-            T_naive_end   = T_end - pd.Timedelta(days=365)
+            T_naive_start = T - pd.Timedelta(365, unit="D")
+            T_naive_end   = T_end - pd.Timedelta(365, unit="D")
             naive_df = sum_actuals(claims, T_naive_start, T_naive_end) \
                 .rename(columns={"actual_count": "predicted_count",
                                  "actual_cost":  "predicted_cost"})
@@ -687,7 +687,7 @@ def build_cutoffs(claims: pd.DataFrame) -> list[pd.Timestamp]:
     scored horizon (3 months) of actuals after it. From the data, so it moves with each extract."""
     end = claims["ACC_DATE"].max()
     start = end - pd.DateOffset(years=BACKTEST_YEARS)
-    return [T for T in pd.date_range(start, end, freq="QE") if T + pd.Timedelta(days=91) <= end]
+    return [T for T in pd.date_range(start, end, freq="QE") if T + pd.Timedelta(91, unit="D") <= end]
 
 
 def relativity_wape(g: pd.DataFrame) -> float:
@@ -728,7 +728,7 @@ def select_window(policies: pd.DataFrame, claims: pd.DataFrame, cutoffs: list[pd
     WINDOW_TEST_CUTOFFS cut-offs that have a full 12 months of actuals after them, on the policy-level
     test (plan H2). Steps 02 and 03 then fit and score on the chosen window."""
     end = claims["ACC_DATE"].max()
-    test = [T for T in cutoffs if T + pd.Timedelta(days=365) <= end][-WINDOW_TEST_CUTOFFS:]
+    test = [T for T in cutoffs if T + pd.Timedelta(365, unit="D") <= end][-WINDOW_TEST_CUTOFFS:]
     span = (end - policies["POLICY_EFFECTIVE_DATE"].min()).days / 365.25
     errors = {}
     for w in training_window.candidates(span):
@@ -756,7 +756,7 @@ def select_factors(policies: pd.DataFrame, claims: pd.DataFrame, cutoffs: list[p
                        "CHOSEN": True}]).to_csv(path, index=False)
         return
     end = claims["ACC_DATE"].max()
-    test = [T for T in cutoffs if T + pd.Timedelta(days=365) <= end][-WINDOW_TEST_CUTOFFS:]
+    test = [T for T in cutoffs if T + pd.Timedelta(365, unit="D") <= end][-WINDOW_TEST_CUTOFFS:]
     errors = {}
     for name, feats in (("general", general), ("general + vehicle", general + VEHICLE_FEATURES)):
         PRICING_FEATURES = feats

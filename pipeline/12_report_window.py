@@ -102,8 +102,62 @@ if year_basis() == "written_year":
     # The claim-detail cards sit beside the current-year levers: same policies.
     policies = policies[policies["POLICY_YEAR"] == str(current)]
     claims_report = claims_report[claims_report["POLICY_YEAR"] == str(current)]
+# UW Controls' "high-cost" claim, carried on every claim row so each line is judged on its own size (plan F6)
+motor_limit = float(S.config["report_tiers"]["high_severity_claim"])
+claims_report = claims_report.assign(HIGH_SEVERITY_LIMIT=motor_limit)
 for name, df in (("fact_policy_pricing_report", policies[POLICY_REPORT_COLUMNS]),
                  ("fact_claim_report", claims_report)):
     out_path = S.facts_dir / f"{name}.csv"
     df.to_csv(out_path, index=False, encoding="utf-8")
     print(f"Wrote {len(df):,} rows, {out_path.stat().st_size / 1e6:,.0f} MB -> {out_path}")
+
+
+def lines_detail() -> None:
+    """Plan F6: the other lines' claim and policy detail in motor's report layout (Paid Claims, Bonus-Malus, UW
+    Controls), each class at its own year (the current one, or its latest usable year at most one before, as the
+    report's Today Year). Their policy keys are text, so each policy gets a number of its own above
+    LINES_POLICY_KEY_BASE (never a motor number). Each department's high-cost claim: [lines] high_severity_claim,
+    else the size above which the same share of its claims lies as motor's claims above motor's limit."""
+    import importlib
+    import numpy as np
+    files = [S.facts_dir / "fact_line_claim_report.csv", S.facts_dir / "fact_line_policy_report.csv"]
+    if not (S.facts_dir / "fact_line_policy.parquet").exists():
+        for f in files:
+            f.unlink(missing_ok=True)
+        return
+    kp, kc = importlib.import_module("21_lines_pricing").kept()
+    kp = kp[kp["POLICY_YEAR"].between(current - 1, current)]
+    year = kp[kp["TOTAL_PREMIUM"] != 0].groupby("CLASS_DESC")["POLICY_YEAR"].max().rename("TODAY_YEAR")
+    kp = kp.join(year, on="CLASS_DESC")
+    kp = kp[kp["POLICY_YEAR"] == kp["TODAY_YEAR"]]
+    pol = kp.assign(IS_CANCELLED=kp["TOTAL_PREMIUM"] <= 0)[POLICY_REPORT_COLUMNS]
+    c = kc.join(year, on="CLASS_DESC")
+    c = c[c["POLICY_YEAR"] == c["TODAY_YEAR"]]
+    office = kp.drop_duplicates(["POLICY_NO", "POLICY_YEAR"]).set_index(["POLICY_NO", "POLICY_YEAR"])["OFFICE_NAME"]
+    c = c.join(office, on=["POLICY_NO", "POLICY_YEAR"])
+    key = pd.factorize(c["POLICY_NO"].astype(str) + "|" + c["POLICY_YEAR"].astype(str))[0]
+    motor_share = float((pd.to_numeric(claims_report["ULTIMATE_CLAIM"], errors="coerce") > motor_limit).mean())
+    hist = kc[kc["POLICY_YEAR"] >= current - 4]
+    set_limits = S.config.get("lines", {}).get("high_severity_claim", {})
+    limit = {d: float(set_limits[d]) if d in set_limits else float(g["INCURRED"].quantile(1 - motor_share))
+             for d, g in hist.groupby("DEPARTMENT")}
+    out = pd.DataFrame({
+        "DEPARTMENT_NAME": c["DEPARTMENT"], "COB": c["CLASS_NO"], "COB_DESC": c["CLASS_DESC"],
+        "POLICY_TYPE_DESC": c["POLICY_TYPE_DESC"], "OFFICE_NAME": c["OFFICE_NAME"],
+        "POLICY_NO": LINES_POLICY_KEY_BASE + key, "POLICY_YEAR": c["POLICY_YEAR"], "CLM_NO": c["CLM_NO"],
+        "CLM_YEAR": c["CLM_YEAR"], "ACC_TYPE_DESC": c["ACC_TYPE_DESC"], "ACC_DATE": c["ACC_DATE"].dt.date,
+        "CLOSE_DATE": c["CLOSE_DATE"], "TOTAL_EST": c["TOTAL_EST"], "TOTAL_PAID": c["TOTAL_PAID"],
+        "RECOVERY_AMT": c["RECOVERY_AMT"], "POLICY_MATCHED": c["MATCH"].ne("unmatched"),
+        "ULTIMATE_CLAIM": c["INCURRED"], "INCURRED": c["INCURRED"],
+        "CASE_RESERVE": (c["TOTAL_EST"] - c["TOTAL_PAID"]).clip(lower=0),
+        "HIGH_SEVERITY_LIMIT": c["DEPARTMENT"].map(limit)})
+    out.to_csv(files[0], index=False, encoding="utf-8")
+    pol.to_csv(files[1], index=False, encoding="utf-8")
+    print(f"Other lines: {len(pol):,} policies and {len(out):,} claims at each class's year "
+          f"({', '.join(f'{k} {v}' for k, v in year.items())}); high-cost claim: "
+          + ", ".join(f"{d} {v:,.0f}" + ("" if d in set_limits else f" (same {motor_share:.1%} of claims as motor)")
+                      for d, v in limit.items()))
+
+
+LINES_POLICY_KEY_BASE = 9_000_000_000_000_000
+lines_detail()

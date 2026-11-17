@@ -210,20 +210,50 @@ def build_lever_allocation(seg_perf_df):
     return pd.DataFrame(rows)
 
 
+LINES_PATH = os.path.join(FACTS_DIR, "fact_line_segment_performance_by_year.csv")
+
+
+def lines_books(year):
+    """Plan F6: the other lines' segment results (step 21), each class at its own year (the current year, or its
+    latest usable year at most one before, as the report's Today Year), one book per department."""
+    if not os.path.exists(LINES_PATH):
+        return []
+    lines = pd.read_csv(LINES_PATH)
+    lines = lines[lines['POLICY_YEAR'].between(year - 1, year) & (lines['EARNED_PREMIUM'] > 0)]
+    if lines.empty:
+        return []
+    dims = os.path.join(str(S.dims_dir), "dim_business_class.csv")
+    dept = pd.read_csv(dims).set_index('CLASS_DESC')['DEPARTMENT'] if os.path.exists(dims) else pd.Series(dtype=str)
+    lines = lines[lines['POLICY_YEAR'] == lines.groupby('CLASS_DESC')['POLICY_YEAR'].transform('max')]
+    lines = lines.assign(BOOK=lines['CLASS_DESC'].map(dept).fillna("Other lines"))
+    return [(b, g) for b, g in lines.groupby('BOOK')]
+
+
 if __name__ == "__main__":
+    global_levers = dict(L)
     print("Loading fact_segment_performance...")
     seg_perf_df = pd.read_csv(INPUT_PATH)
     _, year = current_year()
     seg_perf_df = seg_perf_df[seg_perf_df['POLICY_YEAR'] == year]
     print(f"  Policy year {year}: {len(seg_perf_df)} rows")
 
-    # FIX 1: collapse duplicates + drop zero-premium rows
-    print("Aggregating segments...")
-    seg_perf_df = aggregate_segments(seg_perf_df)
-
-    # Build lever allocation
-    print("Building lever allocation...")
-    lever_df = build_lever_allocation(seg_perf_df)
+    parts = []
+    overrides = S.config.get("lines", {}).get("levers", {})
+    for book, df in [("Motor", seg_perf_df)] + lines_books(year):
+        L.clear()
+        L.update(global_levers)
+        own = overrides.get(book, {}) if book != "Motor" else {}
+        L.update(own)
+        print(f"[{book}] {len(df)} rows" + (f" (years {sorted(df['POLICY_YEAR'].unique())})" if book != "Motor" else ""))
+        # FIX 1: collapse duplicates + drop zero-premium rows
+        agg = aggregate_segments(df)
+        out = build_lever_allocation(agg).assign(BOOK=book)
+        out['LEVER_SETTINGS'] = ("[levers]" if book == "Motor" else
+                                 (f"[lines] levers.{book}" if own else "[levers] (set for motor: no setting for this line)"))
+        parts.append(out)
+    L.clear()
+    L.update(global_levers)
+    lever_df = pd.concat(parts, ignore_index=True)
 
     # Save
     os.makedirs(FACTS_DIR, exist_ok=True)

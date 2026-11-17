@@ -167,15 +167,25 @@ def credibility_z(ep: pd.DataFrame, claims: pd.DataFrame, last: pd.Period, weigh
 
 
 def build_alert_basis(facts: Path) -> pd.DataFrame:
+    """Motor's alert basis from its files (steps 01, 03)."""
     ep = pd.read_csv(facts / "fact_earned_premium.csv",
                      usecols=SEG + ["POLICY_YEAR", "MONTH_DATE", "EARNED_PREMIUM"], parse_dates=["MONTH_DATE"])
-    ep["MONTH"] = ep["MONTH_DATE"].dt.to_period("M")
     pp = pd.read_csv(facts / "fact_policy_pricing.csv",
                      usecols=SEG + ["POLICY_NO", "POLICY_YEAR", "COMMISSION", "pure_premium_period"])
     fc = pd.read_csv(facts / "fact_claim.csv",
                      usecols=["POLICY_NO", "POLICY_YEAR", "CLM_NO", "ACC_DATE", "ULTIMATE_CLAIM", "POLICY_MATCHED"],
                      parse_dates=["ACC_DATE"])
+    return alert_basis(ep, pp, fc)
 
+
+def alert_basis(ep: pd.DataFrame, pp: pd.DataFrame, fc: pd.DataFrame) -> pd.DataFrame:
+    """One book's alert basis (any line of business, F6): monthly earned premium per segment x policy year
+    (`ep`: SEG, POLICY_YEAR, MONTH_DATE, EARNED_PREMIUM), its policies with their expected claims over the term
+    (`pp`: SEG, POLICY_NO, POLICY_YEAR, COMMISSION, pure_premium_period) and its claims (`fc`: POLICY_NO,
+    POLICY_YEAR, CLM_NO, ACC_DATE, ULTIMATE_CLAIM, POLICY_MATCHED). Credibility is estimated inside the book,
+    so books never move each other's alerts."""
+    ep = ep.copy()
+    ep["MONTH"] = ep["MONTH_DATE"].dt.to_period("M")
     matched = fc[fc["POLICY_MATCHED"].astype(str).str.lower() == "true"]
     keys = pp[["POLICY_NO", "POLICY_YEAR"] + SEG].drop_duplicates(["POLICY_NO", "POLICY_YEAR"])
     claims = matched.merge(keys, on=["POLICY_NO", "POLICY_YEAR"], how="inner").dropna(subset=["ACC_DATE"])

@@ -315,12 +315,12 @@ def develop_claims(claims_reassigned: pd.DataFrame) -> pd.DataFrame:
             reserve[i] = 0.0
             # Close date: report + settlement lag in [30, 900] days, longer for larger claims
             settle_lag = int(np.clip(RNG.normal(180 + 0.03 * paid**0.5, 90), 30, 900))
-            close_dt = row["REPORT_DATE"] + pd.Timedelta(days=settle_lag)
+            close_dt = row["REPORT_DATE"] + pd.Timedelta(settle_lag, unit="D")
             # Can't close after AS_OF
             if close_dt > AS_OF:
-                close_dt = AS_OF - pd.Timedelta(days=int(RNG.integers(1, 60)))
+                close_dt = AS_OF - pd.Timedelta(int(RNG.integers(1, 60)), unit="D")
                 if close_dt < row["ACC_DATE"]:
-                    close_dt = row["ACC_DATE"] + pd.Timedelta(days=30)
+                    close_dt = row["ACC_DATE"] + pd.Timedelta(30, unit="D")
             close_date_out.iloc[i] = close_dt
         else:
             # OPEN: paid is a fraction of ultimate; scale up

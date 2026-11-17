@@ -94,7 +94,7 @@ def _expected_share(p: pd.DataFrame, share: dict[str, pd.Series], last_q: pd.Per
     for k in range(10):                                       # a cover of up to two years spans at most 9 quarters
         q = q0 + k
         start = q.dt.start_time
-        end = q.dt.end_time.dt.normalize() + pd.Timedelta(days=1)
+        end = (q + 1).dt.start_time
         days = ((np.minimum(exp, end) - np.maximum(eff, start)).dt.days).clip(lower=0).to_numpy(dtype=float)
         if not days.any():
             break

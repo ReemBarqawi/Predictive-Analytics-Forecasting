@@ -23,7 +23,7 @@ import pandas as pd
 from development import TRIANGLES, reported_share, valuation_quarter
 from settings import S
 
-DAY = pd.Timedelta(days=1)
+DAY = pd.Timedelta(1, unit="D")
 # Accident quarters at least this fully reported are treated as complete (saves work; changes nothing visible)
 COMPLETE_SHARE = 0.9995
 

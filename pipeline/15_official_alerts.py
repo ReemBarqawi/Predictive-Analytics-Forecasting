@@ -9,6 +9,8 @@ step decides the same alerts at the approved target and writes them with the car
 The rules below follow the DAX measures one for one (names in brackets). They read the same files
 the report reads, so at the default target the list must equal the report's panel:
     fact_alert_basis.csv                    In-Year figures, credibility, trend      (step 11)
+    fact_line_alert_basis.csv,              the other lines' (step 25) and their segment results (step 21),
+    fact_line_segment_performance_by_year   each class at its own year; no trend applied to them
     fact_segment_performance_by_year.csv    Today figures of the current policy year (step 5)
     fact_optimal_scenarios.csv              recommended price change                 (step 9)
     dim_report_window.csv                   current year, target, trend factor, reliability bands (step 12)
@@ -99,12 +101,23 @@ def load_inputs(facts: Path, dims: Path) -> tuple[pd.DataFrame, dict]:
     win = pd.read_csv(dims / "dim_report_window.csv").iloc[0].to_dict()
     year = int(win["CURRENT_YEAR"])
 
-    basis = pd.read_csv(facts / "fact_alert_basis.csv", parse_dates=["WINDOW_START", "WINDOW_END", "DATA_CUTOFF"])
-
+    dates = ["WINDOW_START", "WINDOW_END", "DATA_CUTOFF"]
+    basis = pd.read_csv(facts / "fact_alert_basis.csv", parse_dates=dates).assign(BOOK="Motor")
     perf = pd.read_csv(facts / "fact_segment_performance_by_year.csv")
-    perf = perf[perf["POLICY_YEAR"] == year]
+    perf = perf[perf["POLICY_YEAR"] == year].assign(TODAY_YEAR=year)
+    # Plan F6: the other lines' alerts (step 25) and their Today figures, each class at its own year (the current
+    # year, or its latest usable year at most one before, as the report's Today Year)
+    lb, lp = facts / "fact_line_alert_basis.csv", facts / "fact_line_segment_performance_by_year.csv"
+    if lb.exists() and lp.exists():
+        basis = pd.concat([basis, pd.read_csv(lb, parse_dates=dates)], ignore_index=True)
+        lines = pd.read_csv(lp)
+        lines = lines[lines["POLICY_YEAR"].between(year - 1, year) & (lines["EARNED_PREMIUM"] != 0)]
+        last = lines.groupby("CLASS_DESC")["POLICY_YEAR"].transform("max")
+        perf = pd.concat([perf, lines[lines["POLICY_YEAR"] == last].assign(TODAY_YEAR=lambda d: d["POLICY_YEAR"])],
+                         ignore_index=True)
     today = perf.groupby(SEG).agg(TODAY_PREMIUM=("EARNED_PREMIUM", "sum"), TODAY_CLAIMS=("ULTIMATE_CLAIMS", "sum"),
-                                  TODAY_COMMISSION=("COMMISSION_SUM", "sum"), TODAY_ADMIN=("ADMIN_EXPENSE", "sum"))
+                                  TODAY_COMMISSION=("COMMISSION_SUM", "sum"), TODAY_ADMIN=("ADMIN_EXPENSE", "sum"),
+                                  TODAY_YEAR=("TODAY_YEAR", "max"))
 
     # [Rec Price Change]: the base case, weighted by retained exposure
     opt = pd.read_csv(facts / "fact_optimal_scenarios.csv", encoding="cp1252")
@@ -132,7 +145,9 @@ def decide(df: pd.DataFrame, win: dict) -> pd.DataFrame:
     d["IN_YEAR_CR"] = (d.CLAIMS_L12 + d.IN_YEAR_EXPENSES) / ep                      # [In-Year Combined Ratio]
     blended_lr = d.CRED_Z * (d.CLAIMS_L12 / ep) + (1 - d.CRED_Z) * d.CLASS_LR_L12
     d["RELIABLE_CR"] = blended_lr + d.EXPENSE_RATIO                                 # [Reliable Combined Ratio]
-    d["EXPECTED_CR"] = (d.RELIABLE_CR - d.EXPENSE_RATIO) * trend_factor + d.EXPENSE_RATIO  # [Expected Combined Ratio]
+    # motor's trend factor applies to motor; no trend is measured for the other lines (their prices use none)
+    trend = np.where(d["BOOK"].eq("Motor"), trend_factor, 1.0) if "BOOK" in d else trend_factor
+    d["EXPECTED_CR"] = (d.RELIABLE_CR - d.EXPENSE_RATIO) * trend + d.EXPENSE_RATIO  # [Expected Combined Ratio]
 
     # [Alert Trend Pts], [Alert Trend Direction]
     prior_lr = d.CLAIMS_P12 / d.EP_P12.replace(0, np.nan)
@@ -227,6 +242,7 @@ OUTPUT_COLUMNS = [
     "CURRENT_FLAG", "FUTURE_FLAG", "LOW_CREDIBILITY",
     "TREND_PTS", "TREND_DIRECTION", "REC_PRICE_CHANGE", "CRED_Z", "CONFIDENCE", "CLAIM_COUNT_L12",
     "TARGET_CR", "CURRENT_YEAR", "WINDOW_START", "WINDOW_END", "DATA_CUTOFF",
+    "BOOK", "TODAY_YEAR",          # 2026-11-16 (plan F6): the book, and the year its figures are on
 ]
 
 
@@ -236,7 +252,9 @@ def build(facts: Path, dims: Path) -> pd.DataFrame:
     if d.empty:
         return pd.DataFrame(columns=OUTPUT_COLUMNS)
     year, target = int(win["CURRENT_YEAR"]), float(win["TARGET_COMBINED_RATIO"])
-    text = pd.DataFrame([card_text(r, year, target) for _, r in d.iterrows()], index=d.index)
+    # each alert worded with its own year: the current one, or for a line judged on an earlier year, that year
+    text = pd.DataFrame([card_text(r, int(r.TODAY_YEAR) if pd.notna(r.TODAY_YEAR) else year, target)
+                         for _, r in d.iterrows()], index=d.index)
     d = d.join(text)
     d["SEGMENT_LABEL"] = d.ZONE + " · " + d.CLASS_DESC + " · " + d.POLICY_TYPE_DESC
     d["ALERT_RANK"] = range(1, len(d) + 1)

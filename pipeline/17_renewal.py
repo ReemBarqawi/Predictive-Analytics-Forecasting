@@ -131,7 +131,7 @@ def main() -> None:
                       low_memory=False).drop_duplicates(["POLICY_NO", "POLICY_YEAR"])
     r = renewals(v).merge(seg, on=["POLICY_NO", "POLICY_YEAR"], how="inner")
 
-    observable_end = cutoff - pd.Timedelta(days=RENEW_AFTER_DAYS)
+    observable_end = cutoff - pd.Timedelta(RENEW_AFTER_DAYS, unit="D")
     hist = r[r["COVER_END"] <= observable_end]
     history = hist.groupby(hist["COVER_END"].dt.year).agg(EXPIRING=("RENEWED", "size"), RENEWED=("RENEWED", "sum"))
     history["RENEWAL_RATE"] = history["RENEWED"] / history["EXPIRING"]
